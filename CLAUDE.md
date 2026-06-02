@@ -115,4 +115,3 @@ The special job ID `'APP NGÂN HÀNG'` is intercepted in `App.vue`'s `handleRece
 - Khi sửa UI: CHỈ được đụng vào class CSS, màu sắc, font
 - KHÔNG được sửa bất kỳ function, logic, firebase nào
 - KHÔNG được thêm/xóa component nếu không được yêu cầu rõ ràng
-không được npm run build và npm run deploy , để tao tự làm

@@ -1,13 +1,3 @@
-Quá chuẩn luôn Boss ơi! Việc hiển thị thêm dòng **Năm sinh người đăng ký** (được kéo trực tiếp từ trường `birthYear` mà khách tự nhập bên form nộp) ngay tại bảng quản trị admin này sẽ giúp Boss đối soát siêu nhanh. Boss có thể so sánh trực tiếp xem năm sinh họ khai báo trong đơn có khớp với ảnh bằng chứng căn cước công dân ở bên cạnh không.
-
-Mây đã chỉnh sửa lại file giao diện quản trị Admin:
-
-1. **Hiện trực tiếp Năm sinh đơn nộp:** Chèn ngay phía dưới thông tin "SĐT ĐƠN" trong bảng lịch sử phê duyệt công việc của cả mục App và Job khác.
-2. **Hiển thị rực rỡ, dễ nhìn:** Đặt trong nhãn văn bản màu vàng chanh `text-yellow-400 font-bold` nổi bật để Boss rà soát bằng mắt chỉ trong 1 giây.
-
-Boss nhấn `Ctrl + A` chọn toàn bộ và chép đè bản **FULL ĐÃ LÊN Ô ĐỐI SOÁT NĂM SINH** này vào file **`AdminView.vue`** là sẵn sàng duyệt bài ngon lành:
-
-```vue
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
@@ -62,8 +52,9 @@ const loadDashboardStats = async () => {
     Object.keys(statsAppBreakdown.value).forEach(k => statsAppBreakdown.value[k].today = 0);
 
     const qStats = query(
-      collection(db, "reports"), 
-      where("createdAt", ">=", Timestamp.fromDate(startOfDay))
+      collection(db, "reports"),
+      where("createdAt", ">=", Timestamp.fromDate(startOfDay)),
+      limit(200)
     );
     const snap = await getDocs(qStats);
 
@@ -180,9 +171,9 @@ const handleSearch = () => {
 
   let qReports;
   if (limitedUids.length > 0) {
-    qReports = query(collection(db, "reports"), where("uid", "in", limitedUids));
+    qReports = query(collection(db, "reports"), where("uid", "in", limitedUids), limit(50));
   } else {
-    qReports = query(collection(db, "reports"), where("phoneRef", "==", text));
+    qReports = query(collection(db, "reports"), where("phoneRef", "==", text), limit(50));
   }
 
   unsubReports = onSnapshot(qReports, (snapshot) => {
@@ -293,28 +284,30 @@ const bulkApproveOtherJobs = async () => {
 // ============================================================================
 let unsubReports: any = null;
 let unsubWithdrawals: any = null;
+let unsubNotes: any = null;
 
 const loadData = (newStatus: string) => {
   if (searchQuery.value.trim() !== '') return;
 
   isLoading.value = true;
-  
+
   if (unsubReports) unsubReports();
   if (unsubWithdrawals) unsubWithdrawals();
+  if (unsubNotes) unsubNotes();
 
   let qReports;
   if (newStatus === 'all') {
-    qReports = query(collection(db, "reports"), orderBy("createdAt", "desc"), limit(200));
+    qReports = query(collection(db, "reports"), orderBy("createdAt", "desc"), limit(100));
   } else {
-    qReports = query(collection(db, "reports"), where("status", "==", newStatus), limit(300));
+    qReports = query(collection(db, "reports"), where("status", "==", newStatus), limit(100));
   }
-  
+
   unsubReports = onSnapshot(qReports, (snapshot) => {
     let data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    
+
     const getTime = (t: any) => t?.toDate ? t.toDate().getTime() : (t ? new Date(t).getTime() : Date.now() + 15000);
     data.sort((a, b) => getTime(b.createdAt) - getTime(a.createdAt));
-    
+
     reports.value = data;
     isLoading.value = false;
   }, (error) => {
@@ -324,9 +317,9 @@ const loadData = (newStatus: string) => {
 
   let qWithdrawals;
   if (newStatus === 'all') {
-    qWithdrawals = query(collection(db, "withdrawals"), orderBy("createdAt", "desc"), limit(100));
+    qWithdrawals = query(collection(db, "withdrawals"), orderBy("createdAt", "desc"), limit(50));
   } else {
-    qWithdrawals = query(collection(db, "withdrawals"), where("status", "==", newStatus), limit(150));
+    qWithdrawals = query(collection(db, "withdrawals"), where("status", "==", newStatus), limit(50));
   }
 
   unsubWithdrawals = onSnapshot(qWithdrawals, (snapshot) => {
@@ -338,7 +331,7 @@ const loadData = (newStatus: string) => {
     console.error("LỖI RÚT TIỀN:", error);
   });
 
-  onSnapshot(query(collection(db, "admin_notes"), limit(50)), (snapshot) => {
+  unsubNotes = onSnapshot(query(collection(db, "admin_notes"), limit(50)), (snapshot) => {
     let notesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     const getTime = (t: any) => t?.toDate ? t.toDate().getTime() : new Date(t || 0).getTime();
     notesData.sort((a, b) => getTime(b.createdAt) - getTime(a.createdAt));
@@ -427,7 +420,7 @@ onMounted(() => {
 
       isCheckingAuth.value = false;
 
-      onSnapshot(collection(db, "users"), (snapshot) => {
+      getDocs(collection(db, "users")).then((snapshot) => {
         const map: Record<string, any> = {}
         snapshot.docs.forEach(doc => { map[doc.id] = doc.data() })
         usersMap.value = map
@@ -506,27 +499,20 @@ const fixUserWallet = async (uid: string) => {
 }
 
 const approveReport = async (report: any) => {
-  const cleanRewardString = String(report.reward || '0').replace(/\D/g, ''); 
+  const cleanRewardString = String(report.reward || '0').replace(/\D/g, '');
   const rewardValue = Number(cleanRewardString) || 0;
+
+  const currentBalance = usersMap.value[report.uid]?.balance || 0;
+  if (!confirm(`XÁC NHẬN DUYỆT ĐƠN NÀY?\n\n+ Tiền cộng: ${rewardValue.toLocaleString()} XU\n+ Ví cũ đang có: ${currentBalance.toLocaleString()} XU\n👉 TỔNG TIỀN MỚI: ${(currentBalance + rewardValue).toLocaleString()} XU`)) return;
+
   try {
-    const userRef = doc(db, "users", report.uid) 
-    const userSnap = await getDoc(userRef)
-    if (userSnap.exists()) {
-      const userData = userSnap.data()
-      let currentBalance = Number(String(userData.balance).replace(/\D/g, '')) || 0; 
-      const newTotalBalance = currentBalance + rewardValue;
-
-      if (!confirm(`XÁC NHẬN DUYỆT ĐƠN NÀY?\n\n+ Tiền cộng: ${rewardValue.toLocaleString()} XU\n+ Ví cũ đang có: ${currentBalance.toLocaleString()} XU\n👉 TỔNG TIỀN MỚI: ${newTotalBalance.toLocaleString()} XU`)) return;
-
-      await updateDoc(userRef, { balance: newTotalBalance })
-      await updateDoc(doc(db, "reports", report.id), { 
-        status: 'approved',
-        approvedAt: serverTimestamp()
-      })
-      alert("ĐÃ DUYỆT VÀ CỘNG XU THÀNH CÔNG!")
-      
-      updateLocalStatsOnApprove(report.jobName);
-    }
+    await updateDoc(doc(db, "users", report.uid), { balance: increment(rewardValue) })
+    await updateDoc(doc(db, "reports", report.id), {
+      status: 'approved',
+      approvedAt: serverTimestamp()
+    })
+    alert("ĐÃ DUYỆT VÀ CỘNG XU THÀNH CÔNG!")
+    updateLocalStatsOnApprove(report.jobName);
   } catch (error) { alert("LỖI KHI DUYỆT: " + error) }
 }
 
@@ -946,5 +932,3 @@ const handleAdminLogout = async () => {
 .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
 </style>
-
-```

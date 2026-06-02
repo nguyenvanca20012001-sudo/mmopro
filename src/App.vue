@@ -3,7 +3,7 @@ import { ref, onMounted, computed, watch, provide } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { auth, db } from '@/firebase' 
 import { onAuthStateChanged, signOut } from "firebase/auth" 
-import { doc, onSnapshot, collection, query, where, updateDoc, increment } from "firebase/firestore"
+import { doc, onSnapshot, collection, query, where, updateDoc, increment, limit } from "firebase/firestore"
 
 // --- IMPORT COMPONENT ---
 import { jobsData } from '@/data/jobs'
@@ -155,27 +155,34 @@ onMounted(() => {
   
   startToasting()
   
+  let unsubUser: (() => void) | null = null
+  let unsubReports: (() => void) | null = null
+  let unsubWithdrawals: (() => void) | null = null
+
   onAuthStateChanged(auth, async (user) => {
+    unsubUser?.(); unsubReports?.(); unsubWithdrawals?.()
+    unsubUser = null; unsubReports = null; unsubWithdrawals = null
+
     if (user && !isAdminRoute.value) {
       isLoggedIn.value = true
-      
-      onSnapshot(doc(db, "users", user.uid), async (docSnap) => {
+
+      unsubUser = onSnapshot(doc(db, "users", user.uid), async (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data()
           userData.value = data
           username.value = data.username || data.fullName || 'Member'
           const realBalance = data.balance ? Number(data.balance) : 0;
           userBalance.value = realBalance;
-          
+
           // ==============================================================
           // ĐÃ FIX LỖI TẶNG LẠI 10K KHI KHÁCH RÚT TIỀN VỀ 0
           // ==============================================================
           if (data.receivedWelcomeGift !== true) {
              if (realBalance === 0) {
                try {
-                 await updateDoc(doc(db, "users", user.uid), { 
+                 await updateDoc(doc(db, "users", user.uid), {
                    balance: increment(10000),
-                   receivedWelcomeGift: true 
+                   receivedWelcomeGift: true
                  })
                  showWelcomePopup.value = true
                } catch (e) { console.error("Lỗi cộng tiền:", e) }
@@ -188,13 +195,13 @@ onMounted(() => {
           localStorage.setItem('mmo_balance', String(realBalance))
         }
       })
-      
-      onSnapshot(query(collection(db, "reports"), where("uid", "==", user.uid)), (snapshot) => {
+
+      unsubReports = onSnapshot(query(collection(db, "reports"), where("uid", "==", user.uid), limit(50)), (snapshot) => {
         myReports.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
         isDataLoading.value = false
       })
-      
-      onSnapshot(query(collection(db, "withdrawals"), where("uid", "==", user.uid)), (snapshot) => {
+
+      unsubWithdrawals = onSnapshot(query(collection(db, "withdrawals"), where("uid", "==", user.uid)), (snapshot) => {
         myWithdrawals.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
       })
     } else if (!isAdminRoute.value) {
@@ -230,9 +237,7 @@ const handleReceiveJob = (jobId: string) => {
     showBankModal.value = true
     return
   }
-  if (window.confirm('Bạn đã đủ 18 tuổi chưa?')) {
-    router.push(`/job/${jobId}`)
-  }
+  router.push(`/job/${jobId}`)
 }
 
 const handleScrollToHistory = () => {

@@ -1,67 +1,44 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, inject, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { auth, db } from '@/firebase'
-import { collection, query, where, onSnapshot } from 'firebase/firestore'
 
 const router = useRouter()
+const myReports = inject<any>('myReports')
+
 const unseenRewards = ref<any[]>([])
 const currentReward = ref<any>(null)
 const showPopup = ref(false)
 
-// Cờ đánh dấu lần đầu tiên quét dữ liệu
-let isFirstLoad = true 
+let isFirstLoad = true
 
-onMounted(() => {
-  auth.onAuthStateChanged((user) => {
-    if (user) {
-      // Lấy toàn bộ đơn của user này để nghe ngóng
-      const q = query(
-        collection(db, "reports"),
-        where("uid", "==", user.uid)
-      )
-      
-      onSnapshot(q, (snap) => {
-        const seenIds = JSON.parse(localStorage.getItem('seenRewards') || '[]')
-        const newRewards: any[] = []
+watch(myReports, (newReports) => {
+  if (!newReports) return
 
-        // Dùng docChanges() để chỉ bắt đúng những sự kiện VỪA XẢY RA
-        snap.docChanges().forEach((change) => {
-          const data = change.doc.data()
-          const id = change.doc.id
+  const seenIds = JSON.parse(localStorage.getItem('seenRewards') || '[]')
+  const newRewards: any[] = []
 
-          // Kiểm tra: Nếu đơn được Approved và chưa từng nổ popup
-          if (data.status === 'approved' && !seenIds.includes(id)) {
-            
-            if (isFirstLoad) {
-              // TRƯỜNG HỢP 1: Lần đầu quét data (Đơn đã duyệt từ lâu)
-              seenIds.push(id)
-            } else if (change.type === 'modified') {
-              // TRƯỜNG HỢP 2: Đang dùng web mà Admin VỪA BẤM DUYỆT TỨC THÌ
-              newRewards.push({ id, ...data })
-            }
-          }
-        })
-
-        // Cập nhật lại bộ nhớ ngay lần đầu để giấu hết đơn cũ
-        if (isFirstLoad) {
-          localStorage.setItem('seenRewards', JSON.stringify(seenIds))
-          isFirstLoad = false
-        }
-
-        // Nếu có đơn MỚI VỪA DUYỆT thì kích nổ
-        if (newRewards.length > 0) {
-          unseenRewards.value.push(...newRewards)
-          if (!showPopup.value) {
-            showNextReward()
-          }
-        }
-      })
+  newReports.forEach((report: any) => {
+    if (report.status === 'approved' && !seenIds.includes(report.id)) {
+      if (isFirstLoad) {
+        seenIds.push(report.id)
+      } else {
+        newRewards.push(report)
+      }
     }
   })
-})
 
-// Chạy đơn tiếp theo nếu Admin duyệt 1 lúc nhiều đơn
+  if (isFirstLoad) {
+    localStorage.setItem('seenRewards', JSON.stringify(seenIds))
+    isFirstLoad = false
+    return
+  }
+
+  if (newRewards.length > 0) {
+    unseenRewards.value.push(...newRewards.filter(r => !unseenRewards.value.some((u: any) => u.id === r.id)))
+    if (!showPopup.value) showNextReward()
+  }
+}, { deep: true })
+
 const showNextReward = () => {
   if (unseenRewards.value.length > 0) {
     currentReward.value = unseenRewards.value[0]
@@ -71,7 +48,6 @@ const showNextReward = () => {
   }
 }
 
-// Bấm nút: Cất tiền và dọn sạch
 const markAsSeenAndClose = () => {
   if (!currentReward.value) return
 
@@ -82,18 +58,14 @@ const markAsSeenAndClose = () => {
   unseenRewards.value.shift()
   showPopup.value = false
 
-  // Nghỉ 0.4s rồi nổ tiếp nếu còn đơn chờ
   setTimeout(() => {
-    if (unseenRewards.value.length > 0) {
-      showNextReward()
-    }
+    if (unseenRewards.value.length > 0) showNextReward()
   }, 400)
 }
 
-// Hàm Rút Tiền: Gọi Cất tiền xong thì chuyển hướng
 const handleWithdraw = () => {
-  markAsSeenAndClose();
-  router.push('/withdraw');
+  markAsSeenAndClose()
+  router.push('/withdraw')
 }
 </script>
 
@@ -111,9 +83,9 @@ const handleWithdraw = () => {
       </svg>
 
       <div class="absolute inset-0 bg-black/80"></div>
-      
+
       <div class="relative bg-[#0d121f] border-2 border-emerald-500 w-full max-w-md rounded-[35px] p-8 text-center shadow-[0_0_50px_rgba(16,185,129,0.4)] overflow-hidden">
-        
+
         <div class="absolute -top-20 -right-20 w-48 h-48 bg-emerald-500/20 rounded-full blur-[60px] animate-pulse"></div>
         <div class="absolute -bottom-20 -left-20 w-48 h-48 bg-yellow-500/10 rounded-full blur-[60px]"></div>
 
@@ -121,7 +93,7 @@ const handleWithdraw = () => {
           <div class="w-24 h-24 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(16,185,129,0.5)] border-4 border-[#0d121f]">
             <span class="text-5xl animate-bounce">💸</span>
           </div>
-          
+
           <h2 class="text-xl md:text-2xl text-emerald-400 font-black italic tracking-tighter mb-1 uppercase drop-shadow-md">
             TING TING! TING TING!
           </h2>
@@ -135,7 +107,7 @@ const handleWithdraw = () => {
               {{ currentReward.jobName }}
             </p>
             <p class="text-slate-400 text-[9px] tracking-[2px] uppercase mb-2">BẠN NHẬN ĐƯỢC</p>
-            
+
             <div class="flex items-center justify-center gap-2">
               <span class="text-emerald-400 text-4xl font-black italic tracking-tighter drop-shadow-lg">
                 +{{ (currentReward.reward || 0).toLocaleString() }}
@@ -149,16 +121,16 @@ const handleWithdraw = () => {
               </div>
             </div>
           </div>
-          
+
           <div class="flex flex-col sm:flex-row gap-3">
-            <button 
+            <button
               @click="handleWithdraw"
               class="w-full sm:flex-1 bg-yellow-500 text-[#090d14] py-4 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-yellow-400 transition-all active:scale-95 shadow-[0_0_20px_rgba(234,179,8,0.3)] border border-yellow-400"
             >
               RÚT TIỀN NGAY 💸
             </button>
 
-            <button 
+            <button
               @click="markAsSeenAndClose"
               class="w-full sm:flex-1 bg-emerald-500 text-[#090d14] py-4 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-emerald-400 transition-all active:scale-95 shadow-[0_0_20px_rgba(16,185,129,0.3)]"
             >
