@@ -39,11 +39,14 @@ Balance mutations use Firestore `increment()` to avoid race conditions — **exc
 One Firestore database is shared across multiple websites. Every `reports`, `withdrawals`, and `users` document has a `site` field to identify which site it belongs to:
 - `site: "mmo"` → trang MMO PRO (dangkyxinviec.com)
 - `site: "freelance"` → trang Freelance thứ 2
+- `site: "rapjob"` → trang Rạp Job (rapjob.io)
+- `site: "shopping"` → trang Shopping thứ 4
 
 **Rules:**
 - On register: must write correct `site` value to Firestore
-- On login: must verify `user.site` matches the current site; reject if mismatched
+- On login: must verify `user.site` matches the current site; reject if mismatched — call `signOut(auth)` then `localStorage.clear()` before throwing error
 - Users of one site must not be able to log into another site
+- The `site` field on a user document must never be modified after account creation — treat it as immutable
 
 ### App.vue — the application shell
 

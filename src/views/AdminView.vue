@@ -15,8 +15,7 @@ const isCheckingAuth = ref(true)
 const router = useRouter()
 
 const activeTab = ref('app_jobs') // 'app_jobs' | 'other_jobs' | 'withdrawals'
-const siteFilter = ref('all') 
-const statusFilter = ref('pending') 
+const statusFilter = ref('pending')
 
 const selectedImage = ref<string | null>(null)
 const openImage = (img: string) => { selectedImage.value = img }
@@ -126,14 +125,24 @@ const saveDailyNote = async () => {
         totalToday: statsTodayTotal.value,
         createdAt: serverTimestamp()
       });
+      await loadNotes();
       Swal.fire('Đã Lưu!', 'Dữ liệu đã được cất vào sổ tay bên dưới.', 'success');
     } catch (e) { alert("Lỗi lưu note: " + e); }
   }
 }
 
+const loadNotes = async () => {
+  const snapshot = await getDocs(query(collection(db, "admin_notes"), limit(50)));
+  let notesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  const getTime = (t: any) => t?.toDate ? t.toDate().getTime() : new Date(t || 0).getTime();
+  notesData.sort((a, b) => getTime(b.createdAt) - getTime(a.createdAt));
+  dailyNotes.value = notesData;
+}
+
 const deleteNote = async (id: string) => {
   if (confirm("Xóa dòng note này?")) {
     await deleteDoc(doc(db, "admin_notes", id));
+    await loadNotes();
   }
 }
 
@@ -142,11 +151,11 @@ const deleteNote = async (id: string) => {
 // ============================================================================
 const searchQuery = ref('')
 
-const handleSearch = () => {
+const handleSearch = async () => {
   const text = searchQuery.value.trim();
-  
+
   if (!text) {
-    loadData(statusFilter.value); 
+    loadData(statusFilter.value);
     return;
   }
 
@@ -156,55 +165,48 @@ const handleSearch = () => {
 
   let matchedUids: string[] = [];
   const lowerText = text.toLowerCase();
-  
+
   for (const uid in usersMap.value) {
     const user = usersMap.value[uid];
     const uname = user.username ? String(user.username).toLowerCase() : '';
     const fname = user.fullName ? String(user.fullName).toLowerCase() : '';
-    
     if (uname.includes(lowerText) || fname.includes(lowerText)) {
       matchedUids.push(uid);
     }
   }
 
   const limitedUids = matchedUids.slice(0, 10);
+  const qReports = limitedUids.length > 0
+    ? query(collection(db, "reports"), where("uid", "in", limitedUids), limit(50))
+    : query(collection(db, "reports"), where("phoneRef", "==", text), limit(50));
 
-  let qReports;
-  if (limitedUids.length > 0) {
-    qReports = query(collection(db, "reports"), where("uid", "in", limitedUids), limit(50));
-  } else {
-    qReports = query(collection(db, "reports"), where("phoneRef", "==", text), limit(50));
-  }
-
-  unsubReports = onSnapshot(qReports, (snapshot) => {
+  try {
+    const snapshot = await getDocs(qReports);
     let data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    
     const getTime = (t: any) => t?.toDate ? t.toDate().getTime() : new Date(t || 0).getTime();
     data.sort((a, b) => getTime(b.createdAt) - getTime(a.createdAt));
     reports.value = data;
 
     let uidsToSearchWith = limitedUids;
     if (uidsToSearchWith.length === 0 && data.length > 0) {
-       uidsToSearchWith = [data[0].uid]; 
+      uidsToSearchWith = [data[0].uid];
     }
 
     if (uidsToSearchWith.length > 0) {
       const validUids = uidsToSearchWith.slice(0, 10);
       const qWith = query(collection(db, "withdrawals"), where("uid", "in", validUids));
-      unsubWithdrawals = onSnapshot(qWith, (snapWith) => {
-        let wData = snapWith.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        wData.sort((a, b) => getTime(b.createdAt) - getTime(a.createdAt));
-        withdrawals.value = wData;
-      });
+      const snapWith = await getDocs(qWith);
+      let wData = snapWith.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      wData.sort((a, b) => getTime(b.createdAt) - getTime(a.createdAt));
+      withdrawals.value = wData;
     } else {
       withdrawals.value = [];
     }
-    
-    isLoading.value = false;
-  }, (error) => {
+  } catch (error: any) {
     alert("LỖI TÌM KIẾM: " + error.message);
+  } finally {
     isLoading.value = false;
-  });
+  }
 }
 
 // ============================================================================
@@ -284,7 +286,6 @@ const bulkApproveOtherJobs = async () => {
 // ============================================================================
 let unsubReports: any = null;
 let unsubWithdrawals: any = null;
-let unsubNotes: any = null;
 
 const loadData = (newStatus: string) => {
   if (searchQuery.value.trim() !== '') return;
@@ -293,7 +294,6 @@ const loadData = (newStatus: string) => {
 
   if (unsubReports) unsubReports();
   if (unsubWithdrawals) unsubWithdrawals();
-  if (unsubNotes) unsubNotes();
 
   let qReports;
   if (newStatus === 'all') {
@@ -331,12 +331,7 @@ const loadData = (newStatus: string) => {
     console.error("LỖI RÚT TIỀN:", error);
   });
 
-  unsubNotes = onSnapshot(query(collection(db, "admin_notes"), limit(50)), (snapshot) => {
-    let notesData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    const getTime = (t: any) => t?.toDate ? t.toDate().getTime() : new Date(t || 0).getTime();
-    notesData.sort((a, b) => getTime(b.createdAt) - getTime(a.createdAt));
-    dailyNotes.value = notesData;
-  });
+  loadNotes();
 }
 
 watch(statusFilter, (newVal) => {
@@ -404,7 +399,7 @@ const confirmMessage = async () => {
 onMounted(() => {
   onAuthStateChanged(auth, async (user) => {
     if (user) {
-      const isBoss = user.email === 'nguyenvanca14062001@gmail.com';
+      const isBoss = user.email === import.meta.env.VITE_ADMIN_EMAIL;
       const userDoc = await getDoc(doc(db, "users", user.uid))
       const userData = userDoc.data()
 
@@ -443,25 +438,22 @@ const isAppJob = (jobName: string) => {
 }
 
 const filteredAppReports = computed(() => {
-  return reports.value.filter(r => 
-    (siteFilter.value === 'all' || r.site === siteFilter.value) && 
+  return reports.value.filter(r =>
     (searchQuery.value.trim() !== '' ? true : (statusFilter.value === 'all' || r.status === statusFilter.value)) &&
     isAppJob(r.jobName)
   )
 })
 
 const filteredOtherReports = computed(() => {
-  return reports.value.filter(r => 
-    (siteFilter.value === 'all' || r.site === siteFilter.value) && 
+  return reports.value.filter(r =>
     (searchQuery.value.trim() !== '' ? true : (statusFilter.value === 'all' || r.status === statusFilter.value)) &&
     !isAppJob(r.jobName)
   )
 })
 
 const filteredWithdrawals = computed(() => {
-  return withdrawals.value.filter(w => 
-    (siteFilter.value === 'all' || w.site === siteFilter.value) &&
-    (searchQuery.value.trim() !== '' ? true : (statusFilter.value === 'all' || w.status === statusFilter.value))
+  return withdrawals.value.filter(w =>
+    searchQuery.value.trim() !== '' ? true : (statusFilter.value === 'all' || w.status === statusFilter.value)
   )
 })
 
@@ -667,14 +659,6 @@ const handleAdminLogout = async () => {
           </select>
         </div>
 
-        <div class="flex items-center gap-2 bg-[#111726] p-1.5 rounded-xl border border-slate-800">
-          <span class="text-[10px] text-slate-500 tracking-[2px] ml-2 hidden md:inline">LỌC SITE:</span>
-          <select class="bg-[#0d121f] text-white text-[10px] py-2 px-3 rounded-lg border border-slate-700 outline-none cursor-pointer" v-model="siteFilter">
-            <option value="all">TẤT CẢ VŨ TRỤ</option>
-            <option value="mmo">MMO PRO (Xanh)</option>
-            <option value="freelance">MÂY FREELANCE (Hồng)</option>
-          </select>
-        </div>
         <button class="bg-slate-800 text-white px-6 py-2.5 rounded-xl text-[10px] hover:bg-red-600 transition-colors" @click="handleAdminLogout">THOÁT</button>
       </div>
     </div>
@@ -814,8 +798,6 @@ const handleAdminLogout = async () => {
                     </div>
                   </div>
                   <div class="flex flex-col items-end gap-1">
-                    <span class="bg-pink-500/20 text-pink-400 border border-pink-500/30 text-[8px] px-2 py-0.5 rounded uppercase" v-if="rp.site === 'freelance'">FREELANCE</span>
-                    <span class="bg-blue-500/20 text-blue-400 border border-blue-500/30 text-[8px] px-2 py-0.5 rounded uppercase" v-else>MMO</span>
                     <button class="bg-yellow-600/20 text-yellow-500 hover:bg-yellow-500 hover:text-white border border-yellow-600/50 px-2 py-1 rounded-lg text-[8px] transition-all" @click="fixUserWallet(rp.uid)">SỬA VÍ</button>
                   </div>
                 </div>
@@ -879,10 +861,6 @@ const handleAdminLogout = async () => {
           <tbody class="divide-y divide-slate-800/50">
             <tr class="hover:bg-white/[0.02] transition-colors group" v-for="wd in filteredWithdrawals" :key="wd.id">
               <td class="p-6">
-                <div class="flex items-center gap-2 mb-1">
-                  <span class="bg-pink-500/20 text-pink-400 border border-pink-500/30 text-[8px] px-2 py-0.5 rounded uppercase" v-if="wd.site === 'freelance'">FREELANCE</span>
-                  <span class="bg-blue-500/20 text-blue-400 border border-blue-500/30 text-[8px] px-2 py-0.5 rounded uppercase" v-else>MMO</span>
-                </div>
                 <div class="text-white text-sm md:text-base font-black">{{ usersMap[wd.uid]?.username || 'CHƯA CẬP NHẬT' }}</div>
                 
                 <div class="text-slate-400 text-[10px] mt-0.5 font-sans not-italic tracking-normal">

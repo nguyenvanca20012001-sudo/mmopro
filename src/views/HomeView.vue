@@ -1,11 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, inject, watch, onMounted } from 'vue'
-import type { Ref } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { auth, db } from '@/firebase' 
-import { signOut } from "firebase/auth"
-import { doc, updateDoc } from "firebase/firestore"
-import Swal from 'sweetalert2'
+import { auth } from '@/firebase'
+import { onAuthStateChanged, signOut } from "firebase/auth"
 
 import Sidebar from '@/components/home/Sidebar.vue'
 import JobSection from '@/components/home/JobSection.vue'
@@ -13,56 +10,17 @@ import HistorySection from '@/components/home/HistorySection.vue'
 import InfoSection from '@/components/home/InfoSection.vue'
 
 const router = useRouter()
-const emit = defineEmits(['receiveJob'])
-
-onMounted(() => { console.log('HomeView mounted') })
+const isLoggedIn = ref(false)
 const isMenuOpen = ref(false)
 const showBankModal = ref(false)
+const isDataLoading = ref(true)
 
-const injectedUserData = inject<Ref<any>>('userData', ref(null))
-const myReports = inject<Ref<any[]>>('myReports', ref([]))
-const myWithdrawals = inject<Ref<any[]>>('myWithdrawals', ref([]))
-const isDataLoading = inject<Ref<boolean>>('isDataLoading', ref(true))
+const username = ref(localStorage.getItem('mmo_username') || 'Member')
+const userBalance = ref(Number(localStorage.getItem('mmo_balance')) || 0)
+const totalWithdrawn = ref(0) 
 
-const username = computed(() => injectedUserData.value?.username || injectedUserData.value?.fullName || 'Member')
-const userBalance = computed(() => injectedUserData.value?.balance || 0)
-const totalWithdrawn = computed(() => injectedUserData.value?.totalWithdrawn || 0)
-const isLoggedIn = computed(() => !!injectedUserData.value)
-
-let hasAskedAge = false
-watch(injectedUserData, async (data) => {
-  if (data && data.age === undefined && !hasAskedAge) {
-    hasAskedAge = true
-    setTimeout(async () => {
-      if (Swal.isVisible()) Swal.close()
-      const { value: ageInput } = await Swal.fire({
-        title: '🎂 BẠN BAO NHIÊU TUỔI?',
-        text: 'Hệ thống cần biết độ tuổi thật của bạn để đề xuất App Ngân hàng và Nhiệm vụ phù hợp nhất!',
-        input: 'number',
-        inputPlaceholder: 'Nhập số tuổi của bạn...',
-        allowOutsideClick: false,
-        allowEscapeKey: false,
-        background: '#111726',
-        color: '#fff',
-        confirmButtonColor: '#3b82f6',
-        confirmButtonText: 'XÁC NHẬN NGAY 🚀',
-        preConfirm: (val) => {
-          if (!val || val < 10 || val > 100) {
-            Swal.showValidationMessage('Vui lòng nhập độ tuổi thật hợp lệ!')
-            return false
-          }
-          return val
-        }
-      })
-      if (ageInput) {
-        try {
-          await updateDoc(doc(db, "users", auth.currentUser!.uid), { age: Number(ageInput) })
-          Swal.fire({ title: 'Tuyệt vời!', text: 'Hồ sơ đã cập nhật. Bắt đầu kiếm xu thôi!', icon: 'success', background: '#111726', color: '#fff' })
-        } catch (e) { alert("Lỗi: " + e) }
-      }
-    }, 3000)
-  }
-})
+const myReports = ref<any[]>([])
+const myWithdrawals = ref<any[]>([])
 
 const formatAmount = (val: any) => {
   if (!val) return '0';
@@ -92,6 +50,21 @@ const combinedHistory = computed(() => {
   }).sort((a, b) => b.sortTime - a.sortTime)
 })
 
+onMounted(() => {
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      isLoggedIn.value = true
+      isDataLoading.value = false
+    } else {
+      isLoggedIn.value = false
+      isDataLoading.value = false
+      username.value = 'Member'
+      userBalance.value = 0
+      myReports.value = []
+      myWithdrawals.value = []
+    }
+  })
+})
 
 const handleNav = (path: string) => {
   router.push(path);
@@ -109,6 +82,24 @@ const handleScrollToHistory = () => {
 const handleQuickJob = () => {
   const el = document.querySelector('main section:nth-child(2)'); 
   if (el) el.scrollIntoView({ behavior: 'smooth' });
+}
+
+// ============================================================================
+// HÀM KIỂM TRA ĐỘ TUỔI KHỚP KHÍT 100% THEO FILE JOBS.TS CỦA BOSS
+const executeJobNavigation = (jobId: string) => {
+  if (!isLoggedIn.value) { router.push('/login'); return; }
+  router.push(`/job/${jobId}`);
+}
+
+const handleReceiveJob = (jobId: string) => {
+  if (!isLoggedIn.value) { router.push('/login'); return; }
+
+  if (jobId === 'APP NGÂN HÀNG' || jobId === 'app-ngan-hang') {
+    showBankModal.value = true;
+    return;
+  }
+
+  executeJobNavigation(jobId);
 }
 
 const contactSupport = () => {
@@ -164,7 +155,7 @@ const logout = async () => {
       <main class="flex-1 min-w-0 px-4 md:px-10 pb-10 pt-20 lg:pt-10 space-y-10">
         <JobSection 
           :username="username" :isLoggedIn="isLoggedIn" :userBalance="userBalance" :totalWithdrawn="totalWithdrawn"
-          @receiveJob="emit('receiveJob', $event)" @contactSupport="contactSupport" @routerPush="(p) => router.push(p)"
+          @receiveJob="handleReceiveJob" @contactSupport="contactSupport" @routerPush="(p) => router.push(p)"
         />
         <HistorySection id="history-section" :isLoggedIn="isLoggedIn" :isDataLoading="isDataLoading" :myReports="combinedHistory" />
         <InfoSection @contactSupport="contactSupport" />
@@ -180,7 +171,7 @@ const logout = async () => {
         
         <div class="space-y-4 font-bold uppercase italic font-black pb-10 lg:pb-0">
           <div v-for="bank in [{ id: 'msb-bank', name: 'MSB' }, { id: 'vpbank', name: 'VPBank' }, { id: 'tpbank', name: 'TPBank' }]" 
-            :key="bank.id" @click="showBankModal = false; emit('receiveJob', bank.id)"
+            :key="bank.id" @click="() => { showBankModal = false; executeJobNavigation(bank.id) }"
             class="flex items-center justify-between p-6 bg-[#0d121f] border border-slate-800 rounded-2xl cursor-pointer hover:border-blue-500 transition-all active:scale-95 shadow-lg"
           >
              <div class="flex items-center gap-4">

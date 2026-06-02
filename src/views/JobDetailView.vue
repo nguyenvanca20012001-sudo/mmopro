@@ -6,7 +6,7 @@ import Swal from 'sweetalert2'
 
 const route = useRoute()
 const router = useRouter()
-const showGuide = ref(false)
+const showGuide = ref(true)
 const baseUrl = import.meta.env.BASE_URL
 
 const currentJob = ref(jobsData[route.params.id as string] || jobsData['app-chung-khoan'])
@@ -18,14 +18,10 @@ onMounted(() => {
   }
 })
 
-// ==========================================
-// TÍNH NĂNG PHÓNG TO ẢNH (ZOOM) CHO TRANG HƯỚNG DẪN
-// ==========================================
 const selectedImage = ref<string | null>(null)
 const openImage = (img: string) => { selectedImage.value = img }
 const closeImage = () => { selectedImage.value = null }
 
-// Hàm copy đa năng dùng chung
 const handleCopy = (text: string) => {
   if (!text) return;
   navigator.clipboard.writeText(text).then(() => {
@@ -62,8 +58,8 @@ const handleCopy = (text: string) => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-[#090e17] text-slate-300 p-4 md:p-8 font-black italic uppercase text-left relative">
-    
+  <div class="min-h-screen bg-transparent text-slate-300 p-4 md:p-8 font-black italic uppercase text-left relative">
+
     <Transition name="fade">
       <div class="fixed inset-0 z-[6000] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md cursor-zoom-out" v-if="selectedImage" @click="closeImage">
         <button class="absolute top-6 right-6 md:top-10 md:right-10 w-12 h-12 bg-slate-800 border border-slate-700 hover:bg-red-600 rounded-full flex items-center justify-center text-white transition-colors z-[6010] shadow-2xl" @click.stop="closeImage">
@@ -91,7 +87,7 @@ const handleCopy = (text: string) => {
             THƯỞNG: {{ currentJob.reward }}
           </span>
         </div>
-        
+
         <div class="mt-6 max-w-xl mx-auto bg-[#1a0f14] border border-red-500/40 rounded-2xl p-4 shadow-[0_0_20px_rgba(239,68,68,0.15)] animate-in fade-in zoom-in duration-500" v-if="currentJob.warning">
           <div class="flex items-start gap-3">
             <span class="text-red-500 text-xl animate-pulse">⚠️</span>
@@ -104,10 +100,10 @@ const handleCopy = (text: string) => {
 
       <div class="bg-[#111726] rounded-[45px] border border-slate-800/50 p-6 md:p-10 shadow-2xl relative">
         <div class="text-center space-y-5">
-          
-         <div class="mb-6 bg-gradient-to-r from-yellow-500/10 to-orange-500/5 border border-yellow-500/30 rounded-2xl p-4 md:p-5 flex items-start gap-3 md:gap-4 shadow-[0_0_20px_rgba(234,179,8,0.1)] relative overflow-hidden animate-in fade-in duration-700"
-               v-if="['msb-bank', 'vpbank', 'tpbank', 'app-chung-khoan', 'app-chung-khoan-2', 'app-chung-khoan-3'].includes(route.params.id as string)">
-            
+
+         <div class="mb-6 bg-gradient-to-r from-yellow-500/10 to-orange-500/5 border border-yellow-500/30 rounded-2xl p-4 md:p-5 flex items-start gap-3 md:gap-4 shadow-[0_0_20px_rgba(234,179,8,0.1)] relative overflow-hidden animate-in fade-in duration-150"
+                v-if="['msb-bank', 'vpbank', 'tpbank', 'app-chung-khoan', 'app-chung-khoan-2', 'app-chung-khoan-3'].includes(route.params.id as string)">
+
             <div class="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-yellow-400 to-orange-500 shadow-[0_0_10px_rgba(234,179,8,0.8)]"></div>
 
             <div class="text-2xl md:text-3xl animate-bounce drop-shadow-[0_0_15px_rgba(234,179,8,0.8)] mt-1">🪝</div>
@@ -121,19 +117,56 @@ const handleCopy = (text: string) => {
               </p>
             </div>
           </div>
-          <button class="group relative w-full flex items-center gap-4 bg-[#0d121f] border-2 border-emerald-500/30 hover:border-emerald-500/60 p-5 rounded-3xl transition-all mt-4" @click="showGuide = !showGuide">
-            <div class="text-4xl group-hover:scale-110 transition-transform">📖</div>
-            <div class="text-left">
-              <h3 class="text-lg text-white font-black italic leading-none mb-1 uppercase">XEM HƯỚNG DẪN VÀ LÀM THEO {{currentJob.steps?.length || 0}} BƯỚC </h3>
-              <p class="text-[#00df89] text-[8px] tracking-[1px] font-black uppercase italic">NHẤN ĐỂ MỞ TỪNG BƯỚC LÀM</p>
+          <button
+            class="group relative w-full flex items-center gap-4 p-5 rounded-3xl transition-all mt-4 overflow-hidden border-2 active:scale-[0.98]"
+            :class="showGuide
+              ? 'bg-gradient-to-r from-emerald-900/60 to-teal-900/40 border-emerald-500/60 shadow-[0_0_20px_rgba(0,223,137,0.15)]'
+              : 'bg-gradient-to-r from-emerald-600/20 to-teal-600/10 border-emerald-400/80 shadow-[0_0_25px_rgba(0,223,137,0.35)] guide-pulse'"
+            @click="showGuide = !showGuide">
+
+            <!-- Glow overlay khi đóng -->
+            <div v-if="!showGuide" class="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-transparent pointer-events-none"></div>
+
+            <!-- Icon -->
+            <div class="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shrink-0 transition-all"
+                 :class="showGuide ? 'bg-emerald-900/50' : 'bg-emerald-500/20 shadow-[0_0_15px_rgba(0,223,137,0.4)]'">
+              {{ showGuide ? '📖' : '👆' }}
             </div>
+
+            <!-- Text -->
+            <div class="text-left flex-1 relative z-10">
+              <h3 class="text-white font-black italic uppercase tracking-tight leading-tight mb-1.5"
+                  :class="showGuide ? 'text-base' : 'text-lg'">
+                {{ showGuide ? 'ĐANG XEM HƯỚNG DẪN' : 'HƯỚNG DẪN TỪNG BƯỚC' }}
+              </h3>
+              <!-- Step number pills -->
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span
+                  v-for="step in currentJob.steps" :key="step.id"
+                  class="inline-flex items-center justify-center w-5 h-5 rounded-full text-[9px] font-black"
+                  :class="showGuide ? 'bg-emerald-800 text-emerald-300' : 'bg-emerald-400 text-[#090e17]'">
+                  {{ step.id }}
+                </span>
+                <span class="text-[9px] font-black uppercase tracking-wider"
+                      :class="showGuide ? 'text-emerald-600' : 'text-emerald-300'">
+                  {{ currentJob.steps?.length || 0 }} BƯỚC
+                </span>
+              </div>
+            </div>
+
+            <!-- Chevron -->
+            <svg class="w-5 h-5 shrink-0 transition-transform duration-300 relative z-10"
+                 :class="showGuide ? 'rotate-180 text-emerald-600' : 'text-emerald-400'"
+                 fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+            </svg>
           </button>
         </div>
 
         <div class="mt-8 pt-8 border-t border-slate-800/50 space-y-8 animate-in fade-in duration-500" v-if="showGuide">
           <div class="relative pl-10" v-for="step in currentJob.steps" :key="step.id">
             <div class="absolute left-4 top-0 bottom-0 w-[2px] bg-slate-700/30"></div>
-            
+
             <div class="absolute left-0 top-1 w-8 h-8 rounded-full bg-[#00df89] text-[#090e17] flex items-center justify-center text-sm font-black shadow-lg shadow-emerald-500/20">
               {{ step.id }}
             </div>
@@ -183,7 +216,7 @@ const handleCopy = (text: string) => {
                 <a class="inline-flex items-center gap-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-xl text-[11px] font-black uppercase hover:shadow-lg hover:shadow-blue-500/30 transition-all active:scale-95" :href="step.downloadLink" target="_blank" :download="step.downloadLink.includes('.png') || step.downloadLink.includes('.jpg') ? 'Tai_Lieu_MMO_PRO' : false">
                   {{ step.buttonText || 'TẢI APP NGAY ➔' }}
                 </a>
-                
+
                 <button class="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-emerald-400 px-5 py-3 rounded-xl text-[11px] font-black uppercase transition-all shadow-md border border-slate-700 active:scale-95"
                   v-if="!step.downloadLink.includes('.png') && !step.downloadLink.includes('.jpg')"
                   @click="handleCopy(step.downloadLink)">
@@ -191,9 +224,17 @@ const handleCopy = (text: string) => {
                 </button>
               </div>
 
+              <div class="mb-6 flex flex-wrap items-center gap-3" v-if="step.extraLinks">
+                <a v-for="link in step.extraLinks" :key="link.url"
+                   class="inline-flex items-center gap-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-xl text-[11px] font-black uppercase hover:shadow-lg hover:shadow-blue-500/30 transition-all active:scale-95"
+                   :href="link.url" target="_blank">
+                  {{ link.text }}
+                </a>
+              </div>
+
               <div class="flex flex-col md:flex-row gap-6 items-start">
                 <div class="w-full md:max-w-[400px] rounded-2xl overflow-hidden border border-slate-700/50 shadow-2xl bg-slate-900 cursor-zoom-in group relative"
-                     v-if="step.img" 
+                     v-if="step.img"
                      @click="openImage(baseUrl + step.img)">
                   <img class="w-full h-auto object-contain hover:scale-105 transition-transform duration-500" :src="baseUrl + step.img" />
                   <div class="absolute bottom-2 right-2 bg-black/70 backdrop-blur text-white text-[8px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">🔍 CHẠM ĐỂ PHÓNG TO</div>
@@ -207,7 +248,7 @@ const handleCopy = (text: string) => {
 
               <div class="grid grid-cols-3 gap-2 md:gap-4 mt-4" v-if="step.images">
                 <div class="rounded-xl overflow-hidden border border-slate-700/50 shadow-lg relative group bg-slate-900 cursor-zoom-in"
-                     v-for="(imgSrc, idx) in step.images" :key="idx" 
+                     v-for="(imgSrc, idx) in step.images" :key="idx"
                      @click="openImage(baseUrl + imgSrc)">
                   <img class="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300" :src="baseUrl + imgSrc" />
                   <div class="absolute top-1.5 left-1.5 bg-blue-600/90 backdrop-blur-sm text-white text-[8px] md:text-[10px] font-black px-2 py-0.5 rounded shadow-sm">ẢNH {{ idx + 1 }}</div>
@@ -221,7 +262,7 @@ const handleCopy = (text: string) => {
 
       <section class="bg-[#111726] rounded-[45px] border border-slate-800/50 p-8 md:p-10 text-center shadow-xl mb-20">
         <h2 class="text-lg text-slate-400 font-black italic mb-6 tracking-wide uppercase opacity-60">BẠN ĐÃ LÀM XONG?</h2>
-        
+
         <button class="w-full bg-[#00df89] hover:bg-[#00c578] text-[#090e17] py-5 rounded-2xl text-xl font-black italic uppercase shadow-[0_10px_40px_rgba(0,223,137,0.25)] transition-all active:scale-95" @click="router.push(`/submit-report?job=${route.params.id}`)">
           NỘP BẰNG CHỨNG NGAY
         </button>
@@ -232,11 +273,18 @@ const handleCopy = (text: string) => {
 
 <style scoped>
 ::-webkit-scrollbar { width: 0px; }
-.animate-in { animation-duration: 0.5s; }
-.zoom-in { animation: zoomIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+.animate-in { animation-duration: 0.15s; }
+.zoom-in { animation: zoomIn 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 @keyframes zoomIn {
   from { opacity: 0; transform: scale(0.9); }
   to { opacity: 1; transform: scale(1); }
+}
+.guide-pulse {
+  animation: guidePulse 2s ease-in-out infinite;
+}
+@keyframes guidePulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(0,223,137,0.25), 0 0 0 0 rgba(0,223,137,0.15); }
+  50%       { box-shadow: 0 0 30px rgba(0,223,137,0.5), 0 0 12px 4px rgba(0,223,137,0.1); }
 }
 
 .fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }

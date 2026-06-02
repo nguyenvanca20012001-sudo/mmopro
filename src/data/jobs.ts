@@ -1,8 +1,8 @@
 // src/data/jobs.ts
 export const jobsData: Record<string, any> = {
-  
+
   // ==============================================
-  // NHÓM JOB SEEDING & MARKETING TƯƠNG TÁC (NEW)
+  // NHÓM JOB SEEDING & MARKETING TƯƠNG TÁC
   // ==============================================
 
   'view-tiktok': {
@@ -11,27 +11,27 @@ export const jobsData: Record<string, any> = {
     color: "text-pink-400",
     badge: "HOT 🔥",
     steps: [
-      { 
-        id: 1, 
-        title: "BƯỚC 1: TRUY CẬP VIDEO TIKTOK", 
+      {
+        id: 1,
+        title: "BƯỚC 1: TRUY CẬP VIDEO TIKTOK",
         content: "Nhấn vào nút bên dưới để mở video yêu cầu trên ứng dụng TikTok. Đảm bảo bạn đã đăng nhập tài khoản thật.",
         downloadLink: "https://www.tiktok.com/@nhaf.official/video/7565367864157277458",
         buttonText: "👉 MỞ VIDEO TIKTOK"
       },
-      { 
-        id: 2, 
-        title: "BƯỚC 2: TƯƠNG TÁC ĐẦY ĐỦ", 
+      {
+        id: 2,
+        title: "BƯỚC 2: TƯƠNG TÁC ĐẦY ĐỦ",
         content: "Xem hết video (tuyệt đối KHÔNG TUA), nhấn thả tim (Like), Follow kênh và để lại 1 bình luận tích cực trên 10 chữ.",
       },
-      { 
-        id: 3, 
-        title: "BƯỚC 3: CHỤP MÀN HÌNH BẰNG CHỨNG", 
+      {
+        id: 3,
+        title: "BƯỚC 3: CHỤP MÀN HÌNH BẰNG CHỨNG",
         content: "Chụp lại màn hình cho thấy bạn ĐÃ TIM, ĐÃ FOLLOW và CÓ HIỂN THỊ BÌNH LUẬN của bạn ở phía dưới video.",
       },
-      { 
-        id: 4, 
-        title: "BƯỚC 4: NỘP BÀI CHỜ DUYỆT", 
-        content: "Upload ảnh màn hình đó lên mục 'Gửi Bằng Chứng'. Admin sẽ check đối soát và cộng XU cho bạn!" 
+      {
+        id: 4,
+        title: "BƯỚC 4: NỘP BÀI CHỜ DUYỆT",
+        content: "Upload ảnh màn hình đó lên mục 'Gửi Bằng Chứng'. Admin sẽ check đối soát và cộng XU cho bạn!"
       }
     ]
   },
@@ -42,27 +42,27 @@ export const jobsData: Record<string, any> = {
     color: "text-red-500",
     badge: "HOT 🔥",
     steps: [
-      { 
-        id: 1, 
-        title: "BƯỚC 1: MỞ VIDEO YOUTUBE", 
+      {
+        id: 1,
+        title: "BƯỚC 1: MỞ VIDEO YOUTUBE",
         content: "Nhấn nút bên dưới để chuyển sang ứng dụng YouTube. (Yêu cầu dùng tài khoản thật, có avatar).",
         downloadLink: "https://www.youtube.com/watch?v=EOhrUX30yjc",
         buttonText: "👉 MỞ VIDEO YOUTUBE"
       },
-      { 
-        id: 2, 
-        title: "BƯỚC 2: XEM & TƯƠNG TÁC", 
+      {
+        id: 2,
+        title: "BƯỚC 2: XEM & TƯƠNG TÁC",
         content: "Xem video tối thiểu 3 phút (Nếu video ngắn hơn thì xem hết). Bấm ĐĂNG KÝ KÊNH (Subscribe), LIKE video và viết một bình luận liên quan đến nội dung video.",
       },
-      { 
-        id: 3, 
-        title: "BƯỚC 3: CHỤP ẢNH XÁC NHẬN", 
+      {
+        id: 3,
+        title: "BƯỚC 3: CHỤP ẢNH XÁC NHẬN",
         content: "Chụp lại màn hình điện thoại hiển thị rõ chữ 'Đã đăng ký', Nút Like đã sáng và thời lượng xem đã qua 3 phút.",
       },
-      { 
-        id: 4, 
-        title: "BƯỚC 4: GỬI BÁO CÁO", 
-        content: "Tải ảnh vừa chụp lên hệ thống để xác nhận hoàn thành nhiệm vụ và nhận xu." 
+      {
+        id: 4,
+        title: "BƯỚC 4: GỬI BÁO CÁO",
+        content: "Tải ảnh vừa chụp lên hệ thống để xác nhận hoàn thành nhiệm vụ và nhận xu."
       }
     ]
   },
@@ -73,9 +73,9 @@ export const jobsData: Record<string, any> = {
     color: "text-slate-300",
     badge: "TREND 📈",
     steps: [
-      { 
-        id: 1, 
-        title: "BƯỚC 1: CHỌN MẪU BÀI ĐĂNG (SAO CHÉP 1 TRONG 10 MẪU)", 
+      {
+        id: 1,
+        title: "BƯỚC 1: CHỌN MẪU BÀI ĐĂNG (SAO CHÉP 1 TRONG 10 MẪU)",
         content: "Bấm nút SAO CHÉP ở một trong các mẫu nội dung dưới đây để chuẩn bị đăng lên tài khoản Threads của bạn:",
         templates: [
           "TUYỂN CTV SEEDING ONLINE\nYÊU CẦU: Acc Threads sử dụng trên 6 tháng, hay follow các chủ đề Gen Z, Idol KPOP, Anh em xinh,….\nNội dung Post bên mình đưa sẵn, chỉ việc đăng trên nền tảng Threads.\nthả tim + bình luận chấm bài viết , mình gửi JD ở phần bình luận",
@@ -90,18 +90,18 @@ export const jobsData: Record<string, any> = {
           "Đang rảnh rỗi lướt điện thoại thì bơi hết vào đây nhận việc nào mọi người ơi!\nMình cần tuyển gấp CTV cày view Youtube/Tiktok, đánh giá Map 5 sao và seeding dạo cho ô tô Vinfast. Nội dung bên mình cấp sẵn.\nSiêng năng là ngày kiếm 300k - 500k ngon ơ. KHÔNG THU PHÍ ĐẦU VÀO nhé.\n👉 thả tim + bình luận bài viết, mình sẽ ném cái JD xuống phần bình luận ạ."
         ]
       },
-      { 
-        id: 2, 
-        title: "BƯỚC 2: TẢI ẢNH QR ZALO, ĐĂNG BÀI VÀ GHIM BÌNH LUẬN", 
+      {
+        id: 2,
+        title: "BƯỚC 2: TẢI ẢNH QR ZALO, ĐĂNG BÀI VÀ GHIM BÌNH LUẬN",
         content: "1. Đăng bài lên Threads với Nội dung bạn vừa Copy.\n2. Bấm nút TẢI ẢNH bên dưới để lưu ảnh Mã QR Zalo về điện thoại.\n3. Bình luận bức ảnh QR đó vào bài viết bạn vừa đăng.",
         img: "images/qr-zalo-nhom.jpg",
         downloadLink: "images/qr-zalo-nhom.jpg",
         buttonText: "📥 TẢI MÃ QR ZALO VỀ MÁY"
       },
-      { 
-        id: 3, 
-        title: "BƯỚC 3: CHỤP ẢNH BẰNG CHỨNG XÁC NHẬN", 
-        content: "Chụp lại màn hình bài viết Threads của bạn. (Lưu ý: Bức ảnh phải hiển thị rõ NỘI DUNG BÀI ĐĂNG và CẢ PHẦN BÌNH LUẬN CÓ CHỨA ẢNH QR ZALO). Tải ảnh đó lên mục Gửi Bằng Chứng để Admin duyệt Xu." 
+      {
+        id: 3,
+        title: "BƯỚC 3: CHỤP ẢNH BẰNG CHỨNG XÁC NHẬN",
+        content: "Chụp lại màn hình bài viết Threads của bạn. (Lưu ý: Bức ảnh phải hiển thị rõ NỘI DUNG BÀI ĐĂNG và CẢ PHẦN BÌNH LUẬN CÓ CHỨA ẢNH QR ZALO). Tải ảnh đó lên mục Gửi Bằng Chứng để Admin duyệt Xu."
       }
     ]
   },
@@ -112,57 +112,53 @@ export const jobsData: Record<string, any> = {
     color: "text-cyan-400",
     badge: "DỰ ÁN VIP 💎",
     steps: [
-      { 
-        id: 1, 
-        title: "BƯỚC 1: TRUY CẬP BÀI VIẾT VINFAST", 
+      {
+        id: 1,
+        title: "BƯỚC 1: TRUY CẬP BÀI VIẾT VINFAST",
         content: "Nhiệm vụ của bạn là hỗ trợ tương tác tích cực cho chiến dịch mới của VinFast. Nhấn nút dưới đây để mở bài viết Fanpage đích.",
         downloadLink: "https://www.facebook.com/photo?fbid=1290890003259251&set=a.562483936099865",
         buttonText: "👉 MỞ BÀI VIẾT"
       },
-      { 
-        id: 2, 
-        title: "BƯỚC 2: THẢ TIM VÀ BÌNH LUẬN TÍCH CỰC", 
+      {
+        id: 2,
+        title: "BƯỚC 2: THẢ TIM VÀ BÌNH LUẬN TÍCH CỰC",
         content: "Nhấn thả tim (Tuyệt vời/Thương thương) vào bài viết. Viết một bình luận khen ngợi xe hoặc chiến dịch (VD: Xe đẹp quá, tự hào xe Việt...).",
       },
-      { 
-        id: 3, 
-        title: "BƯỚC 3: CHỤP ẢNH BẰNG CHỨNG", 
+      {
+        id: 3,
+        title: "BƯỚC 3: CHỤP ẢNH BẰNG CHỨNG",
         content: "Chụp ảnh màn hình điện thoại hiển thị rõ Icon thả tim và bình luận của bạn nằm trên bài viết đó.",
       },
-      { 
-        id: 4, 
-        title: "BƯỚC 4: GỬI BÁO CÁO", 
-        content: "Gửi ảnh lên hệ thống để Admin duyệt tiền ngay nhé." 
+      {
+        id: 4,
+        title: "BƯỚC 4: GỬI BÁO CÁO",
+        content: "Gửi ảnh lên hệ thống để Admin duyệt tiền ngay nhé."
       }
     ]
   },
 
-  // ==============================================
-  // CÁC JOB CŨ (GIỮ NGUYÊN)
-  // ==============================================
-
   'google-map': {
     title: "GOOGLE MAP",
     reward: "25.000 xu",
-    color: "text-cyan-400", 
-    badge: "CƠ BẢN", 
+    color: "text-cyan-400",
+    badge: "CƠ BẢN",
     steps: [
-      { 
-        id: 1, 
-        title: "TÌM ĐỊA ĐIỂM VINCOM HÀ NỘI", 
-        content: "Mở Google Maps và tìm kiếm các từ khóa liên quan đến Vincom tại Hà Nội.", 
-        img: "images/anh-vincom1.jpg" 
+      {
+        id: 1,
+        title: "TÌM ĐỊA ĐIỂM VINCOM HÀ NỘI",
+        content: "Mở Google Maps và tìm kiếm các từ khóa liên quan đến Vincom tại Hà Nội.",
+        img: "images/anh-vincom1.jpg"
       },
-      { 
-        id: 2, 
-        title: "ĐÁNH GIÁ 5 SAO", 
-        content: "Viết bình luận tốt, tích cực và đăng kèm ảnh chụp địa điểm thực tế.", 
+      {
+        id: 2,
+        title: "ĐÁNH GIÁ 5 SAO",
+        content: "Viết bình luận tốt, tích cực và đăng kèm ảnh chụp địa điểm thực tế.",
         img: "images/anh-vincom2.jpg",
         note: "BÌNH LUẬN TRÊN 15 TỪ ĐỂ ĐƯỢC DUYỆT NHANH."
       },
-      { 
-        id: 3, 
-        title: "CHỤP LẠI ẢNH BẰNG CHỨNG", 
+      {
+        id: 3,
+        title: "CHỤP LẠI ẢNH BẰNG CHỨNG",
         content: "CHỤP LẠI MÀN HÌNH BÀI ĐÁNH GIÁ ĐÃ ĐĂNG THÀNH CÔNG ĐỂ GỬI."
       }
     ]
@@ -174,30 +170,30 @@ export const jobsData: Record<string, any> = {
     color: "text-blue-500",
     badge: "CƠ BẢN",
       steps: [
-      { 
-        id: 1, 
-        title: "THAM ZALO NHÓM ZALO MMO PRO ", 
-        content: "CHỌN NÚT THAM GIA NHÓM ĐỂ VÀO NHÓM .", 
+      {
+        id: 1,
+        title: "THAM ZALO NHÓM ZALO MMO PRO ",
+        content: "CHỌN NÚT THAM GIA NHÓM ĐỂ VÀO NHÓM .",
         downloadLink: "https://zalo.me/g/zbvsdm567",
-        buttonText: "THAM GIA NHÓM ➔" 
+        buttonText: "THAM GIA NHÓM ➔"
       },
-      { 
-        id: 2, 
-        title: "CHỌN ĐĂNG KÝ NGAY ĐỂ THAM GIA SỰ KIỆN ", 
+      {
+        id: 2,
+        title: "CHỌN ĐĂNG KÝ NGAY ĐỂ THAM GIA SỰ KIỆN ",
         content: "THAM GIA SỰ KIỆN CÙNG NAM NGƯ TẠI ZALO.",
         downloadLink: "https://shorten.asia/8JrutSwQ", // Link chuyển hướng Zalo cho bước 2
         buttonText: "🚀 ĐĂNG KÝ NGAY" // Tên nút bấm theo yêu cầu của Boss
       },
-      { 
-        id: 3, 
-        title: "CHỤP ẢNH MÀN HÌNH", 
-        content: "Xem ảnh mẫu bên dưới để gửi bằng chứng .", 
+      {
+        id: 3,
+        title: "CHỤP ẢNH MÀN HÌNH",
+        content: "Xem ảnh mẫu bên dưới để gửi bằng chứng .",
         img: "images/anh-namngu.jpg",
       },
-      { 
-        id: 4, 
-        title: "GỬI BẰNG CHỨNG", 
-        content: "Tải ảnh vừa chụp lên hệ thống để xác nhận hoàn thành nhiệm vụ và nhận xu." 
+      {
+        id: 4,
+        title: "GỬI BẰNG CHỨNG",
+        content: "Tải ảnh vừa chụp lên hệ thống để xác nhận hoàn thành nhiệm vụ và nhận xu."
       }
     ]
   },
@@ -333,7 +329,7 @@ export const jobsData: Record<string, any> = {
         img: "images/anh-msb3.jpg" 
       },
       { 
-        id: 3, 
+        id: 4, 
         title: "VÀO CÀI ĐẶT , CHỌN THÔNG TIN CÁ NHÂN , LẤY MÃ CIF MSB ", 
         content: "CHỤP ẢNH GỬI VÀO BẰNG CHỨNG .", 
         img: "images/anh-msb7.jpg" 
@@ -370,40 +366,37 @@ export const jobsData: Record<string, any> = {
     ]
   },
 
-  'tpbank': {
-    title: "NGÂN HÀNG TPB",
-    reward: "100.000 xu",
+  'app-chung-khoan-4': {
+    title: "APP CHỨNG KHOÁN SỐ 4",
+    reward: "85.000 xu",
     color: "text-orange-500",
     badge: "SIÊU HOT",
     warning: "BẮT BUỘC TỪ 18 TUỔI! (Nếu chưa đủ tuổi, có thể nhờ người thân đăng ký hộ, vẫn nhận 100% tiền thưởng).",
     steps: [
-      { 
-        id: 1, 
-        title: "CHỌN NÚT ĐĂNG KÝ NGAY ", 
-        content: "XEM ẢNH HƯỚNG DẪN BÊN DƯỚI ĐỂ TẢI APP .", 
-        downloadLink: "https://shorten.asia/YXH4eyQ7", 
-        buttonText: "🚀 ĐĂNG KÝ NGAY",
-        img: "images/anh-tpbank5.jpg" 
+      {
+        id: 1,
+        title: "VÀO CHPLAY HOẶC APPSTORE TẢI APP",
+        content: "Tải APP chứng khoán về điện thoại theo hình hướng dẫn bên dưới.",
+        img: "images/anh-maybank1.jpg"
       },
-      { 
-        id: 2, 
-        title: "NHẬP MÃ GIỚI THIỆU AT09", 
-        content: "BẮT BUỘC NHẬP MÃ GIỚI THIỆU AT09 CHỤP LẠI ẢNH BẰNG CHỨNG.", 
-        img: "images/anh-tpbank2.jpg", 
-        note: "NHẬP MÃ: AT09 (BẮT BUỘC)" 
+      {
+        id: 2,
+        title: "ĐĂNG KÝ VÀ NHẬP MÃ GIỚI THIỆU AT09",
+        content: "BẮT BUỘC NHẬP MÃ GIỚI THIỆU AT09 VÀ CHỤP LẠI ẢNH.",
+        img: "images/anh-maybank2.jpg",
+        note: "NHẬP MÃ: AT09 (BẮT BUỘC)"
       },
-      { 
-        id: 3, 
-        title: "ĐĂNG KÝ THÀNH CÔNG , ĐĂNG NHẬP VÀ VÀO APP", 
-        content: "CHỤP LẠI ẢNH ĐĂNG KÝ THÀNH CÔNG NHƯ DƯỚI ĐÂY.", 
-        img: "images/anh-tpbank3.jpg" 
+      {
+        id: 3,
+        title: "ĐĂNG KÝ TÀI KHOẢN THÀNH CÔNG",
+        content: "CHỤP LẠI ẢNH ĐĂNG NHẬP THÀNH CÔNG ĐỂ GỬI BẰNG CHỨNG.",
+        
       },
       {
         id: 4,
-        title: "CHUYỂN VÀO TPBANK 50K , RỒI LẠI CHUYỂN RA ",
-        content: "Chuyển ra cho 1 người khác , xem ảnh bên dưới ",
-        img: "images/anh-tpbank6.jpg" 
-      },
+        title: "LƯU LẠI ẢNH VÀ GỬI",
+        content: "GỬI 2 ẢNH ĐÓ VÀ CHỜ PHÊ DUYỆT HOA HỒNG TRONG 1H."
+      }
     ]
   }
 };

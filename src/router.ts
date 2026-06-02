@@ -1,4 +1,6 @@
-import { createRouter, createWebHashHistory } from 'vue-router' // ĐỔI THÀNH createWebHashHistory
+import { createRouter, createWebHashHistory } from 'vue-router'
+// @ts-ignore
+import { auth } from '@/firebase'
 
 // Sử dụng @ để trỏ trực tiếp từ thư mục src/
 // @ts-ignore
@@ -16,7 +18,7 @@ import JobDetailView from '@/views/JobDetailView.vue'
 // @ts-ignore
 import AdminView from '@/views/AdminView.vue'
 // @ts-ignore
-import ProfileView from '@/views/Profile.vue' 
+import ProfileView from '@/views/Profile.vue'
 
 const routes = [
   { path: '/', name: 'home', component: HomeView },
@@ -26,13 +28,27 @@ const routes = [
   { path: '/withdraw', name: 'withdraw', component: WithdrawView },
   { path: '/job/:id', name: 'job-detail', component: JobDetailView },
   { path: '/admin', name: 'admin', component: AdminView },
-  { path: '/profile', name: 'profile', component: ProfileView }
+  { path: '/profile', name: 'profile', component: ProfileView },
+  // @ts-ignore
+  { path: '/survey-cinema', name: 'survey-cinema', component: () => import('@/views/SurveyView.vue') }
 ]
 
 const router = createRouter({
   // SỬA TẠI ĐÂY: Dùng Hash History để tránh lỗi 404 trên GitHub Pages khi F5
   history: createWebHashHistory(import.meta.env.BASE_URL),
   routes
+})
+
+const requiresAuth = ['/profile', '/withdraw', '/submit-report', '/history']
+
+router.beforeEach(async (to, from, next) => {
+  await auth.authStateReady()
+  const user = auth.currentUser
+  if (requiresAuth.includes(to.path) && !user) {
+    next('/login')
+  } else {
+    next()
+  }
 })
 
 export default router
