@@ -19,6 +19,8 @@ import JobDetailView from '@/views/JobDetailView.vue'
 import AdminView from '@/views/AdminView.vue'
 // @ts-ignore
 import ProfileView from '@/views/Profile.vue'
+// @ts-ignore
+import LandingView from '@/views/LandingView.vue'
 
 const routes = [
   { path: '/', name: 'home', component: HomeView },
@@ -29,6 +31,7 @@ const routes = [
   { path: '/job/:id', name: 'job-detail', component: JobDetailView },
   { path: '/admin', name: 'admin', component: AdminView },
   { path: '/profile', name: 'profile', component: ProfileView },
+  { path: '/landing', name: 'landing', component: LandingView },
   // @ts-ignore
   { path: '/survey-cinema', name: 'survey-cinema', component: () => import('@/views/SurveyView.vue') }
 ]
@@ -44,7 +47,11 @@ const requiresAuth = ['/profile', '/withdraw', '/submit-report', '/history']
 router.beforeEach(async (to, from, next) => {
   await auth.authStateReady()
   const user = auth.currentUser
-  if (requiresAuth.includes(to.path) && !user) {
+  if (!user && to.path === '/') {
+    next('/landing')
+  } else if (user && to.path === '/landing') {
+    next('/')
+  } else if (requiresAuth.includes(to.path) && !user) {
     next('/login')
   } else {
     next()

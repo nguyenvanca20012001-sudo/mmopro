@@ -103,7 +103,7 @@ const handleReceiveJob = (jobId: string) => {
 }
 
 const contactSupport = () => {
-  window.open('https://facebook.com/trungtammmo.pro', '_blank')
+  window.open('https://www.facebook.com/mmopro123', '_blank')
 }
 
 const logout = async () => { 

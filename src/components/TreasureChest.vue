@@ -36,13 +36,32 @@ const glowColor = computed(() => {
   return map[props.tier.key] || 'rgba(148,163,184,0.3)'
 })
 
-const colors = computed(() => {
-  const map: Record<string, { lid: string; body: string; band: string; latch: string }> = {
-    bac:      { lid: '#475569', body: '#1e293b', band: '#94a3b8', latch: '#e2e8f0' },
-    vang:     { lid: '#b45309', body: '#451a03', band: '#fbbf24', latch: '#fef08a' },
-    kimcuong: { lid: '#0891b2', body: '#0c4a6e', band: '#22d3ee', latch: '#cffafe' },
+const boxGlow = computed(() => {
+  const map: Record<string, string> = {
+    bac:      'rgba(148,163,184,0.6)',
+    vang:     'rgba(251,191,36,0.6)',
+    kimcuong: 'rgba(34,211,238,0.6)',
   }
-  return map[props.tier.key] || map.bac
+  return map[props.tier.key] || 'rgba(148,163,184,0.3)'
+})
+
+const chestFilter = computed(() => {
+  if (!props.unlocked) return 'grayscale(0.85) brightness(0.65)'
+  const map: Record<string, string> = {
+    bac:      'grayscale(1) brightness(1.35) contrast(0.85)',
+    vang:     'saturate(1.15) brightness(1.05)',
+    kimcuong: 'hue-rotate(135deg) saturate(2.2) brightness(1.1)',
+  }
+  return map[props.tier.key] || 'none'
+})
+
+const cardGradient = computed(() => {
+  const map: Record<string, string> = {
+    bac:      'bg-gradient-to-br from-slate-300 to-slate-400',
+    vang:     'bg-gradient-to-br from-amber-300 to-yellow-400',
+    kimcuong: 'bg-gradient-to-br from-cyan-400 to-blue-500',
+  }
+  return map[props.tier.key] || 'bg-gradient-to-br from-slate-300 to-slate-400'
 })
 
 function handleClick() {
@@ -60,9 +79,10 @@ function handleClick() {
     class="chest-card relative flex flex-col items-center gap-1.5 py-3 px-1.5 rounded-2xl border-[1.5px] cursor-pointer transition-all duration-200 select-none overflow-visible"
     :class="[
       isShaking ? 'is-shaking' : '',
-      unlocked ? [tier.bg, tier.border, 'shadow-lg'] : 'bg-slate-800/30 border-slate-700/30',
+      cardGradient,
+      unlocked ? [tier.border, 'shadow-lg'] : ['border-white/30', 'opacity-75'],
     ]"
-    :style="{ '--glow': glowColor }"
+    :style="{ '--glow': glowColor, '--box-glow': boxGlow }"
     @click="handleClick"
   >
     <!-- Tooltip khi locked -->
@@ -71,88 +91,51 @@ function handleClick() {
       🔒 Cần {{ tier.min }} việc
     </div>
 
-    <!-- ===== CHEST CSS ART ===== -->
-    <div class="chest-art relative w-[52px] h-[46px]"
+    <!-- ===== CHEST IMAGE ===== -->
+    <div class="chest-art relative flex items-center justify-center"
          :class="unlocked ? 'is-unlocked' : 'is-locked-chest'">
 
-      <!-- Glow aura phía sau (chỉ khi unlocked) -->
+      <!-- Glow aura (chỉ khi unlocked) -->
       <div v-if="unlocked"
-           class="absolute -inset-2 rounded-xl pointer-events-none"
-           :style="{ background: `radial-gradient(circle at 50% 60%, ${glowColor} 0%, transparent 70%)`, opacity: 0.55 }"></div>
+           class="absolute -inset-3 rounded-xl pointer-events-none"
+           :style="{ background: `radial-gradient(circle at 50% 65%, ${glowColor} 0%, transparent 70%)`, opacity: 0.7 }"></div>
 
-      <!-- LID (phần nắp — có thể rotate mở) -->
-      <div class="lid-wrapper absolute top-0 left-0 right-0 z-10"
-           style="height: 19px; perspective: 140px;">
-        <div
-          class="lid-face absolute inset-0 rounded-t-[8px] overflow-hidden"
-          :style="{
-            background: `linear-gradient(145deg, ${colors.lid} 0%, ${colors.body} 100%)`,
-            transformOrigin: '50% 100%',
-            transition: 'transform 0.7s cubic-bezier(0.25,0.46,0.45,0.94)',
-            boxShadow: `inset 0 1px 0 rgba(255,255,255,0.12), inset 0 -1px 0 rgba(0,0,0,0.35)`
-          }">
-          <!-- Shine strip trên nắp -->
-          <div class="absolute top-[3px] left-[22%] right-[22%] h-[2px] rounded-full"
-               :style="{ background: colors.latch, opacity: 0.25 }"></div>
-          <!-- Thanh dưới nắp -->
-          <div class="absolute bottom-0 left-0 right-0 h-[4px]"
-               :style="{ background: colors.band, opacity: 0.9 }"></div>
-        </div>
-        <!-- Latch knob (chốt khóa) -->
-        <div class="absolute z-20 w-[9px] h-[9px] rounded-full border-[1.5px] shadow-md"
-             style="bottom: -4px; left: 50%; transform: translateX(-50%);"
-             :style="{ background: colors.latch, borderColor: colors.body }"></div>
+      <img src="/images/chest-gold.png"
+           alt="chest"
+           class="relative z-10 w-[88px] h-[88px] object-contain transition-all duration-300"
+           :style="{ filter: chestFilter }" />
+
+      <!-- Lock overlay khi locked -->
+      <div v-if="!unlocked"
+           class="absolute inset-0 flex items-center justify-center z-20 pb-2">
+        <span class="text-[24px] leading-none" style="filter: drop-shadow(0 1px 3px rgba(0,0,0,0.9));">🔒</span>
       </div>
-
-      <!-- BODY (thân hòm) -->
-      <div class="chest-body-art absolute left-0 right-0 bottom-0 rounded-b-[8px] overflow-hidden"
-           style="top: 15px;"
-           :style="{
-             background: `linear-gradient(180deg, ${colors.lid} 0%, ${colors.body} 100%)`,
-             boxShadow: `inset 0 -2px 0 rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)`
-           }">
-        <!-- Thanh ngang trên thân -->
-        <div class="absolute top-0 left-0 right-0 h-[4px]"
-             :style="{ background: colors.band, opacity: 0.85 }"></div>
-        <!-- Icon trung tâm -->
-        <div class="absolute inset-0 flex items-center justify-center mt-1">
-          <span v-if="!unlocked" class="text-[14px] leading-none" style="filter: grayscale(1); opacity: 0.35;">🔒</span>
-          <span v-else class="text-[14px] leading-none">{{ tier.icon }}</span>
-        </div>
-        <!-- Shine phía dưới thân -->
-        <div class="absolute bottom-[3px] left-[28%] right-[28%] h-[1.5px] rounded-full"
-             :style="{ background: colors.latch, opacity: 0.18 }"></div>
-      </div>
-
     </div><!-- /chest-art -->
 
     <!-- Tên hòm -->
-    <p class="text-[8px] font-black italic uppercase text-center leading-tight relative z-10"
-       :class="unlocked ? tier.color : 'text-slate-600'">
+    <p class="text-[9px] font-black italic uppercase text-center leading-tight relative z-10 text-slate-900">
       {{ tier.chest?.replace('🎁 ', '') }}
     </p>
 
     <!-- Badge trạng thái -->
-    <span v-if="claimed"     class="text-[7px] font-black uppercase text-emerald-400 tracking-wide relative z-10">✅ ĐÃ NHẬN</span>
-    <span v-else-if="unlocked" class="text-[7px] font-black uppercase text-emerald-400 tracking-wide relative z-10">✅ ĐÃ MỞ</span>
-    <span v-else             class="text-[7px] font-black uppercase text-slate-600 tracking-wide relative z-10">🔒 {{ tier.min }} VIỆC</span>
+    <span v-if="claimed"     class="text-[7px] font-black uppercase text-emerald-700 tracking-wide relative z-10">✅ ĐÃ NHẬN</span>
+    <span v-else-if="unlocked" class="text-[7px] font-black uppercase text-emerald-700 tracking-wide relative z-10">✅ ĐÃ MỞ</span>
 
     <!-- Ghi chú range thưởng — nổi bật -->
     <div v-if="tier.chestDesc" class="relative z-10 w-full px-1">
-      <div class="rounded-lg px-2 py-1.5 text-center"
+      <div class="rounded-xl px-2 py-2 text-center"
            :class="unlocked
-             ? 'bg-gradient-to-r from-black/50 to-black/30 border border-white/10'
-             : 'bg-slate-900/50 border border-slate-700/30'">
-        <!-- Label + fire icon -->
-        <div class="flex items-center justify-center gap-1 mb-0.5">
-          <span class="text-[10px] leading-none">{{ unlocked ? '🔥' : '🔒' }}</span>
-          <span class="text-[6.5px] font-black uppercase tracking-widest leading-none"
-                :class="unlocked ? tier.color : 'text-slate-600'">THƯỞNG NGẪU NHIÊN</span>
+             ? 'bg-[#0d121f]/90 border border-lime-500/20'
+             : 'bg-slate-900/60 border border-slate-700/30'">
+        <!-- Title row -->
+        <div class="flex items-center justify-center gap-1 mb-1">
+          <span class="text-[11px] leading-none">🎁</span>
+          <span class="text-[8px] font-black uppercase tracking-widest leading-none"
+                style="color:#a3e635">NHẬN THƯỞNG NGẪU NHIÊN</span>
         </div>
         <!-- Range amount -->
-        <p class="text-[9px] font-black italic leading-tight tabular-nums"
-           :class="unlocked ? tier.color : 'text-slate-600'"
-           :style="unlocked ? 'filter: drop-shadow(0 0 5px currentColor)' : ''">
+        <p class="text-[10px] font-black italic leading-tight tabular-nums"
+           :style="unlocked ? 'color:#a3e635; filter: drop-shadow(0 0 5px rgba(163,230,53,0.5))' : 'color:#a3e635'">
           {{ tier.chestDesc }}
         </p>
       </div>
@@ -162,17 +145,25 @@ function handleClick() {
 </template>
 
 <style scoped>
+/* ===== CARD GLOW PULSE ===== */
+@keyframes cardGlowPulse {
+  0%, 100% { box-shadow: 0 0 20px var(--box-glow); }
+  50%       { box-shadow: 0 0 38px var(--box-glow), 0 0 55px var(--box-glow); }
+}
+.chest-card {
+  animation: cardGlowPulse 2.5s ease-in-out infinite;
+}
+.chest-card:hover {
+  box-shadow: 0 0 50px var(--box-glow), 0 0 90px var(--box-glow) !important;
+  animation: none;
+}
+
 /* ===== HOVER: bounce + glow (chỉ khi unlocked) ===== */
 .chest-card:hover .is-unlocked {
   animation: chestBounce 0.75s ease infinite;
 }
-.chest-card:hover .is-unlocked .lid-face,
-.chest-card:hover .is-unlocked .chest-body-art {
-  filter: brightness(1.15);
-}
-.chest-card:hover .is-unlocked .chest-body-art,
-.chest-card:hover .is-unlocked .lid-face {
-  filter: drop-shadow(0 0 6px var(--glow));
+.chest-card:hover .is-unlocked img {
+  filter: brightness(1.15) drop-shadow(0 0 8px var(--glow)) !important;
 }
 
 @keyframes chestBounce {

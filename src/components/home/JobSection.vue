@@ -10,36 +10,13 @@ defineProps<{
 
 const emit = defineEmits(['receiveJob', 'contactSupport', 'routerPush']);
 
-const showAgeModal = ref(false);
-const pendingJobId = ref('');
-const pendingJobTitle = ref('');
-const pendingJobAge = ref(18);
-
 const handleJobClick = (id: string) => {
   const job = jobsData[id];
   if (!job || (job as any).paused) return;
   if (typeof navigator !== 'undefined' && navigator.vibrate) {
     navigator.vibrate(50);
   }
-  if (job.warning) {
-    pendingJobId.value = id;
-    pendingJobTitle.value = job.title;
-    pendingJobAge.value = id === 'app-chung-khoan-3' ? 20 : 18;
-    showAgeModal.value = true;
-  } else {
-    emit('receiveJob', id);
-  }
-};
-
-const confirmAge = () => {
-  showAgeModal.value = false;
-  emit('receiveJob', pendingJobId.value);
-};
-
-const cancelAge = () => {
-  showAgeModal.value = false;
-  pendingJobId.value = '';
-  pendingJobTitle.value = '';
+  emit('receiveJob', id);
 };
 
 const formatReward = (val: any) => {
@@ -132,27 +109,10 @@ const getShortDesc = (id: string) => {
 
     <!-- HERO SECTION -->
     <div class="flex flex-col lg:flex-row gap-3">
-      <section class="lg:w-2/3 relative bg-gradient-to-br from-[#1a1100] via-[#130d00] to-[#0c0800] rounded-[30px] border border-yellow-600/25 p-6 md:p-10 overflow-hidden flex items-center min-h-[200px] md:min-h-[400px] shadow-[0_0_60px_rgba(234,179,8,0.12),0_20px_80px_rgba(0,0,0,0.6)]">
-
-        <!-- Gold glow orbs -->
-        <div class="absolute inset-0 pointer-events-none hero-shimmer rounded-[30px]"></div>
-        <div class="absolute -right-20 -top-20 w-[300px] h-[300px] bg-yellow-600/10 rounded-full blur-[90px]"></div>
-        <div class="absolute -left-10 bottom-10 w-[200px] h-[200px] bg-amber-700/8 rounded-full blur-[80px]"></div>
-        <div class="absolute right-1/3 bottom-0 w-[180px] h-[120px] bg-yellow-500/8 rounded-full blur-[60px]"></div>
-
-        <!-- RẠP JOB glow header -->
-        <div class="absolute top-4 left-1/2 -translate-x-1/2 text-center z-20 pointer-events-none hidden md:block whitespace-nowrap">
-          <div class="neon-gold-text text-[15px] font-black uppercase tracking-[10px]">RẠP JOB</div>
-          <div class="text-[7px] tracking-[3px] text-yellow-600/60 font-bold uppercase mt-0.5">FREELANCE · CINEMA · EARN</div>
-        </div>
+      <section class="lg:w-2/3 relative bg-[#111726] border border-slate-800/60 rounded-[28px] overflow-hidden flex items-center p-5 md:p-8 shadow-sm">
 
         <!-- LEFT SIDE — không đổi logic -->
-        <div class="relative z-10 space-y-4 w-full md:w-[55%]">
-          <!-- Logo — chỉ mobile -->
-          <div class="lg:hidden">
-            <Logo size="lg" />
-          </div>
-
+        <div class="relative z-10 space-y-3 w-full md:w-[55%]">
           <div class="inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-500 text-[9px] md:text-[10px] px-3 py-1 rounded-full border border-emerald-500/20 font-bold uppercase tracking-wider">
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> ONLINE
           </div>
@@ -161,7 +121,7 @@ const getShortDesc = (id: string) => {
           <div class="flex items-start justify-between gap-2">
             <h1 class="text-xl md:text-4xl text-white leading-tight tracking-tighter uppercase font-black italic">
               CHÀO MỪNG,<br/>
-              <span class="text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-amber-400 text-2xl md:text-5xl">
+              <span class="text-blue-400 text-2xl md:text-5xl">
                 {{ username.toUpperCase() }}
               </span>
             </h1>
@@ -185,102 +145,75 @@ const getShortDesc = (id: string) => {
 
           <!-- Nút đăng nhập (khi chưa login) -->
           <button v-if="!isLoggedIn" @click="emit('routerPush', '/login')"
-                  class="bg-yellow-600 hover:bg-yellow-500 text-black w-full md:w-auto px-8 py-3.5 rounded-xl text-[10px] md:text-[12px] shadow-xl shadow-yellow-900/40 uppercase font-black italic transition-all active:scale-95">
+                  class="bg-blue-600 hover:bg-blue-500 text-white w-full md:w-auto px-8 py-3.5 rounded-xl text-[10px] md:text-[12px] shadow-xl shadow-blue-900/40 uppercase font-black italic transition-all active:scale-95">
             ĐĂNG KÝ / ĐĂNG NHẬP NGAY
           </button>
 
-          <div class="border-l-4 border-yellow-600 pl-4 max-w-2xl space-y-2">
-            <p class="hidden md:block text-slate-300 text-[12px] md:text-[15px] font-medium leading-relaxed">
+          <div class="border-l-4 border-blue-500 pl-4 max-w-2xl space-y-2">
+            <p class="text-blue-100 text-[12px] md:text-[15px] font-medium leading-relaxed">
               Nền tảng kiếm tiền Online minh bạch. Rút xu nhanh gọn 24/7 về mọi ngân hàng.
             </p>
-            <p class="hidden md:block text-amber-400/80 text-[10px] md:text-[13px] font-bold tracking-wide">
+            <p class="text-yellow-300 text-[10px] md:text-[13px] font-bold tracking-wide">
               ⚠️ CẢNH BÁO: Nghiêm cấm gian lận hoặc gửi bằng chứng giả. Khóa vĩnh viễn nếu vi phạm.
             </p>
           </div>
 
           <!-- Trust badge pills -->
-          <div class="space-y-2">
-            <div class="flex flex-wrap gap-2">
-              <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-black uppercase tracking-wide">
-                ✅ Không thu phí
-              </span>
-              <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-black uppercase tracking-wide">
-                ✅ Không nạp tiền
-              </span>
-              <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[11px] font-black uppercase tracking-wide">
-                ✅ Công việc miễn phí
-              </span>
-            </div>
-            <div>
-              <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-400/40 text-indigo-300 text-[11px] font-black uppercase tracking-wide">
-                ⚡ Rút tiền trong 24h
-              </span>
-            </div>
+          <div class="flex flex-wrap gap-1.5">
+            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-black tracking-wide">
+              ✅ Không thu phí
+            </span>
+            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-black tracking-wide">
+              ✅ Không nạp tiền
+            </span>
+            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[10px] font-black tracking-wide">
+              ✅ Công việc miễn phí
+            </span>
+            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-indigo-500/10 border border-indigo-400/40 text-indigo-300 text-[10px] font-black tracking-wide">
+              ⚡ Rút tiền trong 24h
+            </span>
           </div>
         </div>
 
-        <!-- RIGHT SIDE — Maneki Neko + coins -->
-        <div class="absolute right-0 top-0 bottom-0 w-[42%] flex items-end justify-center pointer-events-none opacity-40 md:opacity-100 overflow-hidden">
+        <!-- RIGHT SIDE — Rocket -->
+        <div class="absolute right-0 top-0 bottom-0 w-[42%] flex items-center justify-center pointer-events-none opacity-70 md:opacity-100 overflow-hidden">
+          <!-- Glow behind rocket -->
+          <div class="absolute w-32 h-32 bg-indigo-500/20 rounded-full blur-[60px]"></div>
 
-          <!-- Coin particles (CSS divs — không dùng emoji) -->
-          <div class="coin-fx coin-shape" style="--tx:-28px;--ty:-75px;--tx2:-18px;--dur:2.1s;--delay:0s;right:52%;bottom:55%"></div>
-          <div class="coin-fx coin-shape" style="--tx:30px;--ty:-90px;--tx2:20px;--dur:2.5s;--delay:0.4s;right:35%;bottom:52%"></div>
-          <div class="coin-fx coin-shape" style="--tx:-40px;--ty:-60px;--tx2:-30px;--dur:1.9s;--delay:0.8s;right:45%;bottom:60%"></div>
-          <div class="coin-fx coin-shape" style="--tx:18px;--ty:-80px;--tx2:10px;--dur:2.3s;--delay:0.2s;right:28%;bottom:58%"></div>
-          <div class="coin-fx coin-shape" style="--tx:-50px;--ty:-50px;--tx2:-35px;--dur:2.7s;--delay:1s;right:55%;bottom:48%"></div>
-          <div class="coin-fx coin-shape" style="--tx:45px;--ty:-70px;--tx2:28px;--dur:2s;--delay:0.6s;right:22%;bottom:54%"></div>
-          <div class="coin-fx coin-shape" style="--tx:-20px;--ty:-100px;--tx2:-12px;--dur:2.2s;--delay:1.3s;right:40%;bottom:65%"></div>
-          <div class="coin-fx coin-shape" style="--tx:35px;--ty:-55px;--tx2:22px;--dur:1.8s;--delay:0.9s;right:30%;bottom:50%"></div>
+          <!-- Rocket SVG -->
+          <svg viewBox="0 0 120 200" class="rocket-float w-24 md:w-32 lg:w-40 relative z-10" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 20px rgba(99,102,241,0.6)); transform: rotate(-15deg)">
+            <!-- Flame outer -->
+            <ellipse cx="60" cy="178" rx="18" ry="26" fill="#f97316" opacity="0.9"/>
+            <!-- Flame inner -->
+            <ellipse cx="60" cy="182" rx="10" ry="18" fill="#fde047" opacity="0.95"/>
+            <!-- Flame core -->
+            <ellipse cx="60" cy="186" rx="5" ry="10" fill="white" opacity="0.8"/>
 
-          <!-- Ground glow -->
-          <div class="absolute bottom-4 left-1/2 -translate-x-1/2 w-36 h-10 bg-yellow-400/25 blur-2xl rounded-full"></div>
+            <!-- Rocket body -->
+            <rect x="38" y="80" width="44" height="90" rx="8" fill="#e2e8f0"/>
+            <!-- Body highlight -->
+            <rect x="44" y="85" width="12" height="78" rx="4" fill="white" opacity="0.3"/>
 
-          <!-- Maneki Neko SVG -->
-          <svg viewBox="0 0 140 185" class="neko-cat w-28 md:w-36 lg:w-44 relative z-10 mb-2" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 24px rgba(234,179,8,0.65))">
-            <!-- Tail -->
-            <path d="M38 180 Q2 155 10 112 Q18 86 40 110" stroke="#f59e0b" stroke-width="13" fill="none" stroke-linecap="round"/>
-            <!-- Body -->
-            <ellipse cx="70" cy="142" rx="40" ry="43" fill="#fbbf24"/>
-            <!-- Left arm (lowered) -->
-            <ellipse cx="30" cy="138" rx="13" ry="24" fill="#fbbf24" transform="rotate(12,30,132)"/>
-            <!-- Belly patch -->
-            <ellipse cx="70" cy="152" rx="25" ry="27" fill="#fef3c7"/>
-            <!-- Coin on chest -->
-            <circle cx="70" cy="130" r="14" fill="#f59e0b" stroke="#d97706" stroke-width="2.5"/>
-            <text x="70" y="135" text-anchor="middle" fill="#7c2d12" font-size="13" font-weight="bold" font-family="serif">福</text>
-            <!-- Head -->
-            <circle cx="70" cy="76" r="38" fill="#fbbf24"/>
-            <!-- Ears -->
-            <polygon points="36,50 20,20 52,44" fill="#fbbf24"/>
-            <polygon points="104,50 120,20 88,44" fill="#fbbf24"/>
-            <polygon points="38,47 26,24 50,42" fill="#fca5a5"/>
-            <polygon points="102,47 114,24 90,42" fill="#fca5a5"/>
-            <!-- Face patch -->
-            <ellipse cx="70" cy="80" rx="27" ry="23" fill="#fefce8"/>
-            <!-- Eyes -->
-            <circle cx="55" cy="72" r="8" fill="#1e1b4b"/>
-            <circle cx="85" cy="72" r="8" fill="#1e1b4b"/>
-            <circle cx="58" cy="69" r="3" fill="white"/>
-            <circle cx="88" cy="69" r="3" fill="white"/>
-            <!-- Nose -->
-            <ellipse cx="70" cy="83" rx="5" ry="4" fill="#fda4af"/>
-            <!-- Mouth -->
-            <path d="M63 89 Q70 96 77 89" stroke="#92400e" stroke-width="2" fill="none" stroke-linecap="round"/>
-            <!-- Whiskers -->
-            <line x1="8" y1="80" x2="58" y2="83" stroke="#92400e" stroke-width="1.2" opacity="0.7"/>
-            <line x1="8" y1="87" x2="58" y2="86" stroke="#92400e" stroke-width="1.2" opacity="0.7"/>
-            <line x1="82" y1="83" x2="132" y2="80" stroke="#92400e" stroke-width="1.2" opacity="0.7"/>
-            <line x1="82" y1="86" x2="132" y2="87" stroke="#92400e" stroke-width="1.2" opacity="0.7"/>
-            <!-- Forehead stripe -->
-            <path d="M57 57 Q70 51 83 57" stroke="#d97706" stroke-width="2" fill="none"/>
-            <!-- Right arm WAVING (animated) -->
-            <g class="neko-wave-arm">
-              <ellipse cx="112" cy="108" rx="13" ry="26" fill="#fbbf24" transform="rotate(-28,108,128)"/>
-              <circle cx="120" cy="80" r="16" fill="#fbbf24"/>
-              <circle cx="113" cy="68" r="9" fill="#fbbf24"/>
-              <circle cx="127" cy="71" r="9" fill="#fbbf24"/>
-              <circle cx="121" cy="65" r="9" fill="#fbbf24"/>
-            </g>
+            <!-- Nose cone -->
+            <path d="M38 80 Q60 20 82 80 Z" fill="#6366f1"/>
+            <!-- Nose highlight -->
+            <path d="M44 76 Q56 32 65 72" stroke="white" stroke-width="2" fill="none" opacity="0.4" stroke-linecap="round"/>
+
+            <!-- Window -->
+            <circle cx="60" cy="110" r="13" fill="#1e1b4b" stroke="#a5b4fc" stroke-width="2.5"/>
+            <circle cx="60" cy="110" r="8" fill="#312e81"/>
+            <circle cx="56" cy="106" r="3" fill="#a5b4fc" opacity="0.7"/>
+
+            <!-- Left fin -->
+            <path d="M38 140 L18 170 L38 160 Z" fill="#6366f1"/>
+            <!-- Right fin -->
+            <path d="M82 140 L102 170 L82 160 Z" fill="#6366f1"/>
+
+            <!-- Stars / sparkles -->
+            <circle cx="20" cy="50" r="2" fill="white" opacity="0.8"/>
+            <circle cx="100" cy="70" r="1.5" fill="white" opacity="0.6"/>
+            <circle cx="14" cy="100" r="1" fill="white" opacity="0.5"/>
+            <circle cx="108" cy="40" r="2" fill="white" opacity="0.7"/>
           </svg>
         </div>
 
@@ -291,15 +224,15 @@ const getShortDesc = (id: string) => {
     <section class="hidden lg:block space-y-4 pt-2">
       <div class="flex items-center gap-3 px-1">
         <div class="w-1.5 h-6 bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.6)]"></div>
-        <h3 class="text-lg md:text-3xl text-white tracking-tighter italic font-black uppercase">CÔNG VIỆC <span class="text-emerald-500">HOT</span></h3>
+        <h3 class="text-lg md:text-3xl text-white tracking-tighter italic font-black uppercase">CÔNG VIỆC <span class="text-emerald-400">HOT</span></h3>
       </div>
 
-      <div class="bg-[#150f0d]/40 border border-slate-800/50 rounded-[30px] p-3 md:p-8 shadow-inner space-y-6">
+      <div class="bg-[#111726]/80 border border-slate-800/60 rounded-[30px] p-3 md:p-8 shadow-inner space-y-6">
 
         <!-- TIER CƠ BẢN -->
         <div>
           <div class="flex items-center gap-2 mb-4 px-1">
-            <span class="text-[10px] md:text-xs font-black uppercase tracking-widest text-slate-400 border border-slate-600/60 bg-slate-800/20 px-3 py-1 rounded-full">⚡ CƠ BẢN — NHANH & DỄ</span>
+            <span class="text-[10px] md:text-xs font-black uppercase tracking-widest text-blue-400 border border-blue-500/30 bg-blue-600/10 px-3 py-1 rounded-full">⚡ CƠ BẢN — NHANH & DỄ</span>
           </div>
           <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
             <template v-for="(j, id) in jobsData" :key="id">
@@ -307,25 +240,25 @@ const getShortDesc = (id: string) => {
                 @click="handleJobClick(id as string)"
                 class="relative p-5 md:p-7 rounded-[28px] border-[2px] transition-all duration-500 flex flex-col group cursor-pointer active:scale-95 hover:-translate-y-1 shadow-2xl overflow-hidden"
                 :class="[
-                  id === 'follow-cgv'     ? 'bg-gradient-to-br from-[#4A1212] to-[#220606] border-red-600/80 shadow-[0_0_30px_rgba(220,38,38,0.45)]'
-                  : id === 'review-cinema'  ? 'bg-gradient-to-br from-[#4A3500] to-[#221800] border-amber-500/80 shadow-[0_0_30px_rgba(245,158,11,0.45)]'
-                  : id === 'checkin-cinema' ? 'bg-gradient-to-br from-[#4A1428] to-[#220610] border-rose-500/80 shadow-[0_0_30px_rgba(244,63,94,0.45)]'
-                  : id === 'survey-cinema'  ? 'bg-gradient-to-br from-[#281555] to-[#100820] border-violet-600/80 shadow-[0_0_30px_rgba(124,58,237,0.45)]'
-                  : id === 'google-map'   ? 'bg-gradient-to-br from-[#4A1E3D] to-[#240A1A] border-fuchsia-500/80 shadow-[0_0_30px_rgba(217,70,239,0.45)]'
-                  : id === 'join-zalo'    ? 'bg-gradient-to-br from-[#1E2850] to-[#0C1226] border-indigo-500/80 shadow-[0_0_30px_rgba(99,102,241,0.45)]'
-                  : 'bg-[#120b0a] border-slate-800'
+                  id === 'follow-cgv'     ? 'bg-gradient-to-br from-blue-900/40 to-blue-800/20 border-blue-500/60 shadow-[0_4px_20px_rgba(37,99,235,0.2)]'
+                  : id === 'review-cinema'  ? 'bg-gradient-to-br from-sky-900/40 to-sky-800/20 border-sky-500/60 shadow-[0_4px_20px_rgba(14,165,233,0.2)]'
+                  : id === 'checkin-cinema' ? 'bg-gradient-to-br from-indigo-900/40 to-indigo-800/20 border-indigo-500/60 shadow-[0_4px_20px_rgba(99,102,241,0.2)]'
+                  : id === 'survey-cinema'  ? 'bg-gradient-to-br from-violet-900/40 to-violet-800/20 border-violet-500/60 shadow-[0_4px_20px_rgba(124,58,237,0.2)]'
+                  : id === 'google-map'   ? 'bg-gradient-to-br from-blue-900/40 to-cyan-900/20 border-blue-500/60 shadow-[0_4px_20px_rgba(59,130,246,0.2)]'
+                  : id === 'join-zalo'    ? 'bg-gradient-to-br from-sky-900/40 to-blue-900/20 border-sky-500/60 shadow-[0_4px_20px_rgba(14,165,233,0.2)]'
+                  : 'bg-slate-800/60 border-slate-600/60'
                 ]">
                 <div class="absolute inset-0 bg-gradient-to-t from-transparent to-white/5 pointer-events-none rounded-[26px]"></div>
 
                 <!-- BADGE -->
                 <div class="absolute -top-0 -right-0 z-20 flex items-center gap-1 text-[9px] md:text-[10px] tracking-widest px-3 py-1.5 rounded-bl-2xl rounded-tr-[26px] font-black italic uppercase border-b border-l border-white/20 shadow-lg"
                      :class="[
-                       id === 'follow-cgv'    ? 'bg-red-700 text-white' :
-                       id === 'review-cinema' ? 'bg-amber-600 text-white' :
-                       id === 'checkin-cinema'? 'bg-rose-600 text-white' :
-                       id === 'survey-cinema' ? 'bg-violet-700 text-white' :
-                       id === 'google-map'    ? 'bg-fuchsia-600 text-white' :
-                       'bg-indigo-600 text-white'
+                       id === 'follow-cgv'    ? 'bg-blue-600 text-white' :
+                       id === 'review-cinema' ? 'bg-sky-600 text-white' :
+                       id === 'checkin-cinema'? 'bg-indigo-600 text-white' :
+                       id === 'survey-cinema' ? 'bg-violet-600 text-white' :
+                       id === 'google-map'    ? 'bg-blue-600 text-white' :
+                       'bg-sky-600 text-white'
                      ]">
                   {{ j.badge || 'CƠ BẢN' }}
                 </div>
@@ -333,13 +266,13 @@ const getShortDesc = (id: string) => {
                 <div class="flex justify-between items-start mb-4 relative z-10">
                   <div class="w-12 h-12 md:w-16 md:h-16 rounded-2xl flex items-center justify-center shadow-lg border-[1.5px] border-white/20 transition-transform group-hover:scale-110"
                        :class="[
-                         id === 'follow-cgv'    ? 'bg-red-600/20 text-red-400' :
-                         id === 'review-cinema' ? 'bg-amber-500/20 text-amber-400' :
-                         id === 'checkin-cinema'? 'bg-rose-500/20 text-rose-400' :
-                         id === 'survey-cinema' ? 'bg-violet-500/20 text-violet-400' :
-                         id === 'google-map'    ? 'bg-fuchsia-500/20 text-fuchsia-400' :
-                         id === 'join-zalo'     ? 'bg-indigo-500/20 text-indigo-400' :
-                         'bg-[#150f0d]'
+                         id === 'follow-cgv'    ? 'bg-blue-600/30 text-blue-300' :
+                         id === 'review-cinema' ? 'bg-sky-600/30 text-sky-300' :
+                         id === 'checkin-cinema'? 'bg-indigo-600/30 text-indigo-300' :
+                         id === 'survey-cinema' ? 'bg-violet-600/30 text-violet-300' :
+                         id === 'google-map'    ? 'bg-blue-600/30 text-blue-300' :
+                         id === 'join-zalo'     ? 'bg-sky-600/30 text-sky-300' :
+                         'bg-slate-700/60'
                        ]">
                     <template v-if="getJobIcon(id as string).content === '📈'">
                       <svg viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 md:w-8 md:h-8">
@@ -353,24 +286,25 @@ const getShortDesc = (id: string) => {
                   </div>
                 </div>
 
-                <h4 class="text-[13px] md:text-lg text-white font-black italic uppercase leading-tight mb-1"
+                <h4 class="text-[13px] md:text-lg font-black italic uppercase leading-tight mb-1"
                     :class="{
-                      'text-red-400':    id === 'follow-cgv',
-                      'text-amber-400':  id === 'review-cinema',
-                      'text-rose-400':   id === 'checkin-cinema',
-                      'text-violet-400': id === 'survey-cinema',
-                      'text-fuchsia-400': id === 'google-map',
-                      'text-indigo-400': id === 'join-zalo'
+                      'text-blue-300':   id === 'follow-cgv',
+                      'text-sky-300':    id === 'review-cinema',
+                      'text-indigo-300': id === 'checkin-cinema',
+                      'text-violet-300': id === 'survey-cinema',
+                      'text-blue-300':   id === 'google-map',
+                      'text-sky-300':    id === 'join-zalo',
+                      'text-white':      !['follow-cgv','review-cinema','checkin-cinema','survey-cinema','google-map','join-zalo'].includes(id as string)
                     }">
                   {{ j.title }}
                 </h4>
 
-                <p class="text-[10px] md:text-[13px] text-slate-300 font-medium line-clamp-2 leading-relaxed mb-4 mt-1">
+                <p class="text-[10px] md:text-[13px] text-slate-400 font-medium line-clamp-2 leading-relaxed mb-4 mt-1">
                   {{ getShortDesc(id as string) }}
                 </p>
 
                 <div class="flex flex-col mt-auto relative z-10">
-                  <p class="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Thưởng ngay:</p>
+                  <p class="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Thưởng ngay:</p>
                   <div class="flex items-center gap-1.5">
                     <p class="font-black text-xl md:text-3xl tracking-tighter italic leading-none" :class="j.color">
                       {{ formatReward(j.reward).toLocaleString() }}
@@ -385,20 +319,20 @@ const getShortDesc = (id: string) => {
                   </div>
                 </div>
 
-                <div class="flex items-center gap-1 text-[9px] text-slate-400 opacity-70 mb-2 mt-3">
+                <div class="flex items-center gap-1 text-[9px] text-slate-500 mb-2 mt-3">
                   <span>👥</span>
                   <span>{{ getSocialProof(id as string) }} người đã nhận</span>
                 </div>
                 <button @click.stop="handleJobClick(id as string)"
-                  class="w-full py-3 md:py-4 rounded-xl text-[10px] md:text-[11px] font-black italic uppercase transition-all shadow-lg relative z-10 border-t border-white/20"
+                  class="w-full py-3 md:py-4 rounded-xl text-[10px] md:text-[11px] font-black italic uppercase transition-all shadow-md relative z-10"
                   :class="[
-                    id === 'follow-cgv'    ? 'bg-gradient-to-r from-red-700 to-red-600 text-white' :
-                    id === 'review-cinema' ? 'bg-gradient-to-r from-amber-600 to-yellow-500 text-white' :
-                    id === 'checkin-cinema'? 'bg-gradient-to-r from-rose-600 to-pink-500 text-white' :
-                    id === 'survey-cinema' ? 'bg-gradient-to-r from-violet-700 to-purple-600 text-white' :
-                    id === 'google-map'    ? 'bg-gradient-to-r from-fuchsia-600 to-pink-500 text-white' :
-                    id === 'join-zalo'     ? 'bg-gradient-to-r from-indigo-600 to-blue-500 text-white' :
-                    'bg-[#1a0f0d] text-white'
+                    id === 'follow-cgv'    ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white' :
+                    id === 'review-cinema' ? 'bg-gradient-to-r from-sky-600 to-sky-400 text-white' :
+                    id === 'checkin-cinema'? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white' :
+                    id === 'survey-cinema' ? 'bg-gradient-to-r from-violet-600 to-purple-500 text-white' :
+                    id === 'google-map'    ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white' :
+                    id === 'join-zalo'     ? 'bg-gradient-to-r from-sky-600 to-blue-500 text-white' :
+                    'bg-blue-600 text-white'
                   ]">
                   BẮT ĐẦU ⚡
                 </button>
@@ -409,13 +343,13 @@ const getShortDesc = (id: string) => {
 
         <!-- DIVIDER VIP -->
         <div id="vip-section" class="relative flex items-center gap-4 py-2">
-          <div class="flex-1 h-px bg-gradient-to-r from-transparent via-amber-500/40 to-transparent"></div>
-          <div class="flex items-center gap-2 bg-gradient-to-r from-amber-500/20 to-yellow-500/10 border border-amber-500/40 px-5 py-2 rounded-full shadow-[0_0_20px_rgba(245,158,11,0.2)]">
-            <span class="text-amber-400 text-sm">👑</span>
-            <span class="text-[10px] md:text-xs font-black uppercase tracking-[3px] text-amber-400">VIP — THU NHẬP CAO</span>
-            <span class="text-amber-400 text-sm">👑</span>
+          <div class="flex-1 h-px bg-gradient-to-r from-transparent via-sky-500/40 to-transparent"></div>
+          <div class="flex items-center gap-2 bg-gradient-to-r from-sky-500/20 to-blue-500/10 border border-sky-500/40 px-5 py-2 rounded-full shadow-[0_0_20px_rgba(14,165,233,0.2)]">
+            <span class="text-sky-400 text-sm">👑</span>
+            <span class="text-[10px] md:text-xs font-black uppercase tracking-[3px] text-sky-400">VIP — THU NHẬP CAO</span>
+            <span class="text-sky-400 text-sm">👑</span>
           </div>
-          <div class="flex-1 h-px bg-gradient-to-r from-transparent via-amber-500/40 to-transparent"></div>
+          <div class="flex-1 h-px bg-gradient-to-r from-transparent via-sky-500/40 to-transparent"></div>
         </div>
 
         <!-- TIER VIP -->
@@ -423,24 +357,24 @@ const getShortDesc = (id: string) => {
           <template v-for="(j, id) in jobsData" :key="id">
             <div v-if="isVip(id as string)"
               @click="handleJobClick(id as string)"
-              class="vip-card relative p-5 md:p-7 rounded-[28px] border-[2px] border-amber-500/70 bg-gradient-to-br from-[#2A1C00] to-[#160E00] transition-all duration-500 flex flex-col group cursor-pointer active:scale-95 overflow-hidden">
+              class="vip-card relative p-5 md:p-7 rounded-[28px] border-[2px] border-amber-500/60 bg-gradient-to-br from-amber-900/30 to-yellow-900/20 transition-all duration-500 flex flex-col group cursor-pointer active:scale-95 overflow-hidden">
 
               <!-- Glow nền VIP -->
               <div class="absolute inset-0 bg-gradient-to-t from-amber-500/5 to-yellow-300/5 pointer-events-none rounded-[26px]"></div>
-              <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-amber-500/10 rounded-full blur-[60px] pointer-events-none"></div>
+              <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-amber-400/10 rounded-full blur-[60px] pointer-events-none"></div>
 
               <!-- Watermark số thứ tự mờ -->
-              <div class="absolute bottom-3 right-4 text-[60px] md:text-[80px] font-black text-amber-400/5 pointer-events-none select-none leading-none">
+              <div class="absolute bottom-3 right-4 text-[60px] md:text-[80px] font-black text-amber-300/10 pointer-events-none select-none leading-none">
                 {{ ['msb-bank','vpbank','tpbank'].includes(id as string) ? '🏦' : '📊' }}
               </div>
 
               <!-- BADGE VIP -->
-              <div class="absolute -top-0 -right-0 z-20 flex items-center gap-1 text-[9px] md:text-[10px] tracking-widest px-3 py-1.5 rounded-bl-2xl rounded-tr-[26px] font-black italic uppercase border-b border-l border-amber-300/30 shadow-lg bg-gradient-to-r from-amber-500 to-yellow-400 text-amber-900">
+              <div class="absolute -top-0 -right-0 z-20 flex items-center gap-1 text-[9px] md:text-[10px] tracking-widest px-3 py-1.5 rounded-bl-2xl rounded-tr-[26px] font-black italic uppercase border-b border-l border-amber-300/40 shadow-lg bg-gradient-to-r from-amber-500 to-yellow-400 text-amber-900">
                 VIP 💎
               </div>
 
               <div class="flex justify-between items-start mb-4 relative z-10">
-                <div class="w-12 h-12 md:w-16 md:h-16 rounded-2xl flex items-center justify-center shadow-lg border-[1.5px] border-amber-400/30 bg-amber-500/15 text-amber-400 transition-transform group-hover:scale-110 group-hover:border-amber-400/60">
+                <div class="w-12 h-12 md:w-16 md:h-16 rounded-2xl flex items-center justify-center shadow-lg border-[1.5px] border-amber-500/40 bg-amber-600/20 text-amber-400 transition-transform group-hover:scale-110 group-hover:border-amber-500/60">
                   <template v-if="getJobIcon(id as string).content === '📈'">
                     <svg viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 md:w-8 md:h-8">
                       <rect x="2" y="14" width="4" height="8" rx="1"/>
@@ -457,14 +391,14 @@ const getShortDesc = (id: string) => {
                 {{ j.title }}
               </h4>
 
-              <p class="text-[10px] md:text-[13px] text-slate-400 font-medium line-clamp-2 leading-relaxed mb-4 mt-1">
+              <p class="text-[10px] md:text-[13px] text-slate-600 font-medium line-clamp-2 leading-relaxed mb-4 mt-1">
                 {{ getShortDesc(id as string) }}
               </p>
 
               <div class="flex flex-col mt-auto relative z-10">
-                <p class="text-[9px] md:text-[10px] font-bold text-amber-500/70 uppercase tracking-widest mb-1">Thưởng ngay:</p>
+                <p class="text-[9px] md:text-[10px] font-bold text-amber-600 uppercase tracking-widest mb-1">Thưởng ngay:</p>
                 <div class="flex items-center gap-1.5">
-                  <p class="font-black text-2xl md:text-4xl tracking-tighter italic leading-none text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-amber-500">
+                  <p class="font-black text-2xl md:text-4xl tracking-tighter italic leading-none text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-yellow-600">
                     {{ formatReward(j.reward).toLocaleString() }}
                   </p>
                   <div class="flex flex-col items-start translate-y-[-2px]">
@@ -477,12 +411,12 @@ const getShortDesc = (id: string) => {
                 </div>
               </div>
 
-              <div class="flex items-center gap-1.5 text-[9px] text-amber-500/70 mt-3 mb-2">
+              <div class="flex items-center gap-1.5 text-[9px] text-amber-600 mt-3 mb-2">
                 <span class="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></span>
                 <span>Đang mở đăng ký — {{ getSocialProof(id as string) }} người đã nhận</span>
               </div>
               <button @click.stop="handleJobClick(id as string)"
-                class="vip-btn w-full py-3.5 md:py-4 rounded-xl text-[11px] md:text-[13px] font-black italic uppercase transition-all relative z-10 border border-amber-400/40 bg-gradient-to-r from-amber-500 to-yellow-500 text-amber-900 shadow-[0_0_20px_rgba(245,158,11,0.4)] hover:shadow-[0_0_35px_rgba(245,158,11,0.7)] hover:from-amber-400 hover:to-yellow-400 active:scale-95">
+                class="vip-btn w-full py-3.5 md:py-4 rounded-xl text-[11px] md:text-[13px] font-black italic uppercase transition-all relative z-10 border border-amber-400/60 bg-gradient-to-r from-amber-500 to-yellow-500 text-amber-900 shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:shadow-[0_0_35px_rgba(245,158,11,0.5)] hover:from-amber-400 hover:to-yellow-400 active:scale-95">
                 NHẬN NGAY 💰
               </button>
             </div>
@@ -493,84 +427,6 @@ const getShortDesc = (id: string) => {
     </section>
   </div>
 
-  <!-- AGE VERIFICATION MODAL -->
-  <Teleport to="body">
-    <Transition name="age-modal">
-      <div v-if="showAgeModal"
-           class="fixed inset-0 z-[9999] flex items-center justify-center p-4"
-           style="background: rgba(0,0,0,0.88); backdrop-filter: blur(6px);"
-           @click.self="cancelAge">
-        <div class="age-modal-box relative w-full max-w-[380px] rounded-[28px] overflow-hidden"
-             style="background: linear-gradient(145deg, #0f0a02, #1a1000, #0c0800); border: 1.5px solid rgba(245,158,11,0.55); box-shadow: 0 0 60px rgba(245,158,11,0.25), 0 0 120px rgba(0,0,0,0.9), inset 0 1px 0 rgba(255,255,255,0.05);">
-
-          <!-- Top glow bar -->
-          <div style="height:3px; background: linear-gradient(90deg, transparent, #f59e0b, #fbbf24, #f59e0b, transparent);"></div>
-
-          <!-- Corner accents -->
-          <div class="absolute top-0 left-0 w-16 h-16 pointer-events-none" style="background: radial-gradient(circle at 0% 0%, rgba(245,158,11,0.12), transparent 70%);"></div>
-          <div class="absolute top-0 right-0 w-16 h-16 pointer-events-none" style="background: radial-gradient(circle at 100% 0%, rgba(245,158,11,0.12), transparent 70%);"></div>
-
-          <div class="px-6 pt-6 pb-7 text-center space-y-4">
-            <!-- Shield icon -->
-            <div class="flex justify-center">
-              <div class="w-16 h-16 rounded-full flex items-center justify-center age-shield-icon"
-                   style="background: linear-gradient(135deg, rgba(245,158,11,0.15), rgba(245,158,11,0.05)); border: 1.5px solid rgba(245,158,11,0.4); box-shadow: 0 0 24px rgba(245,158,11,0.3);">
-                <svg viewBox="0 0 24 24" fill="none" class="w-8 h-8">
-                  <path d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.25C17.25 22.15 21 17.25 21 12V7L12 2z" fill="rgba(245,158,11,0.2)" stroke="#f59e0b" stroke-width="1.5" stroke-linejoin="round"/>
-                  <text x="12" y="16" text-anchor="middle" fill="#fbbf24" font-size="9" font-weight="900" font-family="Arial" style="font-style:italic">18+</text>
-                </svg>
-              </div>
-            </div>
-
-            <!-- Title -->
-            <div class="space-y-1">
-              <p class="text-[11px] font-black uppercase tracking-[3px]"
-                 style="color:#f59e0b; text-shadow: 0 0 12px rgba(245,158,11,0.6);">
-                XÁC NHẬN ĐỘ TUỔI
-              </p>
-              <h3 class="text-[15px] font-black uppercase leading-snug tracking-tight"
-                  style="color:#fde68a; text-shadow: 0 0 20px rgba(251,191,36,0.4);">
-                {{ pendingJobTitle }}
-              </h3>
-            </div>
-
-            <!-- Message -->
-            <div class="rounded-2xl px-5 py-4"
-                 style="background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.2);">
-              <p class="text-[13px] font-semibold leading-relaxed" style="color:#e2d4a0;">
-                Công việc này yêu cầu
-                <span class="font-black" style="color:#fbbf24;">đủ {{ pendingJobAge }} tuổi trở lên.</span>
-                <br/>Bạn đã đủ {{ pendingJobAge }} tuổi chưa?
-              </p>
-            </div>
-
-            <!-- Buttons -->
-            <div class="flex gap-3 pt-1">
-              <!-- HUỶ -->
-              <button @click="cancelAge"
-                      class="flex-1 py-3.5 rounded-2xl font-black text-[12px] uppercase tracking-wide transition-all active:scale-95 hover:brightness-110"
-                      style="background: linear-gradient(135deg, #7f1d1d, #991b1b); color: #fecaca; border: 1.5px solid rgba(239,68,68,0.5); box-shadow: 0 0 20px rgba(239,68,68,0.35), inset 0 1px 0 rgba(255,255,255,0.05); text-shadow: 0 0 8px rgba(239,68,68,0.5);">
-                ✕ HUỶ
-              </button>
-              <!-- ĐÃ ĐỦ 18 -->
-              <button @click="confirmAge"
-                      class="flex-1 py-3.5 rounded-2xl font-black text-[12px] uppercase tracking-wide transition-all active:scale-95 age-confirm-btn"
-                      style="background: linear-gradient(135deg, #d97706, #f59e0b, #fbbf24); color: #1c0d00; border: 1.5px solid rgba(251,191,36,0.6); text-shadow: 0 1px 0 rgba(255,255,255,0.2);">
-                ✓ ĐÃ ĐỦ {{ pendingJobAge }}
-              </button>
-            </div>
-
-            <p class="text-[9px] tracking-wider uppercase" style="color: rgba(120,100,60,0.7);">
-              Click ra ngoài để đóng
-            </p>
-          </div>
-
-          <!-- Bottom glow bar -->
-          <div style="height:2px; background: linear-gradient(90deg, transparent, rgba(245,158,11,0.4), transparent);"></div>
-        </div>
-      </div>
-    </Transition>
-  </Teleport>
 </template>
 
 <style scoped>
@@ -582,61 +438,33 @@ const getShortDesc = (id: string) => {
   50% { transform: translateY(-20px) rotate(15deg); }
 }
 
-/* === MANEKI NEKO === */
-.neko-wave-arm {
-  transform-origin: 108px 128px;
-  animation: nekoWave 0.75s ease-in-out infinite alternate;
+/* === ROCKET FLOAT === */
+.rocket-float {
+  animation: rocketFloat 3s ease-in-out infinite;
 }
-@keyframes nekoWave {
-  from { transform: rotate(-18deg); }
-  to   { transform: rotate(14deg); }
-}
-.neko-cat {
-  animation: nekoFloat 3s ease-in-out infinite;
-}
-@keyframes nekoFloat {
-  0%, 100% { transform: translateY(0); }
-  50%       { transform: translateY(-10px); }
+@keyframes rocketFloat {
+  0%, 100% { transform: rotate(-15deg) translateY(0); }
+  50%       { transform: rotate(-15deg) translateY(-12px); }
 }
 
-/* === GOLD COINS === */
-.coin-fx {
-  position: absolute;
-  animation: coinBurst var(--dur, 2.2s) var(--delay, 0s) ease-in-out infinite;
-}
-.coin-shape {
-  width: 20px; height: 20px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #fde047, #f59e0b 55%, #b45309);
-  border: 2px solid #fbbf24;
-  box-shadow: 0 0 8px rgba(234,179,8,0.85), inset 0 1px 3px rgba(255,255,255,0.3);
-}
-@keyframes coinBurst {
-  0%   { transform: translate(0,0) rotate(0deg) scale(1);    opacity: 0; }
-  10%  { opacity: 1; }
-  45%  { transform: translate(var(--tx,-25px), var(--ty,-70px)) rotate(200deg) scale(1.3); opacity: 1; }
-  80%  { transform: translate(var(--tx2,-15px), 30px)  rotate(340deg) scale(0.7); opacity: 0.5; }
-  100% { transform: translate(var(--tx2,-15px), 55px)  rotate(360deg) scale(0.3); opacity: 0; }
-}
-
-/* === RẠP JOB NEON GOLD === */
+/* === RẠP JOB NEON BLUE === */
 .neon-gold-text {
-  color: #fde047;
+  color: #7dd3fc;
   text-shadow:
-    0 0 8px rgba(234,179,8,0.9),
-    0 0 20px rgba(234,179,8,0.6),
-    0 0 40px rgba(234,179,8,0.3);
-  animation: goldPulse 2.5s ease-in-out infinite;
+    0 0 8px rgba(56,189,248,0.9),
+    0 0 20px rgba(56,189,248,0.6),
+    0 0 40px rgba(56,189,248,0.3);
+  animation: bluePulse 2.5s ease-in-out infinite;
 }
-@keyframes goldPulse {
-  0%, 100% { text-shadow: 0 0 8px rgba(234,179,8,0.9), 0 0 20px rgba(234,179,8,0.6), 0 0 40px rgba(234,179,8,0.3); }
-  50%       { text-shadow: 0 0 14px rgba(234,179,8,1),  0 0 35px rgba(234,179,8,0.8), 0 0 60px rgba(234,179,8,0.4); }
+@keyframes bluePulse {
+  0%, 100% { text-shadow: 0 0 8px rgba(56,189,248,0.9), 0 0 20px rgba(56,189,248,0.6), 0 0 40px rgba(56,189,248,0.3); }
+  50%       { text-shadow: 0 0 14px rgba(56,189,248,1),  0 0 35px rgba(56,189,248,0.8), 0 0 60px rgba(56,189,248,0.4); }
 }
 
 /* VIP card: border glow nhấp nháy */
 @keyframes vip-border-pulse {
-  0%, 100% { box-shadow: 0 0 20px rgba(245,158,11,0.3), 0 0 0px rgba(245,158,11,0); }
-  50%       { box-shadow: 0 0 45px rgba(245,158,11,0.6), 0 0 80px rgba(245,158,11,0.15); }
+  0%, 100% { box-shadow: 0 4px 16px rgba(245,158,11,0.15), 0 0 0px rgba(245,158,11,0); }
+  50%       { box-shadow: 0 8px 32px rgba(245,158,11,0.3), 0 0 40px rgba(245,158,11,0.08); }
 }
 .vip-card {
   animation: vip-border-pulse 2.8s ease-in-out infinite;
@@ -654,27 +482,6 @@ const getShortDesc = (id: string) => {
 /* Hide scrollbar for stats carousel */
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 .scrollbar-hide::-webkit-scrollbar { display: none; }
-
-/* === AGE MODAL === */
-.age-modal-enter-active { transition: opacity 0.2s ease, transform 0.25s cubic-bezier(0.34,1.56,0.64,1); }
-.age-modal-leave-active { transition: opacity 0.15s ease, transform 0.15s ease; }
-.age-modal-enter-from  { opacity: 0; }
-.age-modal-leave-to    { opacity: 0; }
-.age-modal-enter-from .age-modal-box { transform: scale(0.85) translateY(20px); }
-.age-modal-enter-to   .age-modal-box { transform: scale(1) translateY(0); }
-.age-modal-leave-to   .age-modal-box { transform: scale(0.9); }
-
-@keyframes shield-pulse {
-  0%, 100% { box-shadow: 0 0 24px rgba(245,158,11,0.3); }
-  50%       { box-shadow: 0 0 40px rgba(245,158,11,0.6), 0 0 70px rgba(245,158,11,0.15); }
-}
-.age-shield-icon { animation: shield-pulse 2s ease-in-out infinite; }
-
-@keyframes confirm-glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(245,158,11,0.4); }
-  50%       { box-shadow: 0 0 35px rgba(245,158,11,0.8), 0 0 60px rgba(245,158,11,0.2); }
-}
-.age-confirm-btn { animation: confirm-glow 1.6s ease-in-out infinite; }
 
 /* Hero shimmer sweep */
 @keyframes hero-shimmer-sweep {

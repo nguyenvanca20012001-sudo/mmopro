@@ -75,19 +75,19 @@ const bgGlowClass = computed(() => {
 
   <!-- Not logged in -->
   <div v-if="!isLoggedIn"
-       class="bg-[#150f0d] border border-slate-800 rounded-[28px] p-8 text-center">
-    <p class="text-slate-500 font-bold italic uppercase tracking-widest text-[10px]">Đăng nhập để xem hồ sơ</p>
+       class="bg-[#111726] border border-slate-800/60 rounded-[28px] p-8 text-center">
+    <p class="text-slate-400 font-bold italic uppercase tracking-widest text-[10px]">Đăng nhập để xem hồ sơ</p>
   </div>
 
   <!-- Loading -->
   <div v-else-if="isDataLoading" class="text-center py-8">
-    <div class="w-8 h-8 border-4 border-red-600 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+    <div class="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
     <p class="text-slate-500 text-[10px] font-black italic uppercase">Đang tải hồ sơ...</p>
   </div>
 
   <!-- Main Card -->
   <div v-else
-       class="bg-gradient-to-br from-[#1a0f0c] to-[#0e0a09] border border-slate-700/50 rounded-[28px] p-5 space-y-4 relative overflow-hidden">
+       class="bg-[#111726] border border-slate-800/60 rounded-[28px] p-5 space-y-4 relative overflow-hidden shadow-sm">
 
     <!-- BG glow tier -->
     <div class="absolute -right-8 -top-8 w-36 h-36 rounded-full blur-[70px] pointer-events-none"
@@ -132,12 +132,12 @@ const bgGlowClass = computed(() => {
         </div>
 
         <!-- BALANCE CARD -->
-        <div class="flex items-center justify-between bg-black/40 rounded-xl px-2.5 py-2 border border-slate-700/40 backdrop-blur-sm">
+        <div class="flex items-center justify-between bg-slate-800/60 rounded-xl px-2.5 py-2 border border-slate-700/60">
           <div class="min-w-0">
-            <p class="text-slate-500 text-[7px] font-bold uppercase tracking-widest leading-none mb-0.5">SỐ DƯ VÍ</p>
-            <p class="font-black italic leading-none tabular-nums text-[14px] text-amber-400 truncate">
+            <p class="text-slate-400 text-[7px] font-bold uppercase tracking-widest leading-none mb-0.5">SỐ DƯ VÍ</p>
+            <p class="font-black italic leading-none tabular-nums text-[14px] text-amber-500 truncate">
               {{ userBalance.toLocaleString('vi-VN') }}
-              <span class="text-yellow-500 text-[9px]"> XU</span>
+              <span class="text-amber-400 text-[9px]"> XU</span>
             </p>
           </div>
           <!-- Gold coin icon -->
@@ -151,19 +151,19 @@ const bgGlowClass = computed(() => {
         <div class="flex items-center gap-2">
           <div class="text-center flex-1">
             <p class="text-white text-[15px] font-black italic leading-none">{{ totalSubmitted }}</p>
-            <p class="text-slate-500 text-[7px] font-bold uppercase">Đã nộp</p>
+            <p class="text-slate-400 text-[7px] font-bold uppercase">Đã nộp</p>
           </div>
-          <div class="w-px h-7 bg-slate-700/50"></div>
+          <div class="w-px h-7 bg-slate-700/60"></div>
           <div class="text-center flex-1">
-            <p class="text-emerald-400 text-[15px] font-black italic leading-none">{{ totalApproved }}</p>
-            <p class="text-slate-500 text-[7px] font-bold uppercase">Duyệt</p>
+            <p class="text-emerald-500 text-[15px] font-black italic leading-none">{{ totalApproved }}</p>
+            <p class="text-slate-400 text-[7px] font-bold uppercase">Duyệt</p>
           </div>
-          <div class="w-px h-7 bg-slate-700/50"></div>
+          <div class="w-px h-7 bg-slate-700/60"></div>
           <div class="text-center flex-1">
-            <p class="text-amber-400 text-[15px] font-black italic leading-none">
+            <p class="text-amber-500 text-[15px] font-black italic leading-none">
               {{ Math.max(0, totalSubmitted - totalApproved) }}
             </p>
-            <p class="text-slate-500 text-[7px] font-bold uppercase">Chờ</p>
+            <p class="text-slate-400 text-[7px] font-bold uppercase">Chờ</p>
           </div>
         </div>
       </div>
@@ -171,17 +171,17 @@ const bgGlowClass = computed(() => {
     </div><!-- /row 1 -->
 
     <!-- Divider -->
-    <div class="border-t border-slate-700/30 relative z-10"></div>
+    <div class="border-t border-slate-800/60 relative z-10"></div>
 
     <!-- ===== ROW 2: Chest Progress (1 bar tại 1 thời điểm) ===== -->
     <div class="space-y-2 relative z-10">
-      <p class="text-slate-600 text-[8px] font-black uppercase tracking-[2px]">🎯 TIẾN ĐỘ NHẬN THƯỞNG</p>
+      <p class="text-blue-400 text-[8px] font-black uppercase tracking-[2px]">🎯 TIẾN ĐỘ NHẬN THƯỞNG</p>
 
       <!-- Tất cả đã nhận -->
       <div v-if="allChestsClaimed"
-           class="flex items-center justify-center gap-2 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+           class="flex items-center justify-center gap-2 py-2 rounded-xl bg-emerald-50 border border-emerald-200">
         <span class="text-lg">🏆</span>
-        <span class="text-emerald-400 text-[9px] font-black uppercase tracking-widest">Đã nhận hết thưởng!</span>
+        <span class="text-emerald-600 text-[9px] font-black uppercase tracking-widest">Đã nhận hết thưởng!</span>
       </div>
 
       <!-- 1 hòm đang tiến độ -->
@@ -190,24 +190,33 @@ const bgGlowClass = computed(() => {
           <div class="flex items-center gap-1.5">
             <span class="text-sm" :style="activeChest.unlocked ? '' : 'filter: grayscale(1); opacity: 0.4;'">{{ activeChest.icon }}</span>
             <span class="text-[9px] font-black uppercase"
-                  :class="activeChest.unlocked ? activeChest.color : 'text-slate-500'">
-              {{ activeChest.name }}
+                  :class="activeChest.unlocked ? activeChest.color : 'text-slate-400'">
+              {{ activeChest.chest?.replace('🎁 ', '').toUpperCase() }}
             </span>
           </div>
           <span class="text-[8px] font-black tabular-nums"
-                :class="activeChest.unlocked ? 'text-amber-400' : activeChest.color">
+                :class="activeChest.unlocked ? 'text-amber-500' : activeChest.color">
             <template v-if="activeChest.unlocked">🎁 Chưa nhận</template>
             <template v-else>Còn {{ activeChest.remaining }} đơn</template>
           </span>
         </div>
-        <div class="h-1.5 bg-slate-800 rounded-full overflow-hidden border border-slate-700/20">
-          <div class="h-full rounded-full transition-all duration-700"
-               :class="activeChest.bar"
+        <div class="h-3 bg-slate-700/60 rounded-full overflow-hidden">
+          <div class="h-full rounded-full transition-all duration-700" style="background:#a3e635; box-shadow: 0 0 8px rgba(163,230,53,0.6);"
                :style="{ width: activeChest.percent + '%' }"></div>
         </div>
-        <p class="text-right text-[7px] font-black text-slate-600 tabular-nums">
+        <p class="text-right text-[11px] font-black text-blue-400 tabular-nums">
           {{ Math.min(vipProgress.count, activeChest.min) }}/{{ activeChest.min }}
         </p>
+        <div class="flex items-center gap-2.5 bg-[#0d121f]/90 border border-lime-500/20 rounded-xl px-3 py-2 mt-1">
+          <span class="text-xl flex-shrink-0">🎁</span>
+          <div class="min-w-0">
+            <p class="text-[9px] font-black uppercase text-lime-400 tracking-widest leading-none mb-0.5">NHẬN THƯỞNG NGẪU NHIÊN</p>
+            <p class="text-[10px] text-white font-black leading-snug">
+              Từ <span class="text-lime-400">20.000 XU</span> đến <span class="text-lime-400">1.000.000 XU</span>
+              — hoàn thành đủ <span class="text-blue-400">{{ activeChest.min }}</span> công việc!
+            </p>
+          </div>
+        </div>
       </div>
     </div><!-- /row 2 -->
 

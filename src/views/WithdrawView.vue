@@ -30,7 +30,7 @@ const previous200kWithdrawalsCount = computed(() =>
 const showConfirmModal = ref(false)
 const confirmStep = ref(1) // 1: xem thông tin quy đổi, 2: xác nhận cuối cùng
 
-const withdrawOptions = [200000, 500000, 650000, 800000, 1000000, 2000000]
+const withdrawOptions = [250000, 500000, 650000, 800000, 1000000, 2000000]
 
 const requiredJobs = computed(() => {
   if (amount.value === 200000 && previous200kWithdrawalsCount.value > 0) {
@@ -200,16 +200,16 @@ const handleConfirmWithdraw = async () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-transparent text-slate-300 font-sans p-4 md:p-10 font-black uppercase italic tracking-tighter pb-36">
+  <div class="min-h-screen bg-transparent text-slate-700 font-sans p-4 md:p-10 font-black uppercase italic tracking-tighter pb-36">
 
-    <button @click="router.back()" class="flex items-center gap-2 text-slate-500 hover:text-white transition-colors mb-6 md:mb-10 group">
+    <button @click="router.back()" class="flex items-center gap-2 text-slate-500 hover:text-blue-700 transition-colors mb-6 md:mb-10 group">
       <svg class="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" /></svg>
       <span class="tracking-widest text-[10px]">QUAY LẠI</span>
     </button>
 
     <div class="max-w-xl mx-auto space-y-6">
 
-      <div class="bg-[#111726] border border-slate-800 rounded-[30px] p-6 md:p-8 shadow-2xl relative overflow-hidden">
+      <div class="bg-white border border-blue-100 rounded-[30px] p-6 md:p-8 shadow-2xl relative overflow-hidden">
         <!-- Top accent bar -->
         <div class="absolute top-0 left-0 right-0 h-[2.5px] bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 rounded-t-[30px] opacity-90"></div>
         <!-- Radial glow bg -->
@@ -229,7 +229,7 @@ const handleConfirmWithdraw = async () => {
               <path d="M12 7v10M9 10h6M9 14h6" stroke="#854d0e" stroke-width="2" stroke-linecap="round"/>
             </svg>
           </div>
-          <h1 class="text-3xl text-white">RÚT TIỀN</h1>
+          <h1 class="text-3xl text-slate-800">RÚT TIỀN</h1>
           <p class="text-yellow-500 mt-2 text-xs tracking-widest">SỐ DƯ KHẢ DỤNG: {{ formatNumber(userBalance) }} XU</p>
         </div>
 
@@ -247,7 +247,7 @@ const handleConfirmWithdraw = async () => {
                     'w-full py-3 rounded-[14px] border-2 transition-all text-xs md:text-sm active:scale-95',
                     amount === opt
                       ? 'bg-gradient-to-br from-yellow-500/20 to-amber-500/10 border-yellow-500 text-yellow-400 shadow-[0_0_25px_rgba(234,179,8,0.35)] ring-1 ring-yellow-500/30'
-                      : 'bg-[#0d121f] border-slate-800 text-slate-500 hover:border-slate-600'
+                      : 'bg-blue-50 border-blue-100 text-slate-500 hover:border-slate-600'
                   ]"
                 >
                   {{ formatNumber(opt) }} XU
@@ -262,7 +262,7 @@ const handleConfirmWithdraw = async () => {
               v-model="bankInfo"
               rows="3"
               placeholder="VD: MB BANK - 123456789 - NGUYEN VAN A"
-              class="w-full bg-[#0d121f] border border-slate-800 rounded-2xl px-5 py-4 text-white placeholder-slate-600 focus:outline-none focus:border-yellow-500 transition-all resize-none normal-case font-medium not-italic text-sm"
+              class="w-full bg-blue-50 border border-blue-100 rounded-2xl px-5 py-4 text-slate-800 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-all resize-none normal-case font-medium not-italic text-sm"
             ></textarea>
           </div>
 
@@ -272,7 +272,7 @@ const handleConfirmWithdraw = async () => {
             :class="[
               'w-full py-4 rounded-2xl text-[13px] tracking-widest transition-all mt-2',
               hasPendingWithdraw
-                ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700'
+                ? 'bg-blue-100 text-slate-500 cursor-not-allowed border border-blue-100'
                 : 'bg-yellow-500 hover:bg-yellow-400 text-[#090e17] active:scale-95 confirm-glow'
             ]"
           >
@@ -281,16 +281,16 @@ const handleConfirmWithdraw = async () => {
         </div>
       </div>
 
-      <div class="bg-[#111726] border border-slate-800 rounded-[30px] p-6 shadow-xl">
+      <div class="bg-white border border-blue-100 rounded-[30px] p-6 shadow-xl">
         <div class="flex items-center gap-2 mb-6">
           <div class="w-1 h-5 bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
-          <h2 class="text-white text-lg tracking-tighter">LỊCH SỬ RÚT TIỀN</h2>
+          <h2 class="text-slate-800 text-lg tracking-tighter">LỊCH SỬ RÚT TIỀN</h2>
           <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse ml-1"></div>
         </div>
 
         <div class="space-y-3 relative overflow-hidden h-[300px]">
           <TransitionGroup name="list" tag="div" class="space-y-3">
-            <div v-for="(item, index) in fakeWithdrawals" :key="item.id" class="flex items-center justify-between p-4 bg-[#0d121f] border border-slate-800/80 rounded-2xl">
+            <div v-for="(item, index) in fakeWithdrawals" :key="item.id" class="flex items-center justify-between p-4 bg-blue-50 border border-blue-100/80 rounded-2xl">
               <div class="flex items-center gap-3">
                 <div :class="[
                   'w-10 h-10 rounded-full flex items-center justify-center text-xs font-black',
@@ -299,7 +299,7 @@ const handleConfirmWithdraw = async () => {
                   {{ item.name.charAt(0) }}
                 </div>
                 <div>
-                  <p class="text-white text-xs">{{ item.name }}</p>
+                  <p class="text-slate-700 text-xs">{{ item.name }}</p>
                   <p class="text-slate-500 text-[9px] mt-0.5">{{ item.time }}</p>
                 </div>
               </div>
@@ -319,7 +319,7 @@ const handleConfirmWithdraw = async () => {
       <div v-if="showConfirmModal" class="fixed inset-0 z-[6000] flex items-center justify-center px-4">
         <div class="absolute inset-0 bg-black/90 backdrop-blur-md" @click="showConfirmModal = false"></div>
 
-        <div class="relative w-full max-w-md bg-gradient-to-b from-[#1a2333] to-[#111726] border border-slate-700 rounded-[30px] p-8 md:p-10 text-center shadow-2xl">
+        <div class="relative w-full max-w-md bg-gradient-to-b from-white to-blue-50 border border-blue-100 rounded-[30px] p-8 md:p-10 text-center shadow-2xl">
 
           <template v-if="amount === 200000 && approvedJobsCount < requiredJobs">
             <!-- Amber top accent line -->
@@ -329,7 +329,7 @@ const handleConfirmWithdraw = async () => {
 
             <!-- Lock icon -->
             <div class="absolute -top-10 left-1/2 -translate-x-1/2">
-              <div class="w-20 h-20 bg-[#090e17] rounded-full p-2 border-2 border-amber-500/30 shadow-[0_0_30px_rgba(234,179,8,0.35)]">
+              <div class="w-20 h-20 bg-blue-50 rounded-full p-2 border-2 border-amber-500/30 shadow-[0_0_30px_rgba(234,179,8,0.35)]">
                 <div class="w-full h-full bg-gradient-to-tr from-amber-500 to-yellow-400 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(234,179,8,0.5)]">
                   <svg class="w-8 h-8 text-[#1c1100]" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 1C8.676 1 6 3.676 6 7v1H4v15h16V8h-2V7c0-3.324-2.676-6-6-6zm0 2c2.276 0 4 1.724 4 4v1H8V7c0-2.276 1.724-4 4-4zm0 9a2 2 0 110 4 2 2 0 010-4z"/>
@@ -343,13 +343,13 @@ const handleConfirmWithdraw = async () => {
               <div class="inline-flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[9px] font-black tracking-[2px] px-3 py-1 rounded-full mb-3 uppercase">
                 🔒 Mở Khóa Rút Tiền
               </div>
-              <h3 class="text-xl md:text-2xl text-white font-black tracking-tighter mb-2 uppercase italic">CẦN THÊM NHIỆM VỤ</h3>
+              <h3 class="text-xl md:text-2xl text-slate-800 font-black tracking-tighter mb-2 uppercase italic">CẦN THÊM NHIỆM VỤ</h3>
               <p class="text-slate-400 text-[11px] normal-case font-medium not-italic mb-5 px-2 leading-relaxed">
                 Hoàn thành đủ <span class="text-amber-400 font-bold">{{ requiredJobs }} nhiệm vụ</span> được duyệt để mở khóa rút tiền mốc <span class="text-amber-400 font-bold">200.000 XU</span>
               </p>
 
               <!-- Progress card -->
-              <div class="bg-[#090e17] rounded-2xl py-5 px-5 border border-amber-500/10 mb-5 shadow-inner relative overflow-hidden">
+              <div class="bg-blue-50 rounded-2xl py-5 px-5 border border-amber-500/10 mb-5 shadow-inner relative overflow-hidden">
                 <div class="absolute inset-0 bg-amber-500/[0.025]"></div>
                 <p class="text-slate-500 text-[9px] tracking-[3px] mb-3 font-black uppercase">Tiến Độ Nhiệm Vụ</p>
 
@@ -361,7 +361,7 @@ const handleConfirmWithdraw = async () => {
                 </p>
 
                 <!-- Progress bar -->
-                <div class="w-full h-3 bg-slate-800/80 rounded-full overflow-hidden mb-2 border border-slate-700/30">
+                <div class="w-full h-3 bg-blue-100/80 rounded-full overflow-hidden mb-2 border border-blue-100/30">
                   <div class="h-full bg-gradient-to-r from-amber-600 to-yellow-400 rounded-full transition-all duration-1000 relative overflow-hidden"
                        :style="{ width: `${Math.min((approvedJobsCount / requiredJobs) * 100, 100)}%` }">
                     <div class="absolute inset-0 bg-white/20 animate-[shimmer_2s_infinite]"></div>
@@ -388,17 +388,17 @@ const handleConfirmWithdraw = async () => {
           <!-- STEP 1: Thông tin quy đổi -->
           <template v-else-if="confirmStep === 1">
             <div class="absolute -top-10 left-1/2 -translate-x-1/2">
-              <div class="w-20 h-20 bg-[#090e17] rounded-full p-2 border-2 border-slate-800">
+              <div class="w-20 h-20 bg-blue-50 rounded-full p-2 border-2 border-blue-100">
                 <div class="w-full h-full bg-gradient-to-tr from-yellow-500 to-orange-500 rounded-full flex items-center justify-center text-2xl shadow-[0_0_20px_rgba(234,179,8,0.5)]">
                   🔄
                 </div>
               </div>
             </div>
 
-            <h3 class="text-2xl text-white mt-8 mb-2">QUY ĐỔI TIỀN THẬT</h3>
+            <h3 class="text-2xl text-slate-800 mt-8 mb-2">QUY ĐỔI TIỀN THẬT</h3>
             <p class="text-slate-400 text-[10px] normal-case font-medium not-italic mb-6 px-4">Hệ thống áp dụng tỉ giá tự động quy đổi: XU ÷ 12</p>
 
-            <div class="bg-[#090e17] rounded-2xl py-6 px-4 border border-slate-800 mb-8 relative overflow-hidden">
+            <div class="bg-blue-50 rounded-2xl py-6 px-4 border border-blue-100 mb-8 relative overflow-hidden">
               <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_2s_infinite]"></div>
 
               <p class="text-yellow-500 text-2xl mb-1 drop-shadow-md">{{ formatNumber(amount || 0) }} XU</p>
@@ -406,12 +406,12 @@ const handleConfirmWithdraw = async () => {
               <p class="text-emerald-400 text-3xl font-black drop-shadow-[0_0_10px_rgba(16,185,129,0.3)]">{{ formatNumber((amount || 0) / 12) }} VNĐ</p>
             </div>
 
-            <p class="text-white text-xs leading-relaxed mb-8 font-medium normal-case not-italic">
+            <p class="text-slate-600 text-xs leading-relaxed mb-8 font-medium normal-case not-italic">
               Xác nhận quy đổi XU để chuyển thẳng vào tài khoản ngân hàng của bạn?
             </p>
 
             <div class="flex gap-3">
-              <button @click="showConfirmModal = false" class="flex-1 py-3.5 bg-[#0d121f] border border-slate-700 text-slate-400 rounded-xl hover:bg-slate-800 active:scale-95 transition-all text-xs tracking-widest">
+              <button @click="showConfirmModal = false" class="flex-1 py-3.5 bg-blue-50 border border-blue-100 text-slate-400 rounded-xl hover:bg-blue-100 active:scale-95 transition-all text-xs tracking-widest">
                 HỦY
               </button>
               <button @click="confirmStep = 2" class="flex-1 py-3.5 bg-yellow-500 text-[#090e17] rounded-xl hover:bg-yellow-400 shadow-[0_0_15px_rgba(234,179,8,0.3)] active:scale-95 transition-all text-xs tracking-widest">
@@ -424,7 +424,7 @@ const handleConfirmWithdraw = async () => {
           <template v-else>
             <!-- Icon cảnh báo -->
             <div class="absolute -top-10 left-1/2 -translate-x-1/2">
-              <div class="w-20 h-20 bg-[#090e17] rounded-full p-2 border-2 border-rose-600/50 shadow-[0_0_25px_rgba(239,68,68,0.3)]">
+              <div class="w-20 h-20 bg-blue-50 rounded-full p-2 border-2 border-rose-600/50 shadow-[0_0_25px_rgba(239,68,68,0.3)]">
                 <div class="w-full h-full bg-gradient-to-tr from-rose-600 to-red-500 rounded-full flex items-center justify-center text-2xl shadow-[0_0_15px_rgba(239,68,68,0.5)]">
                   ⚠️
                 </div>
@@ -433,32 +433,32 @@ const handleConfirmWithdraw = async () => {
 
             <div class="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-rose-500 to-transparent rounded-t-[30px]"></div>
 
-            <h3 class="text-xl text-white mt-8 mb-1 uppercase italic font-black tracking-tighter">BẠN CÓ CHẮC KHÔNG?</h3>
+            <h3 class="text-xl text-slate-800 mt-8 mb-1 uppercase italic font-black tracking-tighter">BẠN CÓ CHẮC KHÔNG?</h3>
             <p class="text-slate-400 text-[10px] normal-case font-medium not-italic mb-5 px-2 leading-relaxed">
               Hành động này không thể hoàn tác. Hệ thống sẽ trừ XU và gửi tiền về ngân hàng của bạn.
             </p>
 
             <!-- Tóm tắt giao dịch -->
-            <div class="bg-[#090e17] rounded-2xl py-4 px-5 border border-rose-900/40 mb-6 text-left space-y-2.5">
+            <div class="bg-blue-50 rounded-2xl py-4 px-5 border border-rose-900/40 mb-6 text-left space-y-2.5">
               <div class="flex items-center justify-between">
                 <span class="text-slate-500 text-[10px] uppercase tracking-widest font-black">Trừ ví</span>
                 <span class="text-rose-400 font-black text-sm">-{{ formatNumber(amount || 0) }} XU</span>
               </div>
-              <div class="border-t border-slate-800"></div>
+              <div class="border-t border-blue-100"></div>
               <div class="flex items-center justify-between">
                 <span class="text-slate-500 text-[10px] uppercase tracking-widest font-black">Nhận về</span>
                 <span class="text-emerald-400 font-black text-sm">+{{ formatNumber((amount || 0) / 12) }} VNĐ</span>
               </div>
-              <div class="border-t border-slate-800"></div>
+              <div class="border-t border-blue-100"></div>
               <div class="flex items-start justify-between gap-2">
                 <span class="text-slate-500 text-[10px] uppercase tracking-widest font-black flex-shrink-0">Ngân hàng</span>
-                <span class="text-white text-[10px] font-bold normal-case not-italic text-right leading-tight">{{ bankInfo }}</span>
+                <span class="text-slate-700 text-[10px] font-bold normal-case not-italic text-right leading-tight">{{ bankInfo }}</span>
               </div>
             </div>
 
             <div class="flex gap-3">
               <button @click="confirmStep = 1"
-                      class="flex-1 py-3.5 bg-[#0d121f] border border-slate-700 text-slate-400 rounded-xl hover:bg-slate-800 active:scale-95 transition-all text-xs tracking-widest">
+                      class="flex-1 py-3.5 bg-blue-50 border border-blue-100 text-slate-400 rounded-xl hover:bg-blue-100 active:scale-95 transition-all text-xs tracking-widest">
                 QUAY LẠI
               </button>
               <button @click="handleConfirmWithdraw" :disabled="isLoading"

@@ -20,18 +20,18 @@ const openImage = (img: string) => { selectedImage.value = img }
 const closeImage = () => { selectedImage.value = null }
 
 const jobOptions = [
-  { id: 'follow-cgv',     name: 'FOLLOW FANPAGE RẠP PHIM (20.000 XU)',             reward: '20.000 xu' },
-  { id: 'review-cinema',  name: 'ĐÁNH GIÁ 5 SAO RẠP PHIM (25.000 XU)',             reward: '25.000 xu' },
-  { id: 'checkin-cinema', name: 'CHECK-IN TẠI RẠP + ĐĂNG MXH (30.000 XU)',         reward: '30.000 xu' },
-  { id: 'survey-cinema',  name: 'KHẢO SÁT THÓI QUEN XEM PHIM (20.000 XU)',         reward: '20.000 xu' },
-  { id: 'post-threads',   name: 'ĐĂNG BÀI THREADS (25.000 XU)',                    reward: '25.000 xu' },
-  { id: 'join-zalo',      name: 'THAM GIA NHÓM ZALO (10.000 XU)',                  reward: '10.000 xu' },
-  { id: 'app-chung-khoan',   name: 'APP CHỨNG KHOÁN SỐ 1 (85.000 XU)',            reward: '85.000 xu' },
-  { id: 'app-chung-khoan-2', name: 'APP CHỨNG KHOÁN SỐ 2 (85.000 XU)',            reward: '85.000 xu' },
-  { id: 'app-chung-khoan-3', name: 'APP CHỨNG KHOÁN SỐ 3 (85.000 XU)',            reward: '85.000 xu' },
-  { id: 'app-chung-khoan-4', name: 'APP CHỨNG KHOÁN SỐ 4 (85.000 XU)',            reward: '85.000 xu' },
-  { id: 'msb-bank',       name: 'ĐĂNG KÝ NGÂN HÀNG MSB (100.000 XU)',             reward: '100.000 xu' },
-  { id: 'vpbank',         name: 'ĐĂNG KÝ NGÂN HÀNG VPBANK (100.000 XU)',          reward: '100.000 xu' }
+  { id: 'view-tiktok',       name: 'CÀY VIEW TIKTOK (30.000 XU)',              reward: '30.000 xu' },
+  { id: 'view-youtube',      name: 'CÀY VIEW YOUTUBE (30.000 XU)',             reward: '30.000 xu' },
+  { id: 'post-threads',      name: 'ĐĂNG BÀI THREADS (30.000 XU)',             reward: '30.000 xu' },
+  { id: 'seeding-vinfast',   name: 'SEEDING VINFAST (30.000 XU)',              reward: '30.000 xu' },
+  { id: 'google-map',        name: 'GOOGLE MAP (25.000 XU)',                   reward: '25.000 xu' },
+  { id: 'join-zalo',         name: 'NHÓM ZALO (10.000 XU)',                    reward: '10.000 xu' },
+  { id: 'app-chung-khoan',   name: 'APP CHỨNG KHOÁN SỐ 1 (85.000 XU)',        reward: '85.000 xu' },
+  { id: 'app-chung-khoan-2', name: 'APP CHỨNG KHOÁN SỐ 2 (85.000 XU)',        reward: '85.000 xu' },
+  { id: 'app-chung-khoan-3', name: 'APP CHỨNG KHOÁN SỐ 3 (85.000 XU)',        reward: '85.000 xu' },
+  { id: 'app-chung-khoan-4', name: 'APP CHỨNG KHOÁN SỐ 4 (85.000 XU)',        reward: '85.000 xu' },
+  { id: 'msb-bank',          name: 'ĐĂNG KÝ NGÂN HÀNG MSB (100.000 XU)',      reward: '100.000 xu' },
+  { id: 'vpbank',            name: 'ĐĂNG KÝ NGÂN HÀNG VPBANK (100.000 XU)',   reward: '100.000 xu' }
 ]
 
 const jobSamples: Record<string, string[]> = {
@@ -202,7 +202,7 @@ const submitReport = async () => {
     }
 
     // Chặn làm lại: các job tương tác chỉ được làm 1 lần duy nhất
-    const oneTimeJobs = ['follow-cgv', 'review-cinema', 'checkin-cinema', 'survey-cinema', 'post-threads', 'join-zalo']
+    const oneTimeJobs = ['view-tiktok', 'view-youtube', 'post-threads', 'seeding-vinfast', 'google-map', 'join-zalo']
 
     if (oneTimeJobs.includes(selectedJob.value.id)) {
       // Query theo jobId (report mới) VÀ jobName (report cũ có thể không có jobId)
@@ -274,7 +274,7 @@ const closeAndGoHome = () => {
 }
 
 const openFanpage = () => {
-  window.open('https://www.facebook.com/vieclamrapjob', '_blank')
+  window.open('https://www.facebook.com/mmopro123', '_blank')
   closeAndGoHome()
 }
 </script>
@@ -285,7 +285,7 @@ const openFanpage = () => {
     <!-- ZOOM ẢNH -->
     <Transition name="fade">
       <div class="fixed inset-0 z-[6000] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md cursor-zoom-out" v-if="selectedImage" @click="closeImage">
-        <button class="absolute top-6 right-6 md:top-10 md:right-10 w-12 h-12 bg-slate-800 border border-slate-700 hover:bg-red-600 rounded-full flex items-center justify-center text-white transition-colors z-[6010] shadow-2xl" @click.stop="closeImage">
+        <button class="absolute top-6 right-6 md:top-10 md:right-10 w-12 h-12 bg-blue-900 border border-blue-700 hover:bg-blue-700 rounded-full flex items-center justify-center text-white transition-colors z-[6010] shadow-2xl" @click.stop="closeImage">
           <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
         </button>
         <img class="max-w-full max-h-[90vh] rounded-2xl object-contain shadow-[0_0_50px_rgba(0,0,0,0.5)] relative z-[6005] cursor-default" :src="selectedImage" @click.stop />
@@ -293,7 +293,7 @@ const openFanpage = () => {
     </Transition>
 
     <div class="w-full max-w-xl relative animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <button @click="router.back()" class="text-slate-500 hover:text-white flex items-center gap-2 text-[10px] md:text-xs tracking-[3px] transition-colors mb-8">
+      <button @click="router.back()" class="text-slate-500 hover:text-blue-700 flex items-center gap-2 text-[10px] md:text-xs tracking-[3px] transition-colors mb-8">
         <span class="font-sans not-italic">✕</span> TRỞ LẠI
       </button>
 
@@ -301,7 +301,7 @@ const openFanpage = () => {
         NỘP <span class="text-blue-500">BẰNG CHỨNG</span>
       </h1>
 
-      <div class="space-y-6 bg-[#111726]/50 p-6 md:p-10 rounded-[30px] border border-slate-800/50 shadow-2xl">
+      <div class="space-y-6 bg-[#111726] p-6 md:p-10 rounded-[30px] border border-slate-700/60 shadow-2xl">
 
         <div class="space-y-2 text-left relative z-10">
           <label class="text-blue-400 text-[11px] tracking-widest ml-1 font-black">CÔNG VIỆC HOÀN THÀNH</label>
@@ -309,7 +309,7 @@ const openFanpage = () => {
             <select
               v-model="selectedJob"
               :disabled="!!route.query.job"
-              :class="['w-full bg-[#0d121f] border rounded-[20px] py-4 px-5 text-white outline-none appearance-none font-sans font-bold text-[14px] md:text-[15px] not-italic transition-all', !!route.query.job ? 'border-slate-700/80 text-emerald-400 bg-[#0d121f]/80 cursor-not-allowed shadow-inner' : 'border-slate-800 focus:border-blue-500 cursor-pointer']"
+              :class="['w-full bg-slate-800/60 border rounded-[20px] py-4 px-5 text-white outline-none appearance-none font-sans font-bold text-[14px] md:text-[15px] not-italic transition-all', !!route.query.job ? 'border-slate-700/80 text-emerald-400 bg-slate-800/60 cursor-not-allowed shadow-inner' : 'border-slate-700/60 focus:border-blue-500 cursor-pointer']"
             >
               <option v-for="job in jobOptions" :key="job.id" :value="job">{{ job.name }}</option>
             </select>
@@ -324,7 +324,7 @@ const openFanpage = () => {
             v-model="fullName"
             type="text"
             placeholder="Nhập họ tên chính xác của bạn..."
-            class="w-full bg-[#0d121f] border border-slate-800 focus:border-blue-500 rounded-[20px] py-4 px-5 text-white outline-none placeholder:text-slate-500 placeholder:normal-case font-sans not-italic font-semibold text-[15px] shadow-inner transition-colors"
+            class="w-full bg-slate-800/60 border border-slate-700/60 focus:border-blue-500 rounded-[20px] py-4 px-5 text-white outline-none placeholder:text-slate-500 placeholder:normal-case font-sans not-italic font-semibold text-[15px] shadow-inner transition-colors"
           />
         </div>
 
@@ -334,49 +334,51 @@ const openFanpage = () => {
             v-model="phoneNumber"
             type="text"
             placeholder="Số điện thoại đăng ký / làm việc..."
-            class="w-full bg-[#0d121f] border border-slate-800 focus:border-blue-500 rounded-[20px] py-4 px-5 text-white outline-none placeholder:text-slate-500 placeholder:normal-case font-sans not-italic font-semibold text-[15px] shadow-inner transition-colors"
+            class="w-full bg-slate-800/60 border border-slate-700/60 focus:border-blue-500 rounded-[20px] py-4 px-5 text-white outline-none placeholder:text-slate-500 placeholder:normal-case font-sans not-italic font-semibold text-[15px] shadow-inner transition-colors"
           />
         </div>
 
         <div class="space-y-2 text-left">
-          <label class="text-blue-400 text-[11px] tracking-widest ml-1 font-black">THÁNG & NĂM SINH NGƯỜI ĐĂNG KÝ</label>
-          <div class="flex gap-3">
-            <select
-              v-model="birthMonth"
-              class="w-[45%] bg-[#0d121f] border border-slate-800 focus:border-blue-500 rounded-[20px] py-4 px-5 text-white outline-none font-sans not-italic font-semibold text-[15px] shadow-inner transition-colors appearance-none"
-            >
-              <option value="" disabled>Tháng...</option>
-              <option v-for="m in 12" :key="m" :value="String(m)">Tháng {{ m }}</option>
-            </select>
-            <input
-              v-model="birthYear"
-              type="number"
-              placeholder="Năm (VD: 2000)"
-              class="flex-1 bg-[#0d121f] border border-slate-800 focus:border-blue-500 rounded-[20px] py-4 px-5 text-white outline-none placeholder:text-slate-500 placeholder:normal-case font-sans not-italic font-semibold text-[15px] shadow-inner transition-colors"
-              @input="birthYear = birthYear ? String(birthYear).slice(0,4) : ''"
-            />
-          </div>
+          <label class="text-blue-400 text-[11px] tracking-widest ml-1 font-black">NĂM SINH NGƯỜI ĐĂNG KÝ</label>
+          <input
+            v-model="birthYear"
+            type="number"
+            placeholder="Năm sinh (VD: 2000)"
+            class="w-full bg-slate-800/60 border border-slate-700/60 focus:border-blue-500 rounded-[20px] py-4 px-5 text-white outline-none placeholder:text-slate-500 placeholder:normal-case font-sans not-italic font-semibold text-[15px] shadow-inner transition-colors"
+            @input="birthYear = birthYear ? String(birthYear).slice(0,4) : ''"
+          />
+        </div>
+
+        <div class="space-y-1.5 text-left">
+          <label class="text-blue-400 text-[10px] tracking-widest ml-1 font-black">THÁNG SINH</label>
+          <select
+            v-model="birthMonth"
+            class="w-1/2 bg-slate-800/60 border border-slate-700/60 focus:border-blue-500 rounded-[18px] py-3 px-4 text-white outline-none font-sans not-italic font-semibold text-[13px] shadow-inner transition-colors appearance-none"
+          >
+            <option value="" disabled>Chọn tháng...</option>
+            <option v-for="m in 12" :key="m" :value="String(m)">Tháng {{ m }}</option>
+          </select>
         </div>
 
         <div class="space-y-2 text-left mt-2">
           <label class="text-blue-400 text-[11px] tracking-widest ml-1 font-black">HÌNH ẢNH XÁC THỰC VÀ ĐỐI CHIẾU MẪU</label>
           <div
             @click="triggerFileInput"
-            class="w-full border-2 border-dashed border-slate-700/60 hover:border-blue-500/50 bg-[#0d121f]/30 rounded-[30px] py-12 px-6 flex flex-col items-center justify-center cursor-pointer transition-all group"
+            class="w-full border-2 border-dashed border-slate-700/60 hover:border-blue-500/50 bg-slate-800/30 rounded-[30px] py-12 px-6 flex flex-col items-center justify-center cursor-pointer transition-all group"
           >
             <div class="text-4xl group-hover:scale-110 transition-transform mb-3">📸</div>
             <p :class="[
                  'text-[11px] md:text-[12px] tracking-widest transition-colors uppercase text-center leading-relaxed font-black',
                  fourImageJobs.includes(selectedJob.id) || threeImageJobs.includes(selectedJob.id)
                    ? 'text-rose-400'
-                   : 'text-slate-400 group-hover:text-white'
+                   : 'text-slate-400 group-hover:text-blue-700'
                ]">
               {{ imageRequirementText }}
             </p>
           </div>
           <input type="file" ref="fileInput" @change="handleFileUpload" multiple accept="image/jpeg, image/png, image/jpg" class="hidden" />
 
-          <div v-if="jobSamples[selectedJob.id]" class="mt-4 p-4 bg-[#0d121f] border border-slate-800/80 rounded-2xl shadow-inner">
+          <div v-if="jobSamples[selectedJob.id]" class="mt-4 p-4 bg-slate-800/40 border border-slate-700/60 rounded-2xl shadow-inner">
             <p class="text-[10px] md:text-[11px] text-yellow-400 font-black tracking-widest mb-3 uppercase italic leading-relaxed">
               ⚠️ Bạn phải gửi đủ {{ jobSamples[selectedJob.id].length }} ảnh mẫu này (Chạm để zoom to):
             </p>
@@ -393,7 +395,7 @@ const openFanpage = () => {
           <div v-if="images.length > 0" class="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
             <div v-for="(img, index) in images" :key="index"
                  @click="openImage(img)"
-                 class="relative group rounded-[18px] overflow-hidden border border-slate-800 bg-[#0d121f] aspect-square cursor-zoom-in">
+                 class="relative group rounded-[18px] overflow-hidden border border-slate-700/60 bg-slate-800/40 aspect-square cursor-zoom-in">
               <img class="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity bg-white" :src="img" />
               <button class="absolute top-1.5 right-1.5 w-6 h-6 bg-red-500/80 hover:bg-red-600 rounded-full flex items-center justify-center text-white text-[10px] font-sans not-italic z-10 shadow-lg" @click.stop="removeImage(index)">✕</button>
             </div>
@@ -415,11 +417,11 @@ const openFanpage = () => {
     <Transition name="fade">
       <div class="fixed inset-0 z-[1000] flex items-center justify-center p-4 backdrop-blur-md" v-if="showSuccessModal">
         <div class="absolute inset-0 bg-black/80"></div>
-        <div class="relative bg-[#111726] border border-blue-500/30 w-full max-w-sm rounded-[40px] p-8 text-center shadow-[0_0_50px_rgba(37,99,235,0.2)] animate-in zoom-in duration-300">
+        <div class="relative bg-white border border-blue-500/30 w-full max-w-sm rounded-[40px] p-8 text-center shadow-[0_0_50px_rgba(37,99,235,0.2)] animate-in zoom-in duration-300">
           <div class="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-6 border border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.2)]">
             <span class="text-4xl">✅</span>
           </div>
-          <h2 class="text-2xl text-white font-black italic tracking-tighter mb-2 uppercase">Gửi đơn thành công!</h2>
+          <h2 class="text-2xl text-slate-800 font-black italic tracking-tighter mb-2 uppercase">Gửi đơn thành công!</h2>
 
           <div v-if="isFanpageTask">
             <p class="text-slate-400 text-[10px] normal-case font-bold leading-relaxed mb-6 italic uppercase">
@@ -430,7 +432,7 @@ const openFanpage = () => {
               <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
               NHẮN TIN FANPAGE
             </button>
-            <button class="w-full bg-transparent text-slate-500 py-2 rounded-2xl text-[10px] font-black uppercase tracking-[2px] hover:text-white transition-all" @click="closeAndGoHome">
+            <button class="w-full bg-transparent text-slate-500 py-2 rounded-2xl text-[10px] font-black uppercase tracking-[2px] hover:text-slate-700 transition-all" @click="closeAndGoHome">
               ĐỂ SAU
             </button>
           </div>

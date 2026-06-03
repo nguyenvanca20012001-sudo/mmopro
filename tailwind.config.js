@@ -7,8 +7,8 @@ export default {
   theme: {
     extend: {
       colors: {
-        'mmo-dark': '#090e17',
-        'mmo-card': '#111726',
+        'mmo-dark': '#eff6ff',
+        'mmo-card': '#dbeafe',
       }
     },
   },

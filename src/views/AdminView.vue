@@ -286,6 +286,7 @@ const bulkApproveOtherJobs = async () => {
 // ============================================================================
 let unsubReports: any = null;
 let unsubWithdrawals: any = null;
+let unsubUsers: any = null;
 
 const loadData = (newStatus: string) => {
   if (searchQuery.value.trim() !== '') return;
@@ -415,7 +416,8 @@ onMounted(() => {
 
       isCheckingAuth.value = false;
 
-      getDocs(collection(db, "users")).then((snapshot) => {
+      if (unsubUsers) unsubUsers();
+      unsubUsers = onSnapshot(collection(db, "users"), (snapshot) => {
         const map: Record<string, any> = {}
         snapshot.docs.forEach(doc => { map[doc.id] = doc.data() })
         usersMap.value = map
@@ -831,6 +833,7 @@ const handleAdminLogout = async () => {
               <td class="p-6 text-center text-[10px]">
                 <span class="bg-yellow-500/10 text-yellow-500 px-3 py-1 rounded-full border border-yellow-500/20" v-if="rp.status === 'pending'">ĐANG CHỜ</span>
                 <span class="bg-emerald-500/10 text-emerald-500 px-3 py-1 rounded-full border border-emerald-500/20" v-else-if="rp.status === 'approved'">ĐÃ DUYỆT</span>
+                <span class="bg-blue-500/10 text-blue-400 px-3 py-1 rounded-full border border-blue-500/20" v-else-if="rp.status === 'collected'">ĐÃ THU VÍ</span>
                 <span class="bg-red-500/10 text-red-500 px-3 py-1 rounded-full border border-red-500/20" v-else>BỊ HỦY</span>
                 <div :class="['text-[8px] mt-2 normal-case leading-tight', rp.status === 'rejected' ? 'text-red-400 italic' : 'text-blue-400 font-bold']" v-if="rp.note">LỜI NHẮN: {{ rp.note }}</div>
               </td>

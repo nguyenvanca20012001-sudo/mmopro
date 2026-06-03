@@ -174,7 +174,7 @@ export const jobsData: Record<string, any> = {
         id: 1,
         title: "THAM ZALO NHÓM ZALO MMO PRO ",
         content: "CHỌN NÚT THAM GIA NHÓM ĐỂ VÀO NHÓM .",
-        downloadLink: "https://zalo.me/g/zbvsdm567",
+        downloadLink: "https://zalo.me/g/lenpfa1wvl7xvrwiihw2",
         buttonText: "THAM GIA NHÓM ➔"
       },
       {

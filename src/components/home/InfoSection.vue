@@ -24,16 +24,16 @@ const steps = [
 
 const jobTypes = [
   {
-    tag: 'CƠ BẢN', color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30',
+    tag: 'CƠ BẢN', color: 'text-emerald-600', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30',
     glow: 'rgba(52,211,153,0.15)',
     icon: '⚡', title: 'Công Việc Cơ Bản', reward: '10.000 – 30.000 XU / việc',
-    items: ['Follow fanpage thương hiệu', 'Đánh giá Google Map', 'Vào nhóm Zalo / Telegram', 'Check-in địa điểm'],
+    items: ['Cày view TikTok', 'Cày view YouTube', 'Đăng bài Threads / Seeding Vinfast', 'Đánh giá Google Map', 'Tham gia nhóm Zalo'],
   },
   {
-    tag: 'VIP', color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/30',
+    tag: 'VIP', color: 'text-amber-600', bg: 'bg-amber-500/10', border: 'border-amber-500/30',
     glow: 'rgba(251,191,36,0.15)',
     icon: '💎', title: 'Công Việc VIP', reward: '85.000 – 100.000 XU / việc',
-    items: ['Mở tài khoản ngân hàng', 'Đăng ký chứng khoán', 'Cài app tài chính', 'Nhận quà tặng cao cấp'],
+    items: ['App Chứng Khoán (×4 loại)', 'Ngân hàng MSB', 'Ngân hàng VPBank', 'Thưởng cao cấp khi hoàn thành'],
   },
 ]
 
@@ -57,7 +57,7 @@ const trustBadges = [
           <div
             v-for="s in stats"
             :key="s.label"
-            class="stat-card bg-[#1a0f0c]/70 border border-slate-800 rounded-2xl p-5 text-center hover:border-red-800/50 transition-all duration-300 group"
+            class="stat-card bg-[#111726] border border-slate-800/60 rounded-2xl p-5 text-center hover:border-red-800/50 transition-all duration-300 group"
           >
             <div class="text-3xl mb-2 group-hover:scale-110 transition-transform duration-300">{{ s.icon }}</div>
             <p class="text-white text-2xl font-black italic leading-none mb-1">{{ s.value }}</p>
@@ -84,7 +84,7 @@ const trustBadges = [
           <div
             v-for="(step, i) in steps"
             :key="step.num"
-            class="step-card relative z-10 bg-[#1a0f0c]/80 border border-red-900/30 rounded-[24px] p-7 text-center hover:border-red-600/50 hover:bg-[#200f0c]/90 transition-all duration-300 group"
+            class="step-card relative z-10 bg-[#111726] border border-slate-800/60 rounded-[24px] p-7 text-center hover:border-blue-500/50 hover:bg-slate-800/80 transition-all duration-300 group"
             :style="`animation-delay: ${i * 0.15}s`"
           >
             <!-- Big number -->
@@ -128,7 +128,7 @@ const trustBadges = [
             <!-- Reward badge -->
             <div class="inline-flex items-center gap-1.5 mb-5 px-3 py-1.5 rounded-xl bg-black/30 border border-white/10">
               <span class="text-[10px]">🔥</span>
-              <span class="text-[11px] font-black italic" :class="jt.color">{{ jt.reward }}</span>
+              <span class="text-[11px] font-black italic text-white">{{ jt.reward }}</span>
             </div>
             <!-- Items list -->
             <ul class="space-y-2.5">
@@ -147,7 +147,7 @@ const trustBadges = [
 
       <!-- SECTION 4: TRUST BADGES -->
       <section class="mb-20">
-        <div class="bg-gradient-to-br from-[#1a0f0c] to-[#120a08] rounded-[30px] border border-red-900/20 p-8 md:p-12">
+        <div class="bg-gradient-to-br from-[#0a1628] to-[#060e1e] rounded-[30px] border border-blue-900/20 p-8 md:p-12">
           <!-- Header -->
           <div class="flex items-center gap-4 mb-10">
             <div class="w-2.5 h-10 bg-emerald-500 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.5)]"></div>
@@ -206,7 +206,7 @@ const trustBadges = [
               ĐĂNG KÝ MIỄN PHÍ NGAY
             </a>
 
-            <p class="text-slate-600 text-[10px] font-black uppercase tracking-widest mt-5">
+            <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-5">
               Đã có tài khoản?
               <a href="#/login" class="text-slate-400 hover:text-white underline underline-offset-2 transition-colors ml-1">Đăng nhập tại đây</a>
             </p>
@@ -267,7 +267,7 @@ const trustBadges = [
       <div class="flex items-center gap-4">
         <div class="w-2.5 h-10 bg-blue-500 rounded-full shadow-[0_0_20px_rgba(37,99,235,0.5)]"></div>
         <h3 class="text-3xl md:text-5xl text-white tracking-tighter uppercase italic leading-none font-black">
-          GIẢI ĐÁP <span class="text-blue-500">THẮC MẮC</span>
+          GIẢI ĐÁP <span class="text-blue-400">THẮC MẮC</span>
         </h3>
       </div>
 
@@ -275,7 +275,7 @@ const trustBadges = [
         <div
           v-for="f in faqs"
           :key="f.id"
-          class="bg-[#111726]/40 p-10 rounded-[40px] border border-slate-800/50 hover:bg-[#111726]/60 transition-all group"
+          class="bg-[#111726]/80 p-10 rounded-[40px] border border-slate-800/60 hover:bg-slate-800/80 transition-all group"
         >
           <p class="text-blue-500 text-xs font-black italic uppercase tracking-widest mb-4">
             #{{ f.id }}. {{ f.q }}

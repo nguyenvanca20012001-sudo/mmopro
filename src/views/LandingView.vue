@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-const emit = defineEmits(['goLogin', 'goRegister'])
+import { useRouter } from 'vue-router'
+const router = useRouter()
 
 // FAQ accordion
 const openFaq = ref<number | null>(null)
@@ -68,11 +69,11 @@ const steps = [
     <header class="fixed top-0 left-0 right-0 z-[999] bg-[#090e17]/90 backdrop-blur-lg border-b border-slate-800/60 px-5 py-3.5 flex justify-between items-center">
       <span class="font-black italic text-white text-xl tracking-tighter">MMO <span class="text-blue-400">PRO</span></span>
       <div class="flex gap-2">
-        <button @click="emit('goLogin')"
+        <button @click="router.push('/login')"
                 class="px-4 py-2 text-[11px] font-black italic uppercase text-slate-300 border border-slate-700/80 rounded-xl hover:border-slate-500 transition-all active:scale-95">
           ĐĂNG NHẬP
         </button>
-        <button @click="emit('goRegister')"
+        <button @click="router.push('/register')"
                 class="px-4 py-2 text-[11px] font-black italic uppercase bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition-all active:scale-95 shadow-lg shadow-blue-900/40">
           ĐĂNG KÝ
         </button>
@@ -109,12 +110,12 @@ const steps = [
           </p>
 
           <div class="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
-            <button @click="emit('goRegister')"
+            <button @click="router.push('/register')"
                     class="relative overflow-hidden px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black italic uppercase text-sm rounded-2xl shadow-[0_0_30px_rgba(37,99,235,0.5)] transition-all active:scale-95">
               <div class="absolute inset-0 bg-white/10 animate-[shimmer_3s_infinite]"></div>
               <span class="relative z-10">THAM GIA MIỄN PHÍ ▶</span>
             </button>
-            <button @click="emit('goLogin')"
+            <button @click="router.push('/login')"
                     class="px-8 py-4 border border-slate-700 hover:border-slate-500 text-slate-300 hover:text-white font-black italic uppercase text-sm rounded-2xl transition-all active:scale-95">
               ĐÃ CÓ TÀI KHOẢN →
             </button>
@@ -265,7 +266,7 @@ const steps = [
               VIỆC LÀM <span class="text-emerald-400">HOT NHẤT</span>
             </h2>
           </div>
-          <button @click="emit('goRegister')"
+          <button @click="router.push('/register')"
                   class="hidden sm:block px-5 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white font-black italic uppercase text-[11px] rounded-xl transition-all active:scale-95">
             XEM TẤT CẢ →
           </button>
@@ -273,7 +274,7 @@ const steps = [
 
         <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
           <div v-for="job in featuredJobs" :key="job.id"
-               @click="emit('goLogin')"
+               @click="router.push('/login')"
                :class="['relative bg-gradient-to-br border-2 rounded-[24px] p-5 flex flex-col cursor-pointer transition-all active:scale-95 hover:-translate-y-1 duration-300 overflow-hidden', job.bg, job.border]">
             <!-- Badge -->
             <div :class="['absolute top-0 right-0 text-[9px] tracking-widest px-3 py-1.5 rounded-bl-2xl rounded-tr-[22px] font-black italic uppercase text-white', job.badgeBg]">
@@ -383,7 +384,7 @@ const steps = [
           </div>
         </div>
         <div class="mt-10 text-center">
-          <button @click="emit('goRegister')"
+          <button @click="router.push('/register')"
                   class="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black italic uppercase text-sm rounded-2xl shadow-[0_0_30px_rgba(16,185,129,0.3)] transition-all active:scale-95">
             BẮT ĐẦU NGAY ▶
           </button>
@@ -408,7 +409,7 @@ const steps = [
             <p class="text-slate-400 text-sm font-medium leading-relaxed not-italic normal-case">
               Với hơn <span class="text-white font-bold">2.000 thành viên</span> và tổng giá trị chi trả vượt <span class="text-emerald-400 font-bold">20 triệu XU</span>, MMO PRO khẳng định vị trí là nền tảng kiếm tiền online tin cậy nhất Việt Nam.
             </p>
-            <button @click="emit('goRegister')"
+            <button @click="router.push('/register')"
                     class="inline-flex items-center gap-2 px-6 py-3 border border-indigo-500/50 hover:border-indigo-400 text-indigo-400 hover:text-white font-black italic uppercase text-[11px] rounded-xl transition-all active:scale-95">
               THAM GIA CỘNG ĐỒNG →
             </button>
@@ -469,7 +470,7 @@ const steps = [
           SẴN SÀNG<br/><span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400">KIẾM TIỀN?</span>
         </h2>
         <p class="text-slate-400 text-sm font-medium not-italic normal-case">Tham gia miễn phí — nhận ngay 10.000 XU chào mừng!</p>
-        <button @click="emit('goRegister')"
+        <button @click="router.push('/register')"
                 class="relative overflow-hidden inline-flex items-center gap-2 px-10 py-5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black italic uppercase text-sm rounded-2xl shadow-[0_0_40px_rgba(37,99,235,0.4)] transition-all active:scale-95">
           <div class="absolute inset-0 bg-white/10 animate-[shimmer_3s_infinite]"></div>
           <span class="relative z-10">ĐĂNG KÝ NGAY — MIỄN PHÍ 100%</span>

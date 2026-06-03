@@ -31,7 +31,7 @@ const formatNumber = (val: any) => {
       </h2>
     </div>
 
-    <div v-if="!isLoggedIn" class="bg-[#150f0d] border border-slate-800 rounded-[30px] p-12 text-center">
+    <div v-if="!isLoggedIn" class="bg-[#111726] border border-slate-800/60 rounded-[30px] p-12 text-center">
       <p class="text-slate-500 font-bold italic uppercase tracking-widest text-xs">Vui lòng đăng nhập để xem lịch sử của bạn</p>
     </div>
 
@@ -43,7 +43,7 @@ const formatNumber = (val: any) => {
     <div v-else class="space-y-3">
       <div v-for="item in myReports" :key="item.id"
            :class="[
-             'group bg-[#1e1309]/70 border border-slate-700/40 p-5 md:p-6 rounded-[25px] flex items-center justify-between transition-all duration-300 shadow-lg relative overflow-hidden',
+             'group bg-[#111726] border border-slate-800/60 p-5 md:p-6 rounded-[25px] flex items-center justify-between transition-all duration-300 shadow-lg relative overflow-hidden',
              item.status === 'rejected' ? 'opacity-60 grayscale' : 'hover:border-red-700/40 hover:shadow-[0_0_20px_rgba(185,28,28,0.1)]'
            ]">
 
@@ -100,9 +100,9 @@ const formatNumber = (val: any) => {
         </div>
       </div>
 
-      <div v-if="myReports.length === 0" class="text-center py-20 bg-[#1a0f0c]/40 rounded-[30px] border border-dashed border-slate-700/50">
+      <div v-if="myReports.length === 0" class="text-center py-20 bg-slate-800/40 rounded-[30px] border border-dashed border-slate-700/50">
         <div class="text-4xl mb-4">🎬</div>
-        <p class="text-slate-600 font-black italic uppercase text-[10px] tracking-[4px]">Chưa có hoạt động nào được ghi lại</p>
+        <p class="text-slate-400 font-black italic uppercase text-[10px] tracking-[4px]">Chưa có hoạt động nào được ghi lại</p>
       </div>
     </div>
   </div>

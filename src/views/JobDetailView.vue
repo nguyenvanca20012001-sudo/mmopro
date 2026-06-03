@@ -58,7 +58,7 @@ const handleCopy = (text: string) => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-transparent text-slate-300 p-4 md:p-8 font-black italic uppercase text-left relative">
+  <div class="min-h-screen bg-transparent text-gray-800 p-4 md:p-8 font-black italic uppercase text-left relative">
 
     <Transition name="fade">
       <div class="fixed inset-0 z-[6000] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md cursor-zoom-out" v-if="selectedImage" @click="closeImage">
@@ -70,15 +70,15 @@ const handleCopy = (text: string) => {
     </Transition>
 
     <div class="flex justify-between items-center mb-8 max-w-4xl mx-auto border-b border-slate-800 pb-4">
-      <button class="text-[10px] tracking-[3px] text-slate-500 hover:text-white transition-all flex items-center gap-1" @click="router.push('/')">
+      <button class="text-[10px] tracking-[3px] text-gray-600 hover:text-gray-900 transition-all flex items-center gap-1" @click="router.push('/')">
         <span class="text-base font-light not-italic font-sans">✕</span> QUAY LẠI
       </button>
-      <span class="text-[10px] tracking-[4px] text-slate-600">HƯỚNG DẪN CHI TIẾT</span>
+      <span class="text-[10px] tracking-[4px] text-gray-600">HƯỚNG DẪN CHI TIẾT</span>
     </div>
 
     <div class="max-w-4xl mx-auto space-y-10">
       <div class="text-center">
-        <h1 class="text-4xl md:text-5xl font-black text-white italic tracking-tighter leading-none mb-5 drop-shadow-xl">
+        <h1 class="text-4xl md:text-5xl font-black text-gray-900 italic tracking-tighter leading-none mb-5 drop-shadow-xl">
           {{ currentJob.title }}
         </h1>
         <div class="bg-[#052e1f] border border-[#005c3c] rounded-full px-6 py-2.5 w-max mx-auto flex items-center gap-2 shadow-inner">
@@ -112,7 +112,7 @@ const handleCopy = (text: string) => {
               <h4 class="text-yellow-400 font-black italic uppercase text-[12px] md:text-sm tracking-widest mb-1.5 drop-shadow-md">
                 MẸO KIẾM TIỀN:
               </h4>
-              <p class="text-slate-300 text-[11px] md:text-[13px] font-medium leading-relaxed normal-case">
+              <p class="text-white text-[11px] md:text-[13px] font-medium leading-relaxed normal-case">
                 Nếu bạn đã đăng ký APP này rồi, có thể <span class="text-yellow-400 font-black italic text-[12px] md:text-[14px]">giới thiệu bạn bè / người thân đăng ký</span> và chụp lại ảnh bằng chứng gửi lên hệ thống, bạn <span class="text-yellow-400 font-black italic text-[12px] md:text-[14px]">vẫn được nhận hoa hồng</span> bình thường nhé! 🚀
               </p>
             </div>
@@ -135,7 +135,7 @@ const handleCopy = (text: string) => {
 
             <!-- Text -->
             <div class="text-left flex-1 relative z-10">
-              <h3 class="text-white font-black italic uppercase tracking-tight leading-tight mb-1.5"
+              <h3 class="text-gray-900 font-black italic uppercase tracking-tight leading-tight mb-1.5"
                   :class="showGuide ? 'text-base' : 'text-lg'">
                 {{ showGuide ? 'ĐANG XEM HƯỚNG DẪN' : 'HƯỚNG DẪN TỪNG BƯỚC' }}
               </h3>
