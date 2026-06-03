@@ -1,39 +1,43 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 
-const isInApp = ref(false)
-const currentUrl = ref('')
+// Chạy synchronous ngay khi script load — trước cả onMounted
+function detectWebview(): boolean {
+  const ua = navigator.userAgent || navigator.vendor || (window as any).opera
+
+  const rules = [
+    'FBAN', 'FBAV', 'FB_IAB', 'FB4A', 'FBIOS',   // Facebook app & Messenger
+    'Instagram',                                    // Instagram
+    'ZaloApp', 'Zalo',                              // Zalo
+    'MicroMessenger',                               // WeChat
+    'Line',                                         // Line
+    'Twitter',                                      // Twitter/X app
+    'Threads', 'Barcelona',                         // Threads
+    'TikTok', 'trill', 'ByteLocale',               // TikTok
+    'Viber',                                        // Viber
+    'wv', 'WebView',                               // Android generic webview
+  ]
+
+  const matchedRule = rules.find(rule => new RegExp(rule, 'i').test(ua))
+  const isBadBrowser = !!matchedRule
+
+  // iOS webview không có chữ "Safari" trong UA
+  const isIOS = /iPhone|iPad|iPod/i.test(ua)
+  const isSafari = /Safari/i.test(ua)
+  const isIOSWebview = isIOS && !isSafari
+
+  const blocked = isBadBrowser || isIOSWebview
+
+  console.log('[WebviewDetect] UA:', ua)
+  console.log('[WebviewDetect] matchedRule:', matchedRule ?? 'none', '| isIOSWebview:', isIOSWebview, '| BLOCKED:', blocked)
+
+  return blocked
+}
+
+const isInApp = ref(detectWebview()) // Synchronous — không cần onMounted
+const currentUrl = ref('https://mmopro.dangkyxinviec.com')
 const isCopied = ref(false)
 const linkInputRef = ref<HTMLInputElement | null>(null)
-
-onMounted(() => {
-  currentUrl.value = 'https://mmopro.dangkyxinviec.com'
-  const ua = navigator.userAgent || navigator.vendor || (window as any).opera;
-  
-  // NÂNG CẤP LƯỚI LỌC TIA X: Thêm 'Barcelona' (Tên mã của Threads), 'wv', 'WebView', 'FBIOS'
-  const rules = [
-    'FBAN', 'FBAV', 'FBIOS', // Dòng họ nhà Facebook, Messenger
-    'Zalo', // Zalo
-    'Instagram', // Instagram
-    'Threads', 'Barcelona', // Bắt chết Threads cả tên thật lẫn tên ẩn
-    'TikTok', 'trill', 'ByteLocale', // TikTok
-    'Messenger', 'Line', 'Viber', // App chat
-    'wv', 'WebView' // Tóm gọn mọi loại trình duyệt nhúng trên Android
-  ]
-  
-  // Dùng RegExp quét không phân biệt hoa thường
-  const isBadBrowser = rules.some(rule => new RegExp(rule, 'i').test(ua))
-
-  // BẪY PHỤ CHO IPHONE: Nếu xài iOS mà trình duyệt đéo có chữ Safari -> Chắc chắn là Webview ẩn
-  const isIOS = /iPhone|iPad|iPod/i.test(ua);
-  const isSafari = /Safari/i.test(ua);
-  const isIOSWebview = isIOS && !isSafari;
-
-  // Nếu dính lưới Regex HOẶC dính bẫy iOS Webview -> Khóa mõm, bật bảng chặn!
-  if (isBadBrowser || isIOSWebview) {
-    isInApp.value = true
-  }
-})
 
 // THUẬT TOÁN COPY TRỰC TIẾP TỪ Ô INPUT (Giữ nguyên cái này của mày vì nó chống mù iOS quá tốt)
 const copyLink = () => {
