@@ -25,7 +25,7 @@ const formatReward = (val: any) => {
 };
 
 
-const VIP_JOBS = ['app-chung-khoan', 'app-chung-khoan-2', 'app-chung-khoan-3', 'app-chung-khoan-4', 'msb-bank', 'vpbank'];
+const VIP_JOBS = ['liobank', 'app-chung-khoan', 'app-chung-khoan-2', 'app-chung-khoan-3', 'app-chung-khoan-4', 'msb-bank', 'vpbank'];
 
 const isVip = (id: string) => VIP_JOBS.includes(id);
 
@@ -43,6 +43,7 @@ const getJobIcon = (id: string) => {
     'msb-bank': { t: 'MSB', c: 'text-white' },
     'vpbank': { t: 'VPB', c: 'text-white' },
     'app-chung-khoan-4': { t: '📈', c: 'text-white' },
+    'liobank': { t: 'LIO', c: 'text-white' },
   };
   const res = config[id] || { t: 'JOB', c: 'text-slate-400' };
   return { type: 'text', content: res.t, colorClass: res.c };
@@ -62,6 +63,7 @@ const getSocialProof = (id: string) => {
     'msb-bank':          '198',
     'vpbank':            '176',
     'app-chung-khoan-4': '163',
+    'liobank':           '120',
   };
   return seeds[id] || '500';
 };
@@ -85,7 +87,8 @@ const getShortDesc = (id: string) => {
     'app-chung-khoan-3': 'Đăng ký tài khoản KIS',
     'vpbank': 'Mở tài khoản số đẹp VPBank',
     'app-chung-khoan-4': 'Đăng ký tài khoản chứng khoán',
-    'msb-bank': 'Nhận quà tặng khi mở thẻ MSB'
+    'msb-bank': 'Nhận quà tặng khi mở thẻ MSB',
+    'liobank':  'Mở tài khoản LioBank thẻ 2 in 1'
   };
   return desc[id] || 'Làm nhiệm vụ ngay';
 }
@@ -365,7 +368,7 @@ const getShortDesc = (id: string) => {
 
               <!-- Watermark số thứ tự mờ -->
               <div class="absolute bottom-3 right-4 text-[60px] md:text-[80px] font-black text-amber-300/10 pointer-events-none select-none leading-none">
-                {{ ['msb-bank','vpbank','tpbank'].includes(id as string) ? '🏦' : '📊' }}
+                {{ ['msb-bank','vpbank','tpbank','liobank'].includes(id as string) ? '🏦' : '📊' }}
               </div>
 
               <!-- BADGE VIP -->

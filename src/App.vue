@@ -22,11 +22,11 @@ const jobIconMap: Record<string, string> = {
   'follow-cgv': '🎬', 'review-cinema': '⭐', 'checkin-cinema': '📸',
   'survey-cinema': '📋', 'post-threads': '🧵', 'join-zalo': '💬',
   'app-chung-khoan': '📈', 'app-chung-khoan-2': '📈', 'app-chung-khoan-3': '📈',
-  'app-chung-khoan-4': '📈', 'msb-bank': '🏦', 'vpbank': '🏦',
+  'app-chung-khoan-4': '📈', 'msb-bank': '🏦', 'vpbank': '🏦', 'liobank': '🏦',
 }
-const VIP_IDS = ['app-chung-khoan', 'app-chung-khoan-2', 'app-chung-khoan-3', 'app-chung-khoan-4', 'msb-bank', 'vpbank']
+const VIP_IDS = ['liobank', 'app-chung-khoan', 'app-chung-khoan-2', 'app-chung-khoan-3', 'app-chung-khoan-4', 'msb-bank', 'vpbank']
 // ⏸️ TẠM DỪNG — Thêm/xoá job ID ở đây để bật/tắt
-const PAUSED_JOBS = ['vpbank']
+const PAUSED_JOBS = ['vpbank', 'msb-bank']
 
 // --- Age confirmation modal (mobile bottom sheet) ---
 const showAgeConfirmModal = ref(false)
@@ -505,7 +505,7 @@ const handleReceiveJob = (jobId: string) => {
     alert('⏸️ CÔNG VIỆC TẠM DỪNG\nChương trình đang được cập nhật. Vui lòng quay lại sau!')
     return
   }
-  if (jobsData[jobId]?.warning && localStorage.getItem('age_confirmed_' + jobId) === 'true') {
+  if (jobsData[jobId]?.warning && sessionStorage.getItem('age_confirmed_' + jobId) === 'true') {
     activePopup.value = ''
     router.push(`/job/${jobId}`)
     return
@@ -519,7 +519,7 @@ const handleReceiveJob = (jobId: string) => {
     activePopup.value = ''
     ageConfirmJobId.value = jobId
     ageConfirmJobTitle.value = jobsData[jobId]?.title || jobId
-    ageConfirmAge.value = jobId === 'app-chung-khoan-3' ? 20 : 18
+    ageConfirmAge.value = jobId === 'app-chung-khoan-3' ? 20 : jobId === 'liobank' ? 22 : 18
     showAgeConfirmModal.value = true
   } else {
     router.push(`/job/${jobId}`)
@@ -528,7 +528,7 @@ const handleReceiveJob = (jobId: string) => {
 
 const confirmAgeAndNavigate = () => {
   showAgeConfirmModal.value = false
-  localStorage.setItem('age_confirmed_' + ageConfirmJobId.value, 'true')
+  sessionStorage.setItem('age_confirmed_' + ageConfirmJobId.value, 'true')
   router.push(`/job/${ageConfirmJobId.value}`)
 }
 
