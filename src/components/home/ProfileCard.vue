@@ -12,6 +12,8 @@ const props = defineProps<{
   userBalance: number
 }>()
 
+const emit = defineEmits<{ (e: 'claimActive'): void }>()
+
 const totalSubmitted = computed(() => props.myReports.length)
 
 const totalApproved = computed(() =>
@@ -185,29 +187,9 @@ const bgGlowClass = computed(() => {
       </div>
 
       <!-- 1 hòm đang tiến độ -->
-      <div v-else-if="activeChest" class="space-y-1">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-1.5">
-            <span class="text-sm" :style="activeChest.unlocked ? '' : 'filter: grayscale(1); opacity: 0.4;'">{{ activeChest.icon }}</span>
-            <span class="text-[9px] font-black uppercase"
-                  :class="activeChest.unlocked ? activeChest.color : 'text-slate-400'">
-              {{ activeChest.chest?.replace('🎁 ', '').toUpperCase() }}
-            </span>
-          </div>
-          <span class="text-[8px] font-black tabular-nums"
-                :class="activeChest.unlocked ? 'text-amber-500' : activeChest.color">
-            <template v-if="activeChest.unlocked">🎁 Chưa nhận</template>
-            <template v-else>Còn {{ activeChest.remaining }} đơn</template>
-          </span>
-        </div>
-        <div class="h-3 bg-slate-700/60 rounded-full overflow-hidden">
-          <div class="h-full rounded-full transition-all duration-700" style="background:#a3e635; box-shadow: 0 0 8px rgba(163,230,53,0.6);"
-               :style="{ width: activeChest.percent + '%' }"></div>
-        </div>
-        <p class="text-right text-[11px] font-black text-blue-400 tabular-nums">
-          {{ Math.min(vipProgress.count, activeChest.min) }}/{{ activeChest.min }}
-        </p>
-        <div class="flex items-center gap-2.5 bg-[#0d121f]/90 border border-lime-500/20 rounded-xl px-3 py-2 mt-1">
+      <div v-else-if="activeChest" class="space-y-2">
+        <!-- Gift info box -->
+        <div class="flex items-center gap-2.5 bg-[#0d121f]/90 border border-lime-500/20 rounded-xl px-3 py-2">
           <span class="text-xl flex-shrink-0">🎁</span>
           <div class="min-w-0">
             <p class="text-[9px] font-black uppercase text-lime-400 tracking-widest leading-none mb-0.5">NHẬN THƯỞNG NGẪU NHIÊN</p>
@@ -217,6 +199,37 @@ const bgGlowClass = computed(() => {
             </p>
           </div>
         </div>
+
+        <!-- Progress bar: TIẾN ĐỘ | bar | X/Y CÔNG VIỆC -->
+        <div class="space-y-1">
+          <div class="flex items-center justify-between">
+            <span class="text-[8px] font-black uppercase text-slate-400 tracking-widest">TIẾN ĐỘ</span>
+            <span class="text-[9px] font-black text-blue-400 tabular-nums">
+              {{ Math.min(vipProgress.count, activeChest.min) }}/{{ activeChest.min }} CÔNG VIỆC
+            </span>
+          </div>
+          <div class="h-3 bg-slate-700/60 rounded-full overflow-hidden">
+            <div class="h-full rounded-full transition-all duration-700" style="background:#a3e635; box-shadow: 0 0 8px rgba(163,230,53,0.6);"
+                 :style="{ width: activeChest.percent + '%' }"></div>
+          </div>
+        </div>
+
+        <!-- Nút nhận thưởng — luôn hiển thị -->
+        <div v-if="activeChest.claimed"
+             class="w-full py-2 text-center text-emerald-400 text-[10px] font-black uppercase tracking-wide border border-emerald-500/20 rounded-xl bg-emerald-500/5">
+          ✅ ĐÃ NHẬN THƯỞNG THÀNH CÔNG
+        </div>
+        <button v-else
+                :disabled="!activeChest.unlocked"
+                @click="activeChest.unlocked && emit('claimActive')"
+                class="w-full py-3 rounded-xl font-black italic uppercase text-sm text-white transition-all shadow-lg"
+                :class="activeChest.unlocked ? 'active:scale-95' : 'cursor-not-allowed opacity-40'"
+                :style="activeChest.unlocked
+                  ? 'background: linear-gradient(135deg, #84cc16, #22c55e); box-shadow: 0 0 12px rgba(132,204,22,0.4)'
+                  : 'background: #1e293b; border: 1px solid #334155'">
+          <span v-if="!activeChest.unlocked">🔒 NHẬN THƯỞNG</span>
+          <span v-else>🎁 NHẬN THƯỞNG</span>
+        </button>
       </div>
     </div><!-- /row 2 -->
 

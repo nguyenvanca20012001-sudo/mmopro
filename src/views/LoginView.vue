@@ -134,7 +134,7 @@ const handleLogin = async () => {
 
       <div class="w-full max-w-md space-y-10">
         <div class="lg:hidden text-center mb-10">
-            <h2 class="text-3xl font-black text-slate-800 italic uppercase tracking-tighter leading-none">RẠP <span class="text-blue-600">JOB</span></h2>
+            <h2 class="text-3xl font-black text-slate-800 italic uppercase tracking-tighter leading-none">MMO <span class="text-blue-600">PRO</span></h2>
             <p class="text-[9px] text-slate-400 font-black tracking-[3px] uppercase mt-1 italic">Hệ thống kiếm tiền Online</p>
         </div>
 

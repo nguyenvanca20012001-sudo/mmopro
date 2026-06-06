@@ -75,20 +75,17 @@ export const jobsData: Record<string, any> = {
     steps: [
       {
         id: 1,
-        title: "BƯỚC 1: CHỌN MẪU BÀI ĐĂNG (SAO CHÉP 1 TRONG 10 MẪU)",
-        content: "Bấm nút SAO CHÉP ở một trong các mẫu nội dung dưới đây để chuẩn bị đăng lên tài khoản Threads của bạn:",
+        title: "BƯỚC 1: SAO CHÉP NỘI DUNG BÀI ĐĂNG VÀ TẢI ẢNH",
+        content: "Bấm SAO CHÉP để copy nội dung bài đăng. Bấm TẢI ẢNH để lưu ảnh kèm theo về máy, đăng lên Threads cùng nội dung:",
         templates: [
-          "TUYỂN CTV SEEDING ONLINE\nYÊU CẦU: Acc Threads sử dụng trên 6 tháng, hay follow các chủ đề Gen Z, Idol KPOP, Anh em xinh,….\nNội dung Post bên mình đưa sẵn, chỉ việc đăng trên nền tảng Threads.\nthả tim + bình luận chấm bài viết , mình gửi JD ở phần bình luận",
-          "TUYỂN CTV Đánh giá google Map , Seeding, Cày view\n- sản phẩm: ô tô Vinfast , Vincom, kênh youtube Nhà F …\n- Mô tả công việc: tương tác , bình luận , follow kênh , đánh giá 5 sao ….\n* Làm online tại nhà, thời gian linh hoạt.\nCông việc bên mình không cần cọc, không cần vốn gì hết nên mọi người đừng có lo nha\nthả tim + chấm bài viết , mình có gửi JD phía dưới bình luận",
-          "TUYỂN CTV LÀM ONLINE TẠI NHÀ - NHẬN LƯƠNG TRONG NGÀY\nCông việc siêu đơn giản: Đánh giá 5 sao trên Google Map, cày view TikTok, YouTube.\n- Thời gian tự do, rảnh lúc nào cầm điện thoại làm lúc đó.\n- Thu nhập đều đặn 300k - 500k/ngày tùy độ chăm chỉ.\nCam kết 100% KHÔNG CỌC, KHÔNG VỐN!\n👉 Mọi người thả tim + chấm bài viết này, mình sẽ gửi JD chi tiết ở phần bình luận nha!",
-          "HOT: TUYỂN ĐỘI NGŨ SEEDING, CÀY VIEW PART-TIME\n- Nhiệm vụ: Seeding tương tác, cmt khen ngợi cho ô tô Vinfast; đăng bài đẩy trend Threads; cày view Tiktok...\n- Thu nhập từ 300k - 500k/ngày, làm xong duyệt tiền luôn.\nTuyệt đối không yêu cầu kinh nghiệm, không thu phí.\n👉 thả tim + bình luận dưới bài viết, mình gửi liền JD ở phần bình luận nhé!",
-          "TUYỂN CTV LÀM NHIỆM VỤ ONLINE (KHÔNG CỌC)\nBên mình đang cần người chạy các dự án sau:\n✅ Đánh giá địa điểm 5 sao Google Map.\n✅ Seeding, cmt tích cực cho ô tô Vinfast.\n✅ Cày view, tương tác TikTok, Youtube.\nThu nhập cực ổn: 300k - 500k/ngày.\n👉 thả tim + chấm bài viết giúp mình, mình gửi chi tiết JD ở ngay bình luận nha!",
-          "TUYỂN CTV TƯƠNG TÁC DẠO - KIẾM TIỀN TIÊU VẶT RẤT DỄ\nBạn nào hay lướt điện thoại rảnh rỗi thì về ngay đội mình!\n- Công việc: Cày view Youtube kênh Nhà F, seeding chéo cho dự án xe Vinfast, đăng bài Threads.\n- Kiếm 300k - 500k/ngày cực kỳ dễ thở. KHÔNG BẮT ĐÓNG TIỀN nha.\n👉 thả tim + bình luận chấm bài viết, mình gửi JD ngay dưới cmt ạ.",
-          "KIẾM TIỀN TỪ VIỆC XEM VIDEO TIKTOK, YOUTUBE - TẠI SAO KHÔNG?\n- Tuyển CTV chuyên cày view, cày sub. Rảnh rỗi nhận thêm job đánh giá Google Map hoặc Seeding Vinfast.\n- Lương tính theo nhiệm vụ, đều tay thì 300k - 500k/ngày. Tiền rút thẳng về thẻ.\nKhông cọc không vốn nha. \n👉 thả tim + bình luận bài viết, mình sẽ để link JD dưới phần bình luận.",
-          "CẦN GẤP CTV ĐÁNH GIÁ MAP VÀ SEEDING DỰ ÁN LỚN\n- Bên mình đang chạy KPI đánh giá 5 sao Google Map và seeding cho hãng xe Vinfast.\n- Công việc linh hoạt tại nhà, đút túi 300k - 500k/ngày.\n- Tham gia hoàn toàn miễn phí, không đa cấp lùa gà.\n👉 thả tim + chấm dưới bài, mình sẽ rep và gửi JD ở phần bình luận nhé.",
-          "TÌM ĐỒNG ĐỘI CÀY VIEW, SEEDING KIẾM THÊM TẠI NHÀ\nJob bên mình toàn việc nhàn: Xem video Tiktok thả tim, đánh giá 5 sao Map, cmt mồi nội dung cho ô tô Vinfast.\n- Việc làm 100% online, thu nhập tươi 300k - 500k/ngày. Không bắt nộp phí.\n👉 Thả tim + để lại 1 dấu chấm, mình gửi luôn link JD dưới phần bình luận nhé!",
-          "Đang rảnh rỗi lướt điện thoại thì bơi hết vào đây nhận việc nào mọi người ơi!\nMình cần tuyển gấp CTV cày view Youtube/Tiktok, đánh giá Map 5 sao và seeding dạo cho ô tô Vinfast. Nội dung bên mình cấp sẵn.\nSiêng năng là ngày kiếm 300k - 500k ngon ơ. KHÔNG THU PHÍ ĐẦU VÀO nhé.\n👉 thả tim + bình luận bài viết, mình sẽ ném cái JD xuống phần bình luận ạ."
-        ]
+          "Góc khuất học sinh THPT, thức đêm đăng bài thread , đánh giá google map , seeding =))) ít nhưng vẫn cố a",
+          "dm đời cuối cùng t cũng kiếm đc job online nghỉ hè rồi , chi tiết phần bình luận",
+          "flex ngày hôm nay  : nhận lương từ đăng bài thread , đánh giá google Map , seeding",
+          "cần 10 bạn seeding , đăng bài thread , seeding , nếu sợ đảo lửa sẽ bank trước lương"
+        ],
+        img: "images/anh-thread2.jpg",
+        downloadLink: "images/anh-thread2.jpg",
+        buttonText: "📥 TẢI ẢNH BÀI ĐĂNG"
       },
       {
         id: 2,
@@ -169,32 +166,18 @@ export const jobsData: Record<string, any> = {
     reward: "10.000 xu",
     color: "text-blue-500",
     badge: "CƠ BẢN",
-      steps: [
+    steps: [
       {
         id: 1,
         title: "THAM GIA NHÓM ZALO MMO PRO ",
         content: "Chọn 1 trong 2 nhóm bên dưới để tham gia.",
         extraLinks: [
           { text: "THAM GIA NHÓM 3 ➔", url: "https://zalo.me/g/lenpfa1wvl7xvrwiihw2" }
-
         ]
       },
       {
         id: 2,
-        title: "CHỌN ĐĂNG KÝ NGAY ĐỂ THAM GIA SỰ KIỆN ",
-        content: "THAM GIA SỰ KIỆN CÙNG NAM NGƯ TẠI ZALO.",
-        downloadLink: "https://shorten.asia/8JrutSwQ", // Link chuyển hướng Zalo cho bước 2
-        buttonText: "🚀 ĐĂNG KÝ NGAY" // Tên nút bấm theo yêu cầu của Boss
-      },
-      {
-        id: 3,
-        title: "CHỤP ẢNH MÀN HÌNH",
-        content: "Xem ảnh mẫu bên dưới để gửi bằng chứng .",
-        img: "images/anh-namngu.jpg",
-      },
-      {
-        id: 4,
-        title: "GỬI BẰNG CHỨNG",
+        title: "CHỤP LẠI ẢNH TRONG NHÓM ZALO ",
         content: "Tải ảnh vừa chụp lên hệ thống để xác nhận hoàn thành nhiệm vụ và nhận xu."
       }
     ]
@@ -213,8 +196,8 @@ export const jobsData: Record<string, any> = {
     steps: [
       {
         id: 1,
-        title: "TẢI VÀ ĐĂNG KÝ APP LIOBANK",
-        content: "Nhấn nút bên dưới để tải app LioBank và bắt đầu đăng ký tài khoản.",
+        title: "BẮT BUỘC PHẢI CHỌN ĐĂNG KÝ NGAY ",
+        content: "Chọn ĐĂNG KÝ NGAY để đăng ký tài khoản .",
         downloadLink: "https://shorten.asia/uEyTE3Sp",
         buttonText: "ĐĂNG KÝ NGAY ➔"
       },

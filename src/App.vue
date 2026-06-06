@@ -224,41 +224,52 @@ const startLiveFeed = () => {
 const randInt = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min
 const fmtXu = (n: number) => n.toLocaleString('vi-VN')
 
-const triggerNotice = (type: 'withdraw' | 'chest') => {
+const triggerNotice = (type: 'withdraw' | 'basic' | 'vip') => {
   const name = names[Math.floor(Math.random() * names.length)]
   if (type === 'withdraw') {
     const bank = banks[Math.floor(Math.random() * banks.length)]
-    const withdrawAmounts = ['250.000', '500.000', '650.000', '800.000', '1.000.000', ]
+    const withdrawAmounts = ['250.000', '500.000', '650.000', '800.000', '1.000.000']
     randomNotice.value = {
       type: 'withdraw', name, title: 'Vừa rút thành công',
-      amount: withdrawAmounts[Math.floor(Math.random() * withdrawAmounts.length)], sub: `Về Ngân hàng ${bank}`
+      amount: withdrawAmounts[Math.floor(Math.random() * withdrawAmounts.length)],
+      sub: `Về Ngân hàng ${bank}`
     }
+    setTimeout(() => { randomNotice.value = null }, 7000)
   } else {
-    const chestList = [
-      { name: 'Hòm Bạc',       min: 20000,  max: 100000  },
-      { name: 'Hòm Vàng',      min: 50000,  max: 300000  },
-      { name: 'Hòm Kim Cương', min: 200000, max: 1000000 },
-    ]
-    const c = chestList[Math.floor(Math.random() * chestList.length)]
-    const xu = randInt(c.min, c.max)
+    const basicXu = [10000, 25000, 30000]
+    const vipXu   = [65000, 85000, 100000]
+    const pool    = type === 'basic' ? basicXu : vipXu
+    const xu      = pool[Math.floor(Math.random() * pool.length)] as number
+    const label   = type === 'basic' ? 'công việc cơ bản' : 'công việc VIP'
     randomNotice.value = {
-      type: 'chest', name, title: `Vừa nhận ${fmtXu(xu)} XU`,
-      amount: '', sub: `Từ ${c.name}`
+      type: 'chest', name,
+      title: `Vừa nhận thành công ${fmtXu(xu)} XU`,
+      amount: '', sub: `Từ ${label}`
     }
+    setTimeout(() => { randomNotice.value = null }, 2500)
   }
-  setTimeout(() => { randomNotice.value = null }, 2500)
 }
 
 const startToasting = () => {
-  const withdrawLoop = () => {
-    const next = Math.floor(Math.random() * (6000 - 3500 + 1) + 3500)
-    setTimeout(() => { if (!randomNotice.value) triggerNotice('withdraw'); withdrawLoop() }, next)
+  const buildQueue = (): Array<'withdraw' | 'basic' | 'vip'> => [
+    'withdraw',
+    'basic', 'vip', 'basic', 'basic',
+    'withdraw',
+    'vip', 'basic', 'basic', 'vip',
+  ]
+
+  let queue: Array<'withdraw' | 'basic' | 'vip'> = []
+  let idx = 0
+
+  const showNext = () => {
+    if (idx >= queue.length) { queue = buildQueue(); idx = 0 }
+    const type = queue[idx++] ?? 'basic'
+    triggerNotice(type)
+    const gap = type === 'withdraw' ? 10000 : 3000
+    setTimeout(showNext, gap)
   }
-  const chestLoop = () => {
-    const next = Math.floor(Math.random() * (7000 - 4000 + 1) + 4000)
-    setTimeout(() => { if (!randomNotice.value) triggerNotice('chest'); chestLoop() }, next)
-  }
-  withdrawLoop(); chestLoop()
+
+  setTimeout(showNext, 3000)
 }
 
 // ============================================================
@@ -408,6 +419,15 @@ async function confirmClaim() {
   showClaimPopup.value = false
   claimPopupOpening.value = false
   claimPopupParticles.value = []
+}
+
+function openClaimPopupForActiveChest() {
+  const idx = vipTiers.slice(1).findIndex(
+    (t: any) => vipProgress.value.count >= t.min && !claimedChests.value.includes(t.key)
+  )
+  if (idx < 0) return
+  expandedChest.value = idx
+  openClaimPopup()
 }
 
 // === LOGIC ĐỒNG BỘ THỜI GIAN THỰC CHỐNG LỖI ===
@@ -871,78 +891,9 @@ watch(activePopup, (val) => {
                :isLoggedIn="isLoggedIn"
                :isDataLoading="isDataLoading"
                :userBalance="userBalance"
+               @claimActive="openClaimPopupForActiveChest"
              />
            </div>
-
-           <!-- Mobile: 3 Hòm Rương -->
-           <div v-if="isLoggedIn" class="lg:hidden space-y-3 mt-5">
-             <!-- Grid hòm -->
-             <div class="grid grid-cols-3 gap-2.5">
-               <TreasureChest
-                 v-for="(t, i) in vipTiers.slice(1)" :key="t.key"
-                 :tier="t"
-                 :unlocked="vipProgress.count >= t.min"
-                 :claimed="claimedChests.includes(t.key)"
-                 :count="vipProgress.count"
-                 @toggle="expandedChest = expandedChest === i ? null : i"
-               />
-             </div>
-
-             <!-- Detail panel khi click hòm -->
-             <div v-if="selectedChestTier" class="relative rounded-2xl border p-4 space-y-2"
-                  :class="[selectedChestTier.bg, selectedChestTier.border]">
-
-               <!-- ĐÃ MỞ -->
-               <template v-if="vipProgress.count >= selectedChestTier.min">
-                 <p class="text-center font-black italic uppercase text-sm" :class="selectedChestTier.color">
-                   {{ selectedChestTier.chest }} 🎉
-                 </p>
-                 <p class="text-center text-white text-[11px] font-black">{{ selectedChestTier.chestDesc }}</p>
-                 <p class="text-center text-emerald-400 text-[9px] font-bold">Chúc mừng! Bạn đã đủ điều kiện nhận thưởng.</p>
-
-                 <!-- ĐÃ NHẬN -->
-                 <div v-if="claimedChests.includes(selectedChestTier.key)"
-                      class="w-full py-2 text-center text-emerald-400 text-[10px] font-black uppercase tracking-wide border border-emerald-500/20 rounded-xl bg-emerald-500/5">
-                   ✅ ĐÃ NHẬN THƯỞNG
-                 </div>
-                 <!-- CHƯA NHẬN -->
-                 <button v-else
-                         @click="openClaimPopup()"
-                         :disabled="claimingChest"
-                         class="w-full py-3 rounded-xl font-black italic uppercase text-sm text-white transition-all active:scale-95 disabled:opacity-60 shadow-lg"
-                         :class="selectedChestTier.btnBg">
-                   <span v-if="claimingChest">⏳ Đang xử lý...</span>
-                   <span v-else>🎁 NHẬN THƯỞNG</span>
-                 </button>
-               </template>
-
-               <!-- CÒN KHÓA -->
-               <template v-else>
-                 <p class="text-center font-black italic uppercase text-sm" :class="selectedChestTier.color">
-                   {{ selectedChestTier.chest }}
-                 </p>
-                 <p class="text-center text-slate-400 text-[10px] font-bold">
-                   Cần hoàn thành {{ selectedChestTier.min }} công việc
-                 </p>
-                 <div class="space-y-1">
-                   <div class="flex justify-between">
-                     <span class="text-slate-600 text-[8px] font-black uppercase">TIẾN ĐỘ</span>
-                     <span class="text-[9px] font-black" :class="selectedChestTier.color">
-                       {{ vipProgress.count }}/{{ selectedChestTier.min }}
-                     </span>
-                   </div>
-                   <div class="h-1.5 bg-slate-800 rounded-full overflow-hidden">
-                     <div class="h-full rounded-full transition-all duration-700"
-                          :class="selectedChestTier.bar"
-                          :style="{ width: Math.min(100, (vipProgress.count / selectedChestTier.min) * 100) + '%' }"></div>
-                   </div>
-                 </div>
-                 <p class="text-center text-[9px] font-black italic" :class="selectedChestTier.color">
-                   Phần thưởng: {{ selectedChestTier.chestDesc }}
-                 </p>
-               </template>
-             </div>
-           </div><!-- /3 hòm rương -->
 
            <JobSection
              :username="username"

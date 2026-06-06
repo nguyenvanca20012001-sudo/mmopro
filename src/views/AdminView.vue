@@ -435,7 +435,7 @@ onMounted(() => {
 const isAppJob = (jobName: string) => {
   if (!jobName) return false;
   const name = jobName.toLowerCase();
-  const keywords = ['app', 'ngân hàng', 'chứng khoán', 'vpbank', 'tpbank', 'mbbank', 'msb', 'cake', 'tnex', 'kafi', 'dnse', 'kis'];
+  const keywords = ['app', 'ngân hàng', 'chứng khoán', 'vpbank', 'tpbank', 'mbbank', 'msb', 'cake', 'tnex', 'kafi', 'dnse', 'kis', 'liobank', 'lio'];
   return keywords.some(kw => name.includes(kw));
 }
 
@@ -586,6 +586,12 @@ const formatDate = (timestamp: any) => {
   const d = timestamp.toDate ? timestamp.toDate() : new Date(timestamp)
   return `${d.getHours()}:${d.getMinutes()} - ${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`
 }
+
+const toMs = (t: any) => t?.toDate ? t.toDate().getTime() : new Date(t || 0).getTime()
+const parseExifDate = (d: any) => { if (!d) return null; const dt = new Date(d); return isNaN(dt.getTime()) ? null : dt }
+const isOldPhoto = (dateTaken: any, createdAt: any) => { const shot = parseExifDate(dateTaken); if (!shot) return false; return (toMs(createdAt) - shot.getTime()) / 86400000 > 7 }
+const fmtDate = (d: any) => { const dt = parseExifDate(d); if (!dt) return ''; return dt.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) }
+const hasOldPhoto = (arr: any[], createdAt: any) => Array.isArray(arr) && arr.some(e => isOldPhoto(e?.dateTaken, createdAt))
 
 const handleAdminLogout = async () => {
   if(confirm('XÁC NHẬN THOÁT ADMIN?')) { await signOut(auth); router.push('/login') }
@@ -809,8 +815,9 @@ const handleAdminLogout = async () => {
                   <div class="text-slate-500 text-[10px] mt-0.5 font-sans not-italic tracking-normal">SĐT ĐƠN: {{ rp.phoneRef || 'Không có' }}</div>
                   
                   <div class="text-slate-400 text-[10px] mt-0.5 font-sans not-italic tracking-normal">
-                    Năm sinh đơn nộp: 
-                    <span class="text-yellow-400 font-bold" v-if="rp.birthYear">{{ rp.birthYear }}</span>
+                    Sinh đơn nộp:
+                    <span class="text-yellow-400 font-bold" v-if="rp.birthYear && rp.birthMonth">Tháng {{ rp.birthMonth }}/{{ rp.birthYear }}</span>
+                    <span class="text-yellow-400 font-bold" v-else-if="rp.birthYear">{{ rp.birthYear }}</span>
                     <span class="text-slate-600 italic" v-else>Đơn cũ chưa nhập</span>
                   </div>
                 </div>
@@ -820,14 +827,40 @@ const handleAdminLogout = async () => {
                 <div class="text-emerald-400 text-sm font-black">+{{ String(rp.reward).replace(/\D/g, '') }} XU</div>
               </td>
               <td class="p-6">
-                <div class="flex justify-center gap-2">
-                  <a class="bg-blue-600 text-[8px] text-white p-2 rounded" v-if="rp.taskLink" :href="rp.taskLink" target="_blank">MỞ LINK BÀI</a>
-                  <div class="relative cursor-pointer" v-for="(img, idx) in rp.images" :key="idx" @click="openImage(img)">
-                    <div class="block w-12 h-12 rounded-lg border border-slate-700 overflow-hidden hover:scale-110 hover:border-blue-500 transition-all shadow-lg">
-                      <img class="w-full h-full object-cover" :src="img" />
+                <div class="flex flex-col items-center gap-2">
+                  <div class="flex justify-center gap-2 flex-wrap">
+                    <a class="bg-blue-600 text-[8px] text-white p-2 rounded" v-if="rp.taskLink" :href="rp.taskLink" target="_blank">LINK BÀI</a>
+                    <div class="cursor-pointer" v-for="(img, idx) in rp.images" :key="idx" @click="openImage(img)">
+                      <div class="w-12 h-12 rounded-lg border border-slate-700 overflow-hidden hover:scale-110 hover:border-blue-500 transition-all">
+                        <img class="w-full h-full object-cover" :src="img" />
+                      </div>
                     </div>
+                    <div class="text-slate-700 text-[9px]" v-if="!rp.images?.length && !rp.taskLink">KHÔNG CÓ ẢNH</div>
                   </div>
-                  <div class="text-slate-700 text-[9px]" v-if="!rp.images?.length && !rp.taskLink">KHÔNG CÓ ẢNH</div>
+                  <!-- EXIF BADGE — array format -->
+                  <template v-if="rp.exif && Array.isArray(rp.exif) && rp.exif.length">
+                    <div class="w-full space-y-1">
+                      <template v-if="rp.exif.some((e: any) => e.suspicious)">
+                        <span class="inline-flex items-center gap-1 bg-red-500/20 border border-red-500/60 text-red-400 text-[8px] font-black px-2 py-1 rounded-full w-full justify-center">⚠️ CẢNH BÁO GIAN LẬN · {{ rp.exif.filter((e: any) => e.suspicious).length }}/{{ rp.exif.length }} ẢNH ĐÁNG NGỜ · {{ rp.exif.find((e: any) => e.suspicious)?.software }}</span>
+                      </template>
+                      <template v-else-if="rp.exif.some((e: any) => !e.hasExif)">
+                        <span class="inline-flex items-center gap-1 bg-yellow-500/10 border border-yellow-500/40 text-yellow-400 text-[8px] font-black px-2 py-1 rounded-full w-full justify-center">⚠️ KHÔNG CÓ EXIF · {{ rp.exif.filter((e: any) => !e.hasExif).length }}/{{ rp.exif.length }} ẢNH</span>
+                      </template>
+                      <template v-else>
+                        <span class="inline-flex items-center gap-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[8px] font-black px-2 py-1 rounded-full w-full justify-center">✓ {{ rp.exif[0]?.device || 'Thiết bị thật' }}<template v-if="rp.exif[0]?.dateTaken"> · {{ fmtDate(rp.exif[0].dateTaken) }}</template></span>
+                      </template>
+                      <span v-if="hasOldPhoto(rp.exif, rp.createdAt)" class="inline-flex items-center gap-1 bg-orange-500/20 border border-orange-500/60 text-orange-400 text-[8px] font-black px-2 py-1 rounded-full w-full justify-center">⚠️ ẢNH CŨ · CHỤP {{ fmtDate(rp.exif.find((e: any) => isOldPhoto(e?.dateTaken, rp.createdAt))?.dateTaken) }}</span>
+                    </div>
+                  </template>
+                  <!-- EXIF BADGE — object format -->
+                  <template v-else-if="rp.exif && !Array.isArray(rp.exif)">
+                    <div class="w-full space-y-1">
+                      <span v-if="rp.exif.suspicious" class="inline-flex bg-red-500/20 border border-red-500/60 text-red-400 text-[8px] font-black px-2 py-1 rounded-full w-full justify-center">⚠️ CẢNH BÁO GIAN LẬN · {{ rp.exif.software }}</span>
+                      <span v-else-if="!rp.exif.hasExif" class="inline-flex bg-yellow-500/10 border border-yellow-500/40 text-yellow-400 text-[8px] font-black px-2 py-1 rounded-full w-full justify-center">⚠️ KHÔNG CÓ EXIF</span>
+                      <span v-else class="inline-flex bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[8px] font-black px-2 py-1 rounded-full w-full justify-center">✓ {{ rp.exif.device || 'Thiết bị thật' }}<template v-if="rp.exif.dateTaken"> · {{ fmtDate(rp.exif.dateTaken) }}</template></span>
+                      <span v-if="isOldPhoto(rp.exif.dateTaken, rp.createdAt)" class="inline-flex bg-orange-500/20 border border-orange-500/60 text-orange-400 text-[8px] font-black px-2 py-1 rounded-full w-full justify-center">⚠️ ẢNH CŨ · {{ fmtDate(rp.exif.dateTaken) }}</span>
+                    </div>
+                  </template>
                 </div>
               </td>
               <td class="p-6 text-center text-[10px]">
