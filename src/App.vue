@@ -175,24 +175,20 @@ const jobList = [
 
 // Pool các loại hoạt động (không có tên — tên lấy ngẫu nhiên từ names[])
 const activityPool = [
-  { icon: '🎵', job: 'CÀY VIEW TIKTOK',            reward: '30.000',  type: 'job'      },
-  { icon: '▶️', job: 'CÀY VIEW YOUTUBE',            reward: '30.000',  type: 'job'      },
-  { icon: '📝', job: 'ĐĂNG BÀI THREADS',            reward: '30.000',  type: 'job'      },
-  { icon: '🚗', job: 'SEEDING VINFAST',              reward: '30.000',  type: 'job'      },
-  { icon: '💬', job: 'THAM GIA NHÓM ZALO',          reward: '10.000',  type: 'job'      },
-  { icon: '📈', job: 'APP CHỨNG KHOÁN SỐ 1',        reward: '85.000',  type: 'job'      },
-  { icon: '📊', job: 'APP CHỨNG KHOÁN SỐ 2',        reward: '85.000',  type: 'job'      },
-  { icon: '💹', job: 'APP CHỨNG KHOÁN SỐ 3',        reward: '100.000', type: 'job'      },
-  { icon: '🏦', job: 'ĐĂNG KÝ NGÂN HÀNG MSB',       reward: '100.000', type: 'job'      },
-  { icon: '🏦', job: 'ĐĂNG KÝ NGÂN HÀNG VPBANK',    reward: '100.000', type: 'job'      },
-  { icon: '💸', job: 'RÚT VỀ MB BANK',              reward: '200.000', type: 'withdraw' },
-  { icon: '💸', job: 'RÚT VỀ VPBANK',               reward: '500.000', type: 'withdraw' },
-  { icon: '💸', job: 'RÚT VỀ TECHCOMBANK',          reward: '650.000', type: 'withdraw' },
-  { icon: '💸', job: 'RÚT VỀ VIETCOMBANK',          reward: '800.000', type: 'withdraw' },
-  { icon: '💸', job: 'RÚT VỀ TPBANK',               reward: '500.000', type: 'withdraw' },
-  { icon: '💸', job: 'RÚT VỀ MSB BANK',             reward: '200.000', type: 'withdraw' },
-  { icon: '💸', job: 'RÚT VỀ VIETINBANK',           reward: '650.000', type: 'withdraw' },
-  { icon: '💸', job: 'RÚT VỀ ACB',                  reward: '800.000', type: 'withdraw' },
+  { icon: '💰', job: 'NHẬN XU TỪ CÔNG VIỆC CƠ BẢN', reward: '30.000',    type: 'job'      },
+  { icon: '💰', job: 'NHẬN XU TỪ CÔNG VIỆC CƠ BẢN', reward: '30.000',    type: 'job'      },
+  { icon: '💰', job: 'NHẬN XU TỪ CÔNG VIỆC CƠ BẢN', reward: '10.000',    type: 'job'      },
+  { icon: '⭐', job: 'NHẬN XU TỪ CÔNG VIỆC VIP',    reward: '85.000',    type: 'job'      },
+  { icon: '⭐', job: 'NHẬN XU TỪ CÔNG VIỆC VIP',    reward: '65.000',    type: 'job'      },
+  { icon: '⭐', job: 'NHẬN XU TỪ CÔNG VIỆC VIP',    reward: '85.000',    type: 'job'      },
+  { icon: '💸', job: 'RÚT VỀ MB BANK',               reward: '250.000',   type: 'withdraw' },
+  { icon: '💸', job: 'RÚT VỀ VPBANK',                reward: '500.000',   type: 'withdraw' },
+  { icon: '💸', job: 'RÚT VỀ TECHCOMBANK',           reward: '650.000',   type: 'withdraw' },
+  { icon: '💸', job: 'RÚT VỀ VIETCOMBANK',           reward: '1.000.000', type: 'withdraw' },
+  { icon: '💸', job: 'RÚT VỀ TPBANK',                reward: '500.000',   type: 'withdraw' },
+  { icon: '💸', job: 'RÚT VỀ MSB BANK',              reward: '250.000',   type: 'withdraw' },
+  { icon: '💸', job: 'RÚT VỀ VIETINBANK',            reward: '650.000',   type: 'withdraw' },
+  { icon: '💸', job: 'RÚT VỀ ACB',                   reward: '1.000.000', type: 'withdraw' },
 ]
 let _feedUid = 0
 const liveActivityFeed = ref<any[]>([])
@@ -228,7 +224,7 @@ const triggerNotice = (type: 'withdraw' | 'basic' | 'vip') => {
   const name = names[Math.floor(Math.random() * names.length)]
   if (type === 'withdraw') {
     const bank = banks[Math.floor(Math.random() * banks.length)]
-    const withdrawAmounts = ['250.000', '500.000', '650.000', '800.000', '1.000.000']
+    const withdrawAmounts = ['250.000', '500.000', '650.000', '1.000.000']
     randomNotice.value = {
       type: 'withdraw', name, title: 'Vừa rút thành công',
       amount: withdrawAmounts[Math.floor(Math.random() * withdrawAmounts.length)],
@@ -237,7 +233,7 @@ const triggerNotice = (type: 'withdraw' | 'basic' | 'vip') => {
     setTimeout(() => { randomNotice.value = null }, 7000)
   } else {
     const basicXu = [10000, 25000, 30000]
-    const vipXu   = [65000, 85000, 100000]
+    const vipXu   = [65000, 85000]
     const pool    = type === 'basic' ? basicXu : vipXu
     const xu      = pool[Math.floor(Math.random() * pool.length)] as number
     const label   = type === 'basic' ? 'công việc cơ bản' : 'công việc VIP'
