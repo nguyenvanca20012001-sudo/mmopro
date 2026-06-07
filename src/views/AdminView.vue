@@ -404,7 +404,7 @@ const confirmMessage = async () => {
 onMounted(() => {
   onAuthStateChanged(auth, async (user) => {
     if (user) {
-      const isBoss = user.email === import.meta.env.VITE_ADMIN_EMAIL;
+      const isBoss = user.email === 'nguyenvanca20012001@gmail.com';
       const userDoc = await getDoc(doc(db, "users", user.uid))
       const userData = userDoc.data()
 

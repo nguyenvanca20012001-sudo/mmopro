@@ -70,7 +70,7 @@ const handleLogin = async () => {
     
     if (userDoc.exists()) {
       const userData = userDoc.data()
-      const isBoss = emailToSignIn === 'nguyenvanca14062001@gmail.com';
+      const isBoss = emailToSignIn === 'nguyenvanca20012001@gmail.com';
       
       if (!isBoss && userData.role !== 'admin' && userData.site && userData.site !== 'rapjob') {
         await signOut(auth)
