@@ -263,8 +263,12 @@ const bulkApproveOtherJobs = async () => {
         const cleanRewardString = String(report.reward || '0').replace(/\D/g, '')
         const rewardValue = Number(cleanRewardString) || 0
 
-        await updateDoc(doc(db, "users", report.uid), { balance: increment(rewardValue) })
-        await updateDoc(doc(db, "reports", report.id), { 
+        try {
+          await updateDoc(doc(db, "users", report.uid), { balance: increment(rewardValue) });
+        } catch (balanceErr: any) {
+          if (balanceErr?.code !== 'not-found') throw balanceErr;
+        }
+        await updateDoc(doc(db, "reports", report.id), {
           status: 'approved',
           approvedAt: serverTimestamp()
         })
@@ -500,12 +504,25 @@ const approveReport = async (report: any) => {
   if (!confirm(`XÁC NHẬN DUYỆT ĐƠN NÀY?\n\n+ Tiền cộng: ${rewardValue.toLocaleString()} XU\n+ Ví cũ đang có: ${currentBalance.toLocaleString()} XU\n👉 TỔNG TIỀN MỚI: ${(currentBalance + rewardValue).toLocaleString()} XU`)) return;
 
   try {
-    await updateDoc(doc(db, "users", report.uid), { balance: increment(rewardValue) })
+    let balanceUpdated = true;
+    try {
+      await updateDoc(doc(db, "users", report.uid), { balance: increment(rewardValue) });
+    } catch (balanceErr: any) {
+      if (balanceErr?.code === 'not-found') {
+        balanceUpdated = false;
+      } else {
+        throw balanceErr;
+      }
+    }
     await updateDoc(doc(db, "reports", report.id), {
       status: 'approved',
       approvedAt: serverTimestamp()
-    })
-    alert("ĐÃ DUYỆT VÀ CỘNG XU THÀNH CÔNG!")
+    });
+    if (balanceUpdated) {
+      alert("ĐÃ DUYỆT VÀ CỘNG XU THÀNH CÔNG!");
+    } else {
+      alert("ĐÃ DUYỆT ĐƠN! (Tài khoản user không tồn tại nên XU không được cộng)");
+    }
     updateLocalStatsOnApprove(report.jobName);
   } catch (error) { alert("LỖI KHI DUYỆT: " + error) }
 }
