@@ -78,7 +78,7 @@ const handleCopy = (text: string) => {
 
     <div class="max-w-4xl mx-auto space-y-10">
       <div class="text-center">
-        <h1 class="text-4xl md:text-5xl font-black text-gray-900 italic tracking-tighter leading-none mb-5 drop-shadow-xl">
+        <h1 class="text-4xl md:text-5xl font-black text-blue-400 italic tracking-tighter leading-none mb-5 drop-shadow-xl">
           {{ currentJob.title }}
         </h1>
         <div class="bg-[#052e1f] border border-[#005c3c] rounded-full px-6 py-2.5 w-max mx-auto flex items-center gap-2 shadow-inner">
