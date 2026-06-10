@@ -821,19 +821,21 @@ watch(activePopup, (val) => {
     </Transition>
 
     <div :class="['fixed lg:sticky top-0 left-0 h-screen z-[1500] transition-all duration-500 bg-[#0d121f] border-r border-slate-800/60 overflow-hidden flex-shrink-0', isMenuOpen ? 'w-72 translate-x-0' : 'w-0 -translate-x-full']">
-      <Sidebar 
-        v-if="isMenuOpen" 
-        :isLoggedIn="isLoggedIn" 
-        :isMenuOpen="isMenuOpen" 
-        :username="username" 
-        :userBalance="userBalance" 
-        @toggleMenu="isMenuOpen = !isMenuOpen" 
-        @logout="logout" 
-        @routerPush="handleNav" 
-        @requireAuth="handleNav" 
-        @scrollToHistory="handleScrollToHistory" 
-        @contactSupport="contactSupport" 
-      />
+      <Transition name="sidebar-slide">
+        <Sidebar
+          v-if="isMenuOpen"
+          :isLoggedIn="isLoggedIn"
+          :isMenuOpen="isMenuOpen"
+          :username="username"
+          :userBalance="userBalance"
+          @toggleMenu="isMenuOpen = !isMenuOpen"
+          @logout="logout"
+          @routerPush="handleNav"
+          @requireAuth="handleNav"
+          @scrollToHistory="handleScrollToHistory"
+          @contactSupport="contactSupport"
+        />
+      </Transition>
     </div>
 
     <div class="flex-1 flex flex-col transition-all duration-500 min-w-0 bg-transparent w-full relative">
@@ -874,7 +876,7 @@ watch(activePopup, (val) => {
         </div>
       </header>
 
-      <main class="flex-1 overflow-y-auto p-4 md:p-10 pb-24 md:pb-10 space-y-10 custom-scrollbar relative text-left">
+      <main class="flex-1 overflow-y-auto p-4 md:p-10 pb-24 md:pb-10 space-y-10 custom-scrollbar relative text-left app-main-scroll">
         <template v-if="route.path === '/'">
            <!-- Mobile Profile Card -->
            <div class="lg:hidden mb-2">
@@ -992,12 +994,15 @@ watch(activePopup, (val) => {
              </div>
            </footer>
         </template>
-        <router-view v-else
-          :userBalance="userBalance"
-          :username="username"
-          :myReports="myReports"
-          :myWithdrawals="myWithdrawals"
-        />
+        <Transition v-else name="page-slide" mode="out-in">
+          <router-view
+            :key="route.path"
+            :userBalance="userBalance"
+            :username="username"
+            :myReports="myReports"
+            :myWithdrawals="myWithdrawals"
+          />
+        </Transition>
       </main>
     </div>
 
@@ -1322,7 +1327,7 @@ watch(activePopup, (val) => {
           <div class="absolute inset-[-5px] rounded-full pointer-events-none orbit-ring" style="border:1.5px solid transparent; border-top-color:#2563eb; border-right-color:rgba(37,99,235,0.25);"></div>
           <div class="absolute inset-[-5px] rounded-full pointer-events-none orbit-ring-reverse" style="border:1px solid transparent; border-bottom-color:rgba(37,99,235,0.35);"></div>
           <!-- Icon circle -->
-          <div class="w-[52px] h-[52px] rounded-full bg-gradient-to-br from-blue-600 via-blue-500 to-blue-400 flex items-center justify-center shadow-[0_0_20px_rgba(37,99,235,0.6),0_4px_12px_rgba(0,0,0,0.4)] group-active:scale-95 transition-all duration-300 border-2 border-blue-400/30 relative overflow-hidden group-hover:-translate-y-[5px]">
+          <div :class="['w-[52px] h-[52px] rounded-full bg-gradient-to-br from-blue-600 via-blue-500 to-blue-400 flex items-center justify-center group-active:scale-95 transition-all duration-300 border-2 relative overflow-hidden group-hover:-translate-y-[5px]', activePopup === 'cong-viec' ? 'shadow-[0_0_32px_rgba(37,99,235,0.95),0_0_60px_rgba(37,99,235,0.3),0_4px_12px_rgba(0,0,0,0.5)] border-blue-300/50 -translate-y-1 scale-[1.06]' : 'shadow-[0_0_20px_rgba(37,99,235,0.6),0_4px_12px_rgba(0,0,0,0.4)] border-blue-400/30']">
             <div class="absolute top-1 left-2 right-2 h-3 bg-white/20 rounded-full blur-[3px] pointer-events-none"></div>
             <svg class="w-5 h-5 text-white relative z-10 drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)]" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
           </div>
@@ -1336,7 +1341,7 @@ watch(activePopup, (val) => {
         <div class="relative">
           <div class="absolute inset-[-5px] rounded-full pointer-events-none orbit-ring" style="border:1.5px solid transparent; border-top-color:#38bdf8; border-right-color:rgba(56,189,248,0.2);"></div>
           <div class="absolute inset-[-5px] rounded-full pointer-events-none orbit-ring-reverse" style="border:1px solid transparent; border-bottom-color:rgba(56,189,248,0.35);"></div>
-          <div class="w-[52px] h-[52px] rounded-full bg-gradient-to-br from-blue-600 via-blue-500 to-blue-400 flex items-center justify-center shadow-[0_0_20px_rgba(37,99,235,0.6),0_4px_12px_rgba(0,0,0,0.4)] group-active:scale-95 transition-all duration-300 border-2 border-blue-400/30 relative overflow-hidden group-hover:-translate-y-[5px]">
+          <div :class="['w-[52px] h-[52px] rounded-full bg-gradient-to-br from-blue-600 via-blue-500 to-blue-400 flex items-center justify-center group-active:scale-95 transition-all duration-300 border-2 relative overflow-hidden group-hover:-translate-y-[5px]', activePopup === 'lich-su' ? 'shadow-[0_0_32px_rgba(37,99,235,0.95),0_0_60px_rgba(37,99,235,0.3),0_4px_12px_rgba(0,0,0,0.5)] border-blue-300/50 -translate-y-1 scale-[1.06]' : 'shadow-[0_0_20px_rgba(37,99,235,0.6),0_4px_12px_rgba(0,0,0,0.4)] border-blue-400/30']">
             <div class="absolute top-1 left-2 right-2 h-3 bg-white/20 rounded-full blur-[3px] pointer-events-none"></div>
             <svg class="w-5 h-5 text-white relative z-10 drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)]" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
           </div>
@@ -1366,7 +1371,7 @@ watch(activePopup, (val) => {
         <div class="relative">
           <div class="absolute inset-[-5px] rounded-full pointer-events-none orbit-ring" style="border:1.5px solid transparent; border-top-color:#10b981; border-right-color:rgba(16,185,129,0.2);"></div>
           <div class="absolute inset-[-5px] rounded-full pointer-events-none orbit-ring-reverse" style="border:1px solid transparent; border-bottom-color:rgba(16,185,129,0.35);"></div>
-          <div class="w-[52px] h-[52px] rounded-full bg-gradient-to-br from-blue-600 via-blue-500 to-blue-400 flex items-center justify-center shadow-[0_0_20px_rgba(37,99,235,0.6),0_4px_12px_rgba(0,0,0,0.4)] group-active:scale-95 transition-all duration-300 border-2 border-blue-400/30 relative overflow-hidden group-hover:-translate-y-[5px]">
+          <div :class="['w-[52px] h-[52px] rounded-full bg-gradient-to-br from-blue-600 via-blue-500 to-blue-400 flex items-center justify-center group-active:scale-95 transition-all duration-300 border-2 relative overflow-hidden group-hover:-translate-y-[5px]', activePopup === 'nop-bai' ? 'shadow-[0_0_32px_rgba(37,99,235,0.95),0_0_60px_rgba(37,99,235,0.3),0_4px_12px_rgba(0,0,0,0.5)] border-blue-300/50 -translate-y-1 scale-[1.06]' : 'shadow-[0_0_20px_rgba(37,99,235,0.6),0_4px_12px_rgba(0,0,0,0.4)] border-blue-400/30']">
             <div class="absolute top-1 left-2 right-2 h-3 bg-white/20 rounded-full blur-[3px] pointer-events-none"></div>
             <svg class="w-5 h-5 text-white relative z-10 drop-shadow-[0_2px_4px_rgba(0,0,0,0.4)]" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
           </div>
@@ -1439,7 +1444,9 @@ watch(activePopup, (val) => {
       </div>
     </div>
 
-    <div v-if="isMenuOpen && windowWidth < 1024" @click="isMenuOpen = false" class="fixed inset-0 bg-black/80 z-[1200] lg:hidden backdrop-blur-sm transition-opacity"></div>
+    <Transition name="fade-backdrop">
+      <div v-if="isMenuOpen && windowWidth < 1024" @click="isMenuOpen = false" class="fixed inset-0 bg-black/80 z-[1200] lg:hidden backdrop-blur-sm"></div>
+    </Transition>
     <button v-if="isMenuOpen && windowWidth < 1024" @click.stop="isMenuOpen = false" class="fixed top-4 left-4 z-[5000] p-3 bg-white border border-blue-200 rounded-2xl shadow-[0_4px_16px_rgba(37,99,235,0.12)] transition-all active:scale-95 flex items-center justify-center">
       <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" /></svg>
     </button>
@@ -1524,6 +1531,18 @@ watch(activePopup, (val) => {
     0 -4px 20px rgba(37,99,235,0.08),
     0 -1px 0 rgba(37,99,235,0.12);
   background: rgba(13,18,31,0.97);
+  /* Safe area cho iPhone X+ (notch/home indicator) */
+  padding-bottom: max(20px, env(safe-area-inset-bottom));
+  will-change: transform;
+  transform: translateZ(0);
+}
+/* Main scroll area: safe area bottom padding trên notch devices */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  @media (max-width: 1024px) {
+    .app-main-scroll {
+      padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
+    }
+  }
 }
 .cosmic-nav::before {
   content: '';
@@ -1869,13 +1888,26 @@ watch(activePopup, (val) => {
 .live-feed-leave-to     { opacity: 0; transform: translateX(30px); }
 .live-feed-move         { transition: transform 0.4s ease; }
 
+/* ── PAGE TRANSITION (route changes) ──────────────── */
+.page-slide-enter-active { transition: all 0.22s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+.page-slide-leave-active  { transition: all 0.18s ease; }
+.page-slide-enter-from    { opacity: 0; transform: scale(0.97) translateY(14px); }
+.page-slide-leave-to      { opacity: 0; }
+
+/* ── SIDEBAR SLIDE TRANSITION (mobile drawer) ──────── */
+.sidebar-slide-enter-active { transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease; }
+.sidebar-slide-leave-active  { transition: transform 0.22s ease-in, opacity 0.2s ease; }
+.sidebar-slide-enter-from    { transform: translateX(-30px); opacity: 0.5; }
+.sidebar-slide-leave-to      { transform: translateX(-30px); opacity: 0; }
+
 /* ── BOTTOM SHEET TRANSITIONS ──────────────────────── */
 .fade-backdrop-enter-active, .fade-backdrop-leave-active { transition: opacity 0.2s ease; }
 .fade-backdrop-enter-from, .fade-backdrop-leave-to { opacity: 0; }
 
-.sheet-up-enter-active { transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease; }
-.sheet-up-leave-active  { transition: transform 0.25s ease, opacity 0.2s ease; }
-.sheet-up-enter-from, .sheet-up-leave-to { transform: translateY(30px); opacity: 0; }
+.sheet-up-enter-active { transition: transform 0.32s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.22s ease; }
+.sheet-up-leave-active  { transition: transform 0.22s ease, opacity 0.18s ease; }
+.sheet-up-enter-from { transform: translateY(55%); opacity: 0; }
+.sheet-up-leave-to   { transform: translateY(40%); opacity: 0; }
 
 /* ── CINEMA ATMOSPHERE ─────────────────────────────── */
 .cinema-bg {

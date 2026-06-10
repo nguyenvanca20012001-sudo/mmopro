@@ -13,11 +13,24 @@
     font-family: var(--font-sans) !important;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
   }
 
   /* ÉP CHỮ THẲNG 100% - KHÔNG CHO PHÉP NGHIÊNG */
   * {
     font-style: normal !important;
+    /* Xóa flash xanh khi bấm trên mobile */
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Loại bỏ 300ms delay tap trên tất cả interactive elements */
+  button, a, input, select, textarea, label, [role="button"] {
+    touch-action: manipulation;
+  }
+
+  /* Reset iOS input styling cho inputs trông nhất quán */
+  input, textarea, select {
+    -webkit-appearance: none;
   }
 
   /* ĐỊNH DẠNG TIÊU ĐỀ NÉT DÀY NHƯ ẢNH MẪU */
