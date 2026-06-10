@@ -245,7 +245,8 @@ export const jobsData: Record<string, any> = {
         title: "ĐĂNG KÝ VÀ NHẬP MÃ GIỚI THIỆU D0020029",
         content: "BẮT BUỘC NHẬP MÃ GIỚI THIỆU D0020029 VÀ CHỤP LẠI ẢNH.",
         img: "images/anh-kafi2.jpg",
-        note: "NHẬP MÃ: D0020029 (BẮT BUỘC)"
+        note: "NHẬP MÃ: D0020029 (BẮT BUỘC)",
+        referralCode: "D0020029"
       },
       {
         id: 3,
@@ -279,7 +280,8 @@ export const jobsData: Record<string, any> = {
         title: "ĐĂNG KÝ VÀ NHẬP MÃ GIỚI THIỆU AT00007",
         content: "BẮT BUỘC NHẬP MÃ GIỚI THIỆU AT00007 VÀ CHỤP LẠI ẢNH.",
         img: "images/anh-dnse2.jpg",
-        note: "NHẬP MÃ: AT00007 (BẮT BUỘC)"
+        note: "NHẬP MÃ: AT00007 (BẮT BUỘC)",
+        referralCode: "AT00007"
       },
       {
         id: 3,
@@ -315,7 +317,8 @@ export const jobsData: Record<string, any> = {
         title: "ĐĂNG KÝ VÀ NHẬP MÃ ID MÔI GIỚI: AT03",
         content: "BẮT BUỘC NHẬP MÃ ID MÔI GIỚI AT03 VÀ CHỤP LẠI ẢNH.",
         img: "images/anh-kis1.jpg",
-        note: "NHẬP ID MÔI GIỚI AT03 (BẮT BUỘC)"
+        note: "NHẬP ID MÔI GIỚI AT03 (BẮT BUỘC)",
+        referralCode: "AT03"
       },
       {
         id: 3,
@@ -349,7 +352,8 @@ export const jobsData: Record<string, any> = {
         title: "ĐĂNG KÝ VÀ NHẬP MÃ GIỚI THIỆU AT09",
         content: "BẮT BUỘC NHẬP MÃ GIỚI THIỆU AT09 VÀ CHỤP LẠI ẢNH.",
         img: "images/anh-maybank2.jpg",
-        note: "NHẬP MÃ: AT09 (BẮT BUỘC)"
+        note: "NHẬP MÃ: AT09 (BẮT BUỘC)",
+        referralCode: "AT09"
       },
       {
         id: 3,
