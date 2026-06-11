@@ -26,7 +26,7 @@ const jobIconMap: Record<string, string> = {
 }
 const VIP_IDS = ['liobank', 'app-chung-khoan', 'app-chung-khoan-2', 'app-chung-khoan-3', 'app-chung-khoan-4', 'msb-bank', 'vpbank']
 // ⏸️ TẠM DỪNG — Thêm/xoá job ID ở đây để bật/tắt
-const PAUSED_JOBS = ['vpbank', 'msb-bank']
+const PAUSED_JOBS = ['vpbank', 'msb-bank', 'app-chung-khoan-2']
 
 // --- Age confirmation modal (mobile bottom sheet) ---
 const showAgeConfirmModal = ref(false)
