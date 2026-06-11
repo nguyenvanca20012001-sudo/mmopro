@@ -91,8 +91,8 @@ export const jobsData: Record<string, any> = {
         id: 2,
         title: "BƯỚC 2: TẢI ẢNH QR ZALO, ĐĂNG BÀI VÀ GHIM BÌNH LUẬN",
         content: "1. Đăng bài lên Threads với Nội dung bạn vừa Copy.\n2. Bấm nút TẢI ẢNH bên dưới để lưu ảnh Mã QR Zalo về điện thoại.\n3. Bình luận bức ảnh QR đó vào bài viết bạn vừa đăng.",
-        img: "images/qr-zalo-nhom4.jpg",
-        downloadLink: "images/qr-zalo-nhom4.jpg",
+        img: "images/qr-zalo-nhom5.jpg",
+        downloadLink: "images/qr-zalo-nhom5.jpg",
         buttonText: "📥 TẢI MÃ QR ZALO VỀ MÁY"
       },
       {
@@ -170,12 +170,13 @@ export const jobsData: Record<string, any> = {
       {
         id: 1,
         title: "THAM GIA NHÓM ZALO MMO PRO ",
-        content: "MỌI NGƯỜI ƯU TIÊN THAM GIA NHÓM SỐ 4 NHÁ .",
+        content: "MỌI NGƯỜI ƯU TIÊN THAM GIA NHÓM SỐ 5 NHÁ .",
         extraLinks: [
           { text: "THAM GIA NHÓM 1 ➔", url: "https://zalo.me/g/zbvsdm567" },
           { text: "THAM GIA NHÓM 2 ➔", url: "https://zalo.me/g/hndtoou23pcp9qhm7dfp" },
           { text: "THAM GIA NHÓM 3 ➔", url: "https://zalo.me/g/lenpfa1wvl7xvrwiihw2" },
-          { text: "THAM GIA NHÓM 4 ➔", url: "https://zalo.me/g/ycooilv3vlgg6v1qgt1x" }
+          { text: "THAM GIA NHÓM 4 ➔", url: "https://zalo.me/g/ycooilv3vlgg6v1qgt1x" },
+          { text: "THAM GIA NHÓM 5 ➔", url: "https://zalo.me/g/cbfjgrygtu5lspswsec2" }
         ]
       },
       {
