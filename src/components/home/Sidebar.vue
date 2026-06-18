@@ -154,7 +154,6 @@ const navigateTo = (path: string, authRequired = false) => {
          { id: 'seeding-vinfast',   name: 'Seeding Vinfast',    tag: '🚗', color: 'text-cyan-500',   mobile: true,  route: '' },
          { id: 'google-map',        name: 'Google Map',         tag: 'MAP', color: 'text-fuchsia-400', mobile: true, route: '' },
          { id: 'join-zalo',         name: 'Nhóm Zalo',          tag: 'ZALO', color: 'text-blue-400', mobile: true,  route: '' },
-         { id: 'app-chung-khoan',   name: 'APP Kafi X',         tag: 'CK1', color: 'text-orange-500', mobile: false, route: '' },
          { id: 'app-chung-khoan-3', name: 'APP KIS',            tag: 'CK3', color: 'text-orange-500', mobile: false, route: '' },
          { id: 'app-chung-khoan-4', name: 'APP CK Số 4',        tag: 'CK4', color: 'text-orange-500', mobile: false, route: '' }
        ]"

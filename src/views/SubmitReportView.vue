@@ -27,7 +27,6 @@ const jobOptions = [
   { id: 'google-map',        name: 'GOOGLE MAP (25.000 XU)',                   reward: '25.000 xu' },
   { id: 'join-zalo',         name: 'NHÓM ZALO (10.000 XU)',                    reward: '10.000 xu' },
   { id: 'liobank',           name: 'APP LIOBANK (65.000 XU)',                  reward: '65.000 xu' },
-  { id: 'app-chung-khoan',   name: 'APP CHỨNG KHOÁN SỐ 1 (85.000 XU)',        reward: '85.000 xu' },
   { id: 'app-chung-khoan-3', name: 'APP CHỨNG KHOÁN SỐ 3 (85.000 XU)',        reward: '85.000 xu' },
   { id: 'app-chung-khoan-4', name: 'APP CHỨNG KHOÁN SỐ 4 (85.000 XU)',        reward: '85.000 xu' }
 ]
@@ -36,7 +35,6 @@ const jobSamples: Record<string, string[]> = {
   'app-chung-khoan-4': ['images/anh-maybank2.jpg', 'images/anh-maybank3.jpg', 'images/anh-maybank4.jpg'],
   'vpbank': ['images/anh-vpbank2.jpg', 'images/anh-vpbank3.jpg', 'images/anh-vpbank6.jpg'],
   'msb-bank': ['images/anh-msb2.jpg', 'images/anh-msb3.jpg', 'images/anh-msb10.jpg'],
-  'app-chung-khoan': ['images/anh-kafi2.jpg', 'images/anh-kafi3.jpg', 'images/anh-kafi10.jpg'],
   'app-chung-khoan-2': ['images/anh-dnse2.jpg', 'images/anh-dnse3.jpg', 'images/anh-dnse10.jpg'],
   'app-chung-khoan-3': ['images/anh-kis1.jpg', 'images/anh-kis2.jpg', 'images/anh-kis10.jpg'],
   'liobank': ['images/anh-liobank3a.jpg', 'images/anh-liobank3b.jpg', 'images/anh-liobank4.jpg']
