@@ -229,41 +229,6 @@ export const jobsData: Record<string, any> = {
     ]
   },
 
-  'app-chung-khoan': {
-    title: "APP CHỨNG KHOÁN SỐ 1",
-    reward: "85.000 xu",
-    color: "text-orange-500",
-    badge: "SIÊU HOT",
-    warning: "BẮT BUỘC TỪ 18 TUỔI! (Nếu chưa đủ tuổi, có thể nhờ người thân đăng ký hộ, vẫn nhận 100% tiền thưởng).",
-    steps: [
-      {
-        id: 1,
-        title: "VÀO CHPLAY HOẶC APPSTORE TẢI APP",
-        content: "Tải APP chứng khoán Kafi X về điện thoại theo hình hướng dẫn bên dưới.",
-        img: "images/anh-kafi-b1.jpg"
-      },
-      {
-        id: 2,
-        title: "ĐĂNG KÝ VÀ NHẬP MÃ GIỚI THIỆU D0020029",
-        content: "BẮT BUỘC NHẬP MÃ GIỚI THIỆU D0020029 VÀ CHỤP LẠI ẢNH.",
-        img: "images/anh-kafi2.jpg",
-        note: "NHẬP MÃ: D0020029 (BẮT BUỘC)",
-        referralCode: "D0020029"
-      },
-      {
-        id: 3,
-        title: "ĐĂNG KÝ TÀI KHOẢN THÀNH CÔNG",
-        content: "CHỤP LẠI ẢNH ĐĂNG NHẬP THÀNH CÔNG ĐỂ GỬI BẰNG CHỨNG.",
-        img: "images/anh-kafi3.jpg"
-      },
-      {
-        id: 4,
-        title: "LƯU LẠI ẢNH VÀ GỬI",
-        content: "GỬI 2 ẢNH ĐÓ VÀ CHỜ PHÊ DUYỆT HOA HỒNG TRONG 24H."
-      }
-    ]
-  },
-
   'app-chung-khoan-3': {
     title: "APP CHỨNG KHOÁN SỐ 3",
     reward: "85.000 xu",
@@ -431,6 +396,41 @@ export const jobsData: Record<string, any> = {
         id: 4,
         title: "LƯU LẠI ẢNH NHẬP MÃ VÀ ẢNH ĐĂNG KÝ THÀNH CÔNG",
         content: "GỬI 2 ẢNH ĐÓ VÀ CHỜ PHÊ DUYỆT HOA HỒNG."
+      }
+    ]
+  },
+
+  'app-chung-khoan': {
+    title: "APP CHỨNG KHOÁN SỐ 1",
+    reward: "85.000 xu",
+    color: "text-orange-500",
+    badge: "SIÊU HOT",
+    warning: "BẮT BUỘC TỪ 18 TUỔI! (Nếu chưa đủ tuổi, có thể nhờ người thân đăng ký hộ, vẫn nhận 100% tiền thưởng).",
+    steps: [
+      {
+        id: 1,
+        title: "VÀO CHPLAY HOẶC APPSTORE TẢI APP",
+        content: "Tải APP chứng khoán Kafi X về điện thoại theo hình hướng dẫn bên dưới.",
+        img: "images/anh-kafi-b1.jpg"
+      },
+      {
+        id: 2,
+        title: "ĐĂNG KÝ VÀ NHẬP MÃ GIỚI THIỆU D0020029",
+        content: "BẮT BUỘC NHẬP MÃ GIỚI THIỆU D0020029 VÀ CHỤP LẠI ẢNH.",
+        img: "images/anh-kafi2.jpg",
+        note: "NHẬP MÃ: D0020029 (BẮT BUỘC)",
+        referralCode: "D0020029"
+      },
+      {
+        id: 3,
+        title: "ĐĂNG KÝ TÀI KHOẢN THÀNH CÔNG",
+        content: "CHỤP LẠI ẢNH ĐĂNG NHẬP THÀNH CÔNG ĐỂ GỬI BẰNG CHỨNG.",
+        img: "images/anh-kafi3.jpg"
+      },
+      {
+        id: 4,
+        title: "LƯU LẠI ẢNH VÀ GỬI",
+        content: "GỬI 2 ẢNH ĐÓ VÀ CHỜ PHÊ DUYỆT HOA HỒNG TRONG 24H."
       }
     ]
   },
