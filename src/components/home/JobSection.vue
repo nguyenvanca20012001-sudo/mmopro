@@ -68,6 +68,7 @@ const getJobIcon = (id: string) => {
     'vpbank': { t: 'VPB', c: 'text-white' },
     'app-chung-khoan-4': { t: '📈', c: 'text-white' },
     'liobank': { t: 'LIO', c: 'text-white' },
+    'mbbank': { t: 'ABB', c: 'text-white' },
   };
   const res = config[id] || { t: 'JOB', c: 'text-slate-400' };
   return { type: 'text', content: res.t, colorClass: res.c };
@@ -88,6 +89,7 @@ const getSocialProof = (id: string) => {
     'vpbank':            '176',
     'app-chung-khoan-4': '163',
     'liobank':           '120',
+    'mbbank':            '145',
   };
   return seeds[id] || '500';
 };

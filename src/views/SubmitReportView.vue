@@ -130,11 +130,11 @@ watch(jobOptions, (newOptions) => {
 })
 
 const isFanpageTask = computed(() =>
-  ['vpbank', 'msb-bank', 'app-chung-khoan', 'app-chung-khoan-2', 'app-chung-khoan-3', 'app-chung-khoan-4', 'liobank'].includes(selectedJob.value.id)
+  ['vpbank', 'msb-bank', 'app-chung-khoan', 'app-chung-khoan-2', 'app-chung-khoan-3', 'app-chung-khoan-4', 'liobank', 'mbbank'].includes(selectedJob.value.id)
 )
 
 const fourImageJobs: string[] = []
-const threeImageJobs = ['vpbank', 'msb-bank', 'app-chung-khoan', 'app-chung-khoan-2', 'app-chung-khoan-3', 'app-chung-khoan-4', 'liobank']
+const threeImageJobs = ['vpbank', 'msb-bank', 'app-chung-khoan', 'app-chung-khoan-2', 'app-chung-khoan-3', 'app-chung-khoan-4', 'liobank', 'mbbank']
 
 const imageRequirementText = computed(() => {
   const jobId = selectedJob.value.id

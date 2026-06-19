@@ -123,11 +123,18 @@ const handleCopy = (text: string) => {
         </div>
       </div>
 
+      <div v-if="currentJob.zaloGuideUrl" class="text-center">
+        <a :href="currentJob.zaloGuideUrl" target="_blank"
+           class="inline-flex items-center gap-2 bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-xl text-sm font-black uppercase transition-all active:scale-95 shadow-lg">
+          💬 Vào nhóm Zalo xem hướng dẫn
+        </a>
+      </div>
+
       <div class="bg-[#111726] rounded-[45px] border border-slate-800/50 p-6 md:p-10 shadow-2xl relative">
         <div class="text-center space-y-5">
 
          <div class="mb-6 bg-gradient-to-r from-yellow-500/10 to-orange-500/5 border border-yellow-500/30 rounded-2xl p-4 md:p-5 flex items-start gap-3 md:gap-4 shadow-[0_0_20px_rgba(234,179,8,0.1)] relative overflow-hidden animate-in fade-in duration-150"
-                v-if="['msb-bank', 'vpbank', 'tpbank', 'app-chung-khoan', 'app-chung-khoan-2', 'app-chung-khoan-3'].includes(route.params.id as string)">
+                v-if="['msb-bank', 'vpbank', 'tpbank', 'app-chung-khoan', 'app-chung-khoan-2', 'app-chung-khoan-3', 'mbbank'].includes(route.params.id as string)">
 
             <div class="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-yellow-400 to-orange-500 shadow-[0_0_10px_rgba(234,179,8,0.8)]"></div>
 

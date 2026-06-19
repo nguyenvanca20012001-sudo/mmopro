@@ -434,4 +434,43 @@ export const jobsData: Record<string, any> = {
       }
     ]
   },
+
+  'mbbank': {
+    title: "APP ABBANK",
+    subtitle: "Mở tài khoản ABBANK",
+    reward: "85.000 xu",
+    color: "text-orange-500",
+    badge: "SIÊU HOT",
+    warning: "Người đăng ký phải từ 18 tuổi trở lên. Số điện thoại và CCCD/CMND chưa từng đăng ký MB Bank trước đó. Phải hoàn tất xác thực tài khoản mới được tính thưởng. Nghiêm cấm gian lận hoặc gửi bằng chứng giả.",
+    zaloGuideUrl: "",
+    steps: [
+      {
+        id: 1,
+        title: "CHỌN ĐĂNG KÝ NGAY VÀ CHỌN TIẾP TÔI LÀ CÔNG DÂN VIỆT NAM ĐỂ ĐĂNG KÝ",
+        content: "LƯU Ý : KHÔNG CHỌN TẢI APP BÊN DƯỚI , PHẢI ĐĂNG KÝ ONLINE TRÊN WEB.",
+        downloadLink: "https://shorten.asia/vQxU96N8",
+        buttonText: "🚀 ĐĂNG KÝ NGAY",
+        img: "images/anh-kis4.jpg"
+      },
+      {
+        id: 2,
+        title: "ĐĂNG KÝ VÀ NHẬP MÃ ID MÔI GIỚI: AT03",
+        content: "BẮT BUỘC NHẬP MÃ ID MÔI GIỚI AT03 VÀ CHỤP LẠI ẢNH.",
+        img: "images/anh-kis1.jpg",
+        note: "NHẬP ID MÔI GIỚI AT03 (BẮT BUỘC)",
+        referralCode: "AT03"
+      },
+      {
+        id: 3,
+        title: "ĐĂNG KÝ TÀI KHOÁN THÀNH CÔNG",
+        content: "CHỤP LẠI ẢNH ĐĂNG KÝ TÀI KHOẢN THÀNH CÔNG.",
+        img: "images/anh-kis2.jpg"
+      },
+      {
+        id: 4,
+        title: "LƯU LẠI ẢNH VÀ GỬI",
+        content: "GỬI 2 ẢNH ĐÓ VÀ CHỜ PHÊ DUYỆT HOA HỒNG TRONG 24H."
+      }
+    ]
+  },
 };
