@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { jobsData } from '@/data/jobs'
 import { vipJobConfigs } from '@/composables/useVipJobs'
@@ -10,21 +10,31 @@ const router = useRouter()
 const showGuide = ref(true)
 const baseUrl = import.meta.env.BASE_URL
 
-const currentJob = ref(jobsData[route.params.id as string] || jobsData['app-chung-khoan'])
+const jobId = route.params.id as string
+const _staticJob = (jobsData[jobId] || jobsData['app-chung-khoan']) as Record<string, any>
 
-const jobStatus = computed(() => (vipJobConfigs.value[route.params.id as string]?.status as string) ?? 'open')
+const currentJob = computed(() => {
+  const f = (vipJobConfigs.value[jobId] || {}) as Record<string, any>
+  return {
+    ..._staticJob,
+    title:   (f.title   !== undefined && f.title   !== '') ? f.title   : _staticJob.title,
+    reward:  (f.reward  !== undefined && f.reward  !== '') ? f.reward  : _staticJob.reward,
+    badge:   (f.badge   !== undefined && f.badge   !== '') ? f.badge   : _staticJob.badge,
+    color:   (f.color   !== undefined && f.color   !== '') ? f.color   : _staticJob.color,
+    warning: (f.warning !== undefined && f.warning !== '') ? f.warning : _staticJob.warning,
+  }
+})
+
+const jobStatus = computed(() => (vipJobConfigs.value[jobId]?.status as string) ?? 'open')
 const jobStatusMessage = computed(() => {
   if (jobStatus.value === 'paused')  return 'Công việc đang tạm dừng, vui lòng quay lại sau.'
   if (jobStatus.value === 'soldout') return 'Công việc đã hết lượt hôm nay.'
   return ''
 })
 
-onMounted(() => {
-  const jobId = route.params.id as string
-  if (jobId && jobsData[jobId]) {
-    currentJob.value = jobsData[jobId]
-  }
-})
+watch(jobStatus, (status) => {
+  if (status === 'hidden') router.push('/')
+}, { immediate: true })
 
 const selectedImage = ref<string | null>(null)
 const openImage = (img: string) => { selectedImage.value = img }
