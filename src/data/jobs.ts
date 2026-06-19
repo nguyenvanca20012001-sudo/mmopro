@@ -446,31 +446,31 @@ export const jobsData: Record<string, any> = {
     steps: [
       {
         id: 1,
-        title: "CHỌN ĐĂNG KÝ NGAY VÀ CHỌN TIẾP TÔI LÀ CÔNG DÂN VIỆT NAM ĐỂ ĐĂNG KÝ",
-        content: "LƯU Ý : KHÔNG CHỌN TẢI APP BÊN DƯỚI , PHẢI ĐĂNG KÝ ONLINE TRÊN WEB.",
-        downloadLink: "https://shorten.asia/vQxU96N8",
-        buttonText: "🚀 ĐĂNG KÝ NGAY",
-        img: "images/anh-kis4.jpg"
+        title: "CHỌN NÚT TẢI ỨNG DỤNG VỀ ĐỂ ĐĂNG KÝ ",
+        content: " CHỌN TẢI ỨNG DỤNG.",
+        downloadLink: "https://retail.abbank.vn/universal-link",
+        buttonText: "🚀 TẢI ỨNG DỤNG",
       },
       {
         id: 2,
-        title: "ĐĂNG KÝ VÀ NHẬP MÃ ID MÔI GIỚI: AT03",
-        content: "BẮT BUỘC NHẬP MÃ ID MÔI GIỚI AT03 VÀ CHỤP LẠI ẢNH.",
-        img: "images/anh-kis1.jpg",
-        note: "NHẬP ID MÔI GIỚI AT03 (BẮT BUỘC)",
-        referralCode: "AT03"
+        title: "NHẬP MÃ GIỚI THIỆU : 0366045803",
+        content: "BẮT BUỘC NHẬP MÃ GIỚI THIỆU 0366045803 VÀ CHỤP LẠI ẢNH.",
+        img: "images/anh-abbank1.jpg",
+        note: "NHẬP MÃ GIỚI THIỆU 0366045803 (BẮT BUỘC)",
+        referralCode: "0366045803"
       },
       {
         id: 3,
-        title: "ĐĂNG KÝ TÀI KHOÁN THÀNH CÔNG",
+        title: "ĐĂNG KÝ TÀI KHOÁN THÀNH CÔNG VÀ CHỤP ẢNH LẠI ",
         content: "CHỤP LẠI ẢNH ĐĂNG KÝ TÀI KHOẢN THÀNH CÔNG.",
-        img: "images/anh-kis2.jpg"
+        img: "images/anh-abbank2.jpg"
       },
       {
         id: 4,
-        title: "LƯU LẠI ẢNH VÀ GỬI",
-        content: "GỬI 2 ẢNH ĐÓ VÀ CHỜ PHÊ DUYỆT HOA HỒNG TRONG 24H."
-      }
+        title: "ĐĂNG NHẬP VÀO TÀI KHOẢN CHỤP ẢNH BÊN DƯỚI ",
+        content: "GỬI ẢNH MẪU NHƯ BÊN DƯỚI VÀO BẰNG CHỨNG .",
+        img: "images/anh-abbank3.jpg"
+      },
     ]
   },
 };
