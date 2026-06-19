@@ -43,6 +43,23 @@ const formatNumber = (num: number) => {
   return Math.floor(num).toLocaleString('vi-VN')
 }
 
+const formatDate = (val: any): string => {
+  if (!val) return ''
+  const d = val?.toDate ? val.toDate() : new Date(val)
+  return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
+const statusLabel = (status: string) => ({
+  pending: 'Đang xử lý', approved: 'Đã duyệt', collected: 'Đã duyệt', rejected: 'Từ chối'
+} as Record<string, string>)[status] ?? status
+
+const statusBadgeClass = (status: string) => ({
+  pending:   'bg-yellow-500/10 border border-yellow-500/30 text-yellow-500',
+  approved:  'bg-emerald-500/10 border border-emerald-500/30 text-emerald-500',
+  collected: 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-500',
+  rejected:  'bg-rose-500/10 border border-rose-500/30 text-rose-500',
+} as Record<string, string>)[status] ?? 'bg-slate-500/10 border border-slate-500/30 text-slate-500'
+
 const selectAmount = (val: number) => {
   amount.value = val
 }
@@ -200,42 +217,48 @@ const handleConfirmWithdraw = async () => {
 </script>
 
 <template>
-  <div class="min-h-screen bg-transparent text-slate-700 font-sans p-4 md:p-10 font-black uppercase italic tracking-tighter pb-36">
+  <div class="min-h-screen bg-transparent text-white font-sans p-4 md:p-10 font-black uppercase italic tracking-tighter pb-36">
 
-    <button @click="router.back()" class="flex items-center gap-2 text-slate-500 hover:text-blue-700 transition-colors mb-6 md:mb-10 group">
+    <button @click="router.back()" class="flex items-center gap-2 text-slate-500 hover:text-blue-400 transition-colors mb-6 md:mb-10 group">
       <svg class="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" /></svg>
       <span class="tracking-widest text-[10px]">QUAY LẠI</span>
     </button>
 
     <div class="max-w-xl mx-auto space-y-6">
 
-      <div class="bg-white border border-blue-100 rounded-[30px] p-6 md:p-8 shadow-2xl relative overflow-hidden">
+      <div class="bg-[#111827] border border-slate-700/60 rounded-[30px] p-6 md:p-8 shadow-2xl relative overflow-hidden">
         <!-- Top accent bar -->
         <div class="absolute top-0 left-0 right-0 h-[2.5px] bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 rounded-t-[30px] opacity-90"></div>
         <!-- Radial glow bg -->
-        <div class="absolute -top-16 left-1/2 -translate-x-1/2 w-72 h-72 bg-amber-500/[0.06] rounded-full blur-[80px] pointer-events-none"></div>
+        <div class="absolute -top-16 left-1/2 -translate-x-1/2 w-72 h-72 bg-amber-500/[0.04] rounded-full blur-[80px] pointer-events-none"></div>
 
         <div class="text-center mb-8 relative z-10">
-          <div class="w-16 h-16 bg-gradient-to-tr from-yellow-400 to-orange-500 rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-[0_0_30px_rgba(234,179,8,0.45)]">
-            <svg viewBox="0 0 24 24" class="w-9 h-9 drop-shadow-[0_0_10px_rgba(234,179,8,0.7)]">
-              <defs>
-                <linearGradient id="goldWithdrawCoin" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" style="stop-color:#fde047"/>
-                  <stop offset="50%" style="stop-color:#eab308"/>
-                  <stop offset="100%" style="stop-color:#854d0e"/>
-                </linearGradient>
-              </defs>
-              <circle cx="12" cy="12" r="10" fill="url(#goldWithdrawCoin)"/>
-              <path d="M12 7v10M9 10h6M9 14h6" stroke="#854d0e" stroke-width="2" stroke-linecap="round"/>
-            </svg>
+          <div class="relative w-20 h-20 mx-auto mb-5">
+            <div class="absolute inset-0 rounded-[20px] bg-yellow-400/20 blur-md scale-110"></div>
+            <div class="relative w-full h-full bg-gradient-to-tr from-yellow-400 to-orange-500 rounded-[20px] flex items-center justify-center shadow-[0_0_20px_rgba(234,179,8,0.45)] ring-4 ring-yellow-400/20">
+              <svg viewBox="0 0 24 24" class="w-10 h-10 drop-shadow-[0_0_10px_rgba(234,179,8,0.7)]">
+                <defs>
+                  <linearGradient id="goldWithdrawCoin" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:#fde047"/>
+                    <stop offset="50%" style="stop-color:#eab308"/>
+                    <stop offset="100%" style="stop-color:#854d0e"/>
+                  </linearGradient>
+                </defs>
+                <circle cx="12" cy="12" r="10" fill="url(#goldWithdrawCoin)"/>
+                <path d="M12 7v10M9 10h6M9 14h6" stroke="#854d0e" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
           </div>
-          <h1 class="text-3xl text-slate-800">RÚT TIỀN</h1>
-          <p class="text-yellow-500 mt-2 text-xs tracking-widest">SỐ DƯ KHẢ DỤNG: {{ formatNumber(userBalance) }} XU</p>
+          <h1 class="text-4xl md:text-5xl font-black text-white tracking-tighter">RÚT TIỀN</h1>
+          <div class="inline-flex items-center gap-2 mt-3 bg-yellow-500/10 border border-yellow-500/30 rounded-full px-4 py-1.5">
+            <span class="text-yellow-500 text-[10px] font-black tracking-widest">SỐ DƯ:</span>
+            <span class="text-yellow-500 text-base md:text-lg font-black tracking-tight">{{ formatNumber(userBalance) }} XU</span>
+          </div>
         </div>
 
         <div class="space-y-6 relative z-10">
           <div>
-            <label class="block text-blue-500 text-[10px] tracking-widest mb-3">CHỌN SỐ XU MUỐN RÚT</label>
+            <label class="block text-blue-400 text-[10px] tracking-widest mb-3">CHỌN SỐ XU MUỐN RÚT</label>
             <div class="grid grid-cols-2 gap-3">
               <div v-for="opt in withdrawOptions" :key="opt" class="relative">
                 <div v-if="opt === 500000" class="absolute -top-2.5 left-1/2 -translate-x-1/2 z-10 text-[7px] px-2 py-0.5 bg-emerald-500 text-white rounded-full font-black uppercase tracking-wider whitespace-nowrap shadow-[0_0_10px_rgba(16,185,129,0.4)]">
@@ -244,10 +267,10 @@ const handleConfirmWithdraw = async () => {
                 <button
                   @click="selectAmount(opt)"
                   :class="[
-                    'w-full py-3 rounded-[14px] border-2 transition-all text-xs md:text-sm active:scale-95',
+                    'w-full py-3.5 rounded-[14px] border-2 transition-all text-xs md:text-sm active:scale-95',
                     amount === opt
-                      ? 'bg-gradient-to-br from-yellow-500/20 to-amber-500/10 border-yellow-500 text-yellow-400 shadow-[0_0_25px_rgba(234,179,8,0.35)] ring-1 ring-yellow-500/30'
-                      : 'bg-blue-50 border-blue-100 text-slate-500 hover:border-slate-600'
+                      ? 'bg-gradient-to-br from-yellow-500/20 to-amber-500/10 border-yellow-500 text-yellow-500 shadow-[0_0_25px_rgba(234,179,8,0.35)] ring-2 ring-yellow-500/20 scale-[1.03] font-black'
+                      : 'bg-slate-800/60 border-slate-700/60 text-slate-400 hover:border-blue-500/50 opacity-70 hover:opacity-100'
                   ]"
                 >
                   {{ formatNumber(opt) }} XU
@@ -257,12 +280,12 @@ const handleConfirmWithdraw = async () => {
           </div>
 
           <div>
-            <label class="block text-blue-500 text-[10px] tracking-widest mb-3">THÔNG TIN NHẬN TIỀN (VNĐ)</label>
+            <label class="block text-blue-400 text-[10px] tracking-widest mb-3">THÔNG TIN NHẬN TIỀN (VNĐ)</label>
             <textarea
               v-model="bankInfo"
               rows="3"
               placeholder="VD: MB BANK - 123456789 - NGUYEN VAN A"
-              class="w-full bg-blue-50 border border-blue-100 rounded-2xl px-5 py-4 text-slate-800 placeholder-slate-600 focus:outline-none focus:border-blue-500 transition-all resize-none normal-case font-medium not-italic text-sm"
+              class="w-full bg-slate-800/60 border border-slate-700/60 rounded-2xl px-5 py-4 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all resize-none normal-case font-medium not-italic text-sm leading-relaxed shadow-inner"
             ></textarea>
           </div>
 
@@ -270,9 +293,9 @@ const handleConfirmWithdraw = async () => {
             @click="triggerWithdraw"
             :disabled="isLoading || hasPendingWithdraw"
             :class="[
-              'w-full py-4 rounded-2xl text-[13px] tracking-widest transition-all mt-2',
+              'w-full py-4 rounded-2xl text-sm tracking-widest transition-all mt-2',
               hasPendingWithdraw
-                ? 'bg-blue-100 text-slate-500 cursor-not-allowed border border-blue-100'
+                ? 'bg-slate-700/40 text-slate-500 cursor-not-allowed border border-slate-600/40'
                 : 'bg-yellow-500 hover:bg-yellow-400 text-[#090e17] active:scale-95 confirm-glow'
             ]"
           >
@@ -281,35 +304,43 @@ const handleConfirmWithdraw = async () => {
         </div>
       </div>
 
-      <div class="bg-white border border-blue-100 rounded-[30px] p-6 shadow-xl">
-        <div class="flex items-center gap-2 mb-6">
+      <div class="bg-[#111827] border border-slate-700/60 rounded-[30px] p-6 shadow-xl">
+        <div class="flex items-center gap-2 mb-5">
           <div class="w-1 h-5 bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
-          <h2 class="text-slate-800 text-lg tracking-tighter">LỊCH SỬ RÚT TIỀN</h2>
-          <div class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse ml-1"></div>
+          <h2 class="text-white text-lg tracking-tighter">LỊCH SỬ RÚT TIỀN</h2>
         </div>
 
-        <div class="space-y-3 relative overflow-hidden h-[300px]">
-          <TransitionGroup name="list" tag="div" class="space-y-3">
-            <div v-for="(item, index) in fakeWithdrawals" :key="item.id" class="flex items-center justify-between p-4 bg-blue-50 border border-blue-100/80 rounded-2xl">
-              <div class="flex items-center gap-3">
-                <div :class="[
-                  'w-10 h-10 rounded-full flex items-center justify-center text-xs font-black',
-                  ['bg-blue-900/70 text-blue-400', 'bg-emerald-900/70 text-emerald-400', 'bg-purple-900/70 text-purple-400', 'bg-rose-900/70 text-rose-400'][index % 4]
-                ]">
-                  {{ item.name.charAt(0) }}
-                </div>
-                <div>
-                  <p class="text-slate-700 text-xs">{{ item.name }}</p>
-                  <p class="text-slate-500 text-[9px] mt-0.5">{{ item.time }}</p>
-                </div>
-              </div>
-              <div class="text-right">
-                <p class="text-emerald-400 font-black text-sm tracking-tighter">+{{ formatNumber(item.amount) }}</p>
-                <p class="text-emerald-500 text-[8px] mt-0.5 tracking-widest">• THÀNH CÔNG</p>
-              </div>
+        <div v-if="myWithdrawals.length === 0" class="text-center py-10">
+          <div class="text-4xl mb-3">📭</div>
+          <p class="text-slate-400 text-xs tracking-widest normal-case font-medium not-italic">Chưa có yêu cầu rút tiền nào</p>
+        </div>
+
+        <div v-else class="space-y-3">
+          <div v-for="item in [...myWithdrawals].sort((a, b) => {
+                 const ta = a.createdAt?.toDate?.() ?? new Date(a.createdAt ?? 0)
+                 const tb = b.createdAt?.toDate?.() ?? new Date(b.createdAt ?? 0)
+                 return tb.getTime() - ta.getTime()
+               })"
+               :key="item.id"
+               class="p-4 bg-slate-800/40 border border-slate-700/50 rounded-2xl space-y-1.5">
+            <div class="flex items-center justify-between">
+              <span class="text-white font-black text-sm tracking-tight">
+                {{ formatNumber(item.amount || item.amountXu || 0) }} XU
+              </span>
+              <span :class="statusBadgeClass(item.status)"
+                    class="px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest">
+                {{ statusLabel(item.status) }}
+              </span>
             </div>
-          </TransitionGroup>
-          <div class="absolute bottom-0 left-0 right-0 h-10 bg-gradient-to-t from-[#111726] to-transparent pointer-events-none"></div>
+            <div class="flex items-center justify-between gap-2">
+              <p class="text-slate-400 text-[9px] normal-case font-medium not-italic truncate flex-1">{{ item.bankInfo }}</p>
+              <p class="text-slate-500 text-[9px] shrink-0 not-italic font-medium normal-case">{{ formatDate(item.createdAt) }}</p>
+            </div>
+            <p v-if="item.status === 'rejected' && item.adminNote"
+               class="text-rose-400 text-[9px] font-semibold normal-case not-italic">
+              Lý do: {{ item.adminNote }}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -319,7 +350,7 @@ const handleConfirmWithdraw = async () => {
       <div v-if="showConfirmModal" class="fixed inset-0 z-[6000] flex items-center justify-center px-4">
         <div class="absolute inset-0 bg-black/90 backdrop-blur-md" @click="showConfirmModal = false"></div>
 
-        <div class="relative w-full max-w-md bg-gradient-to-b from-white to-blue-50 border border-blue-100 rounded-[30px] p-8 md:p-10 text-center shadow-2xl">
+        <div class="relative w-full max-w-md bg-[#111827] border border-slate-700/60 rounded-[30px] p-8 md:p-10 text-center shadow-2xl">
 
           <template v-if="amount === 250000 && approvedJobsCount < requiredJobs">
             <!-- Amber top accent line -->
@@ -329,7 +360,7 @@ const handleConfirmWithdraw = async () => {
 
             <!-- Lock icon -->
             <div class="absolute -top-10 left-1/2 -translate-x-1/2">
-              <div class="w-20 h-20 bg-blue-50 rounded-full p-2 border-2 border-amber-500/30 shadow-[0_0_30px_rgba(234,179,8,0.35)]">
+              <div class="w-20 h-20 bg-slate-800 rounded-full p-2 border-2 border-amber-500/30 shadow-[0_0_30px_rgba(234,179,8,0.35)]">
                 <div class="w-full h-full bg-gradient-to-tr from-amber-500 to-yellow-400 rounded-full flex items-center justify-center shadow-[0_0_15px_rgba(234,179,8,0.5)]">
                   <svg class="w-8 h-8 text-[#1c1100]" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M12 1C8.676 1 6 3.676 6 7v1H4v15h16V8h-2V7c0-3.324-2.676-6-6-6zm0 2c2.276 0 4 1.724 4 4v1H8V7c0-2.276 1.724-4 4-4zm0 9a2 2 0 110 4 2 2 0 010-4z"/>
@@ -343,25 +374,25 @@ const handleConfirmWithdraw = async () => {
               <div class="inline-flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[9px] font-black tracking-[2px] px-3 py-1 rounded-full mb-3 uppercase">
                 🔒 Mở Khóa Rút Tiền
               </div>
-              <h3 class="text-xl md:text-2xl text-slate-800 font-black tracking-tighter mb-2 uppercase italic">CẦN THÊM NHIỆM VỤ</h3>
+              <h3 class="text-xl md:text-2xl text-white font-black tracking-tighter mb-2 uppercase italic">CẦN THÊM NHIỆM VỤ</h3>
               <p class="text-slate-400 text-[11px] normal-case font-medium not-italic mb-5 px-2 leading-relaxed">
                 Hoàn thành đủ <span class="text-amber-400 font-bold">{{ requiredJobs }} nhiệm vụ</span> được duyệt để mở khóa rút tiền mốc <span class="text-amber-400 font-bold">250.000 XU</span>
               </p>
 
               <!-- Progress card -->
-              <div class="bg-blue-50 rounded-2xl py-5 px-5 border border-amber-500/10 mb-5 shadow-inner relative overflow-hidden">
+              <div class="bg-slate-800/60 rounded-2xl py-5 px-5 border border-amber-500/10 mb-5 shadow-inner relative overflow-hidden">
                 <div class="absolute inset-0 bg-amber-500/[0.025]"></div>
-                <p class="text-slate-500 text-[9px] tracking-[3px] mb-3 font-black uppercase">Tiến Độ Nhiệm Vụ</p>
+                <p class="text-slate-400 text-[9px] tracking-[3px] mb-3 font-black uppercase">Tiến Độ Nhiệm Vụ</p>
 
                 <!-- Big numbers -->
                 <p class="font-black text-3xl md:text-4xl flex items-baseline justify-center gap-1 mb-3">
                   <span class="text-amber-400 drop-shadow-[0_0_10px_rgba(234,179,8,0.5)]">{{ approvedJobsCount }}</span>
-                  <span class="text-slate-600 text-xl">/</span>
+                  <span class="text-slate-500 text-xl">/</span>
                   <span class="text-slate-400 text-xl">{{ requiredJobs }}</span>
                 </p>
 
                 <!-- Progress bar -->
-                <div class="w-full h-3 bg-blue-100/80 rounded-full overflow-hidden mb-2 border border-blue-100/30">
+                <div class="w-full h-3 bg-slate-700/60 rounded-full overflow-hidden mb-2 border border-slate-600/30">
                   <div class="h-full bg-gradient-to-r from-amber-600 to-yellow-400 rounded-full transition-all duration-1000 relative overflow-hidden"
                        :style="{ width: `${Math.min((approvedJobsCount / requiredJobs) * 100, 100)}%` }">
                     <div class="absolute inset-0 bg-white/20 animate-[shimmer_2s_infinite]"></div>
@@ -379,7 +410,7 @@ const handleConfirmWithdraw = async () => {
                 ĐI LÀM NGAY 🚀
               </button>
               <button @click="showConfirmModal = false"
-                      class="w-full py-2.5 bg-transparent text-slate-600 hover:text-slate-400 rounded-xl active:scale-95 transition-all text-[10px] tracking-widest font-black uppercase">
+                      class="w-full py-2.5 bg-transparent text-slate-400 hover:text-slate-300 rounded-xl active:scale-95 transition-all text-[10px] tracking-widest font-black uppercase">
                 ĐÓNG
               </button>
             </div>
@@ -388,17 +419,17 @@ const handleConfirmWithdraw = async () => {
           <!-- STEP 1: Thông tin quy đổi -->
           <template v-else-if="confirmStep === 1">
             <div class="absolute -top-10 left-1/2 -translate-x-1/2">
-              <div class="w-20 h-20 bg-blue-50 rounded-full p-2 border-2 border-blue-100">
+              <div class="w-20 h-20 bg-slate-800 rounded-full p-2 border-2 border-slate-600">
                 <div class="w-full h-full bg-gradient-to-tr from-yellow-500 to-orange-500 rounded-full flex items-center justify-center text-2xl shadow-[0_0_20px_rgba(234,179,8,0.5)]">
                   🔄
                 </div>
               </div>
             </div>
 
-            <h3 class="text-2xl text-slate-800 mt-8 mb-2">QUY ĐỔI TIỀN THẬT</h3>
+            <h3 class="text-2xl text-white mt-8 mb-2">QUY ĐỔI TIỀN THẬT</h3>
             <p class="text-slate-400 text-[10px] normal-case font-medium not-italic mb-6 px-4">Hệ thống áp dụng tỉ giá tự động quy đổi: XU ÷ 12</p>
 
-            <div class="bg-blue-50 rounded-2xl py-6 px-4 border border-blue-100 mb-8 relative overflow-hidden">
+            <div class="bg-slate-800/60 rounded-2xl py-6 px-4 border border-slate-700/60 mb-8 relative overflow-hidden">
               <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_2s_infinite]"></div>
 
               <p class="text-yellow-500 text-2xl mb-1 drop-shadow-md">{{ formatNumber(amount || 0) }} XU</p>
@@ -406,12 +437,12 @@ const handleConfirmWithdraw = async () => {
               <p class="text-emerald-400 text-3xl font-black drop-shadow-[0_0_10px_rgba(16,185,129,0.3)]">{{ formatNumber((amount || 0) / 12) }} VNĐ</p>
             </div>
 
-            <p class="text-slate-600 text-xs leading-relaxed mb-8 font-medium normal-case not-italic">
+            <p class="text-slate-300 text-xs leading-relaxed mb-8 font-medium normal-case not-italic">
               Xác nhận quy đổi XU để chuyển thẳng vào tài khoản ngân hàng của bạn?
             </p>
 
             <div class="flex gap-3">
-              <button @click="showConfirmModal = false" class="flex-1 py-3.5 bg-blue-50 border border-blue-100 text-slate-400 rounded-xl hover:bg-blue-100 active:scale-95 transition-all text-xs tracking-widest">
+              <button @click="showConfirmModal = false" class="flex-1 py-3.5 bg-slate-700/40 border border-slate-600/40 text-slate-400 rounded-xl hover:bg-slate-700/60 active:scale-95 transition-all text-xs tracking-widest">
                 HỦY
               </button>
               <button @click="confirmStep = 2" class="flex-1 py-3.5 bg-yellow-500 text-[#090e17] rounded-xl hover:bg-yellow-400 shadow-[0_0_15px_rgba(234,179,8,0.3)] active:scale-95 transition-all text-xs tracking-widest">
@@ -424,7 +455,7 @@ const handleConfirmWithdraw = async () => {
           <template v-else>
             <!-- Icon cảnh báo -->
             <div class="absolute -top-10 left-1/2 -translate-x-1/2">
-              <div class="w-20 h-20 bg-blue-50 rounded-full p-2 border-2 border-rose-600/50 shadow-[0_0_25px_rgba(239,68,68,0.3)]">
+              <div class="w-20 h-20 bg-slate-800 rounded-full p-2 border-2 border-rose-600/50 shadow-[0_0_25px_rgba(239,68,68,0.3)]">
                 <div class="w-full h-full bg-gradient-to-tr from-rose-600 to-red-500 rounded-full flex items-center justify-center text-2xl shadow-[0_0_15px_rgba(239,68,68,0.5)]">
                   ⚠️
                 </div>
@@ -433,32 +464,32 @@ const handleConfirmWithdraw = async () => {
 
             <div class="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-rose-500 to-transparent rounded-t-[30px]"></div>
 
-            <h3 class="text-xl text-slate-800 mt-8 mb-1 uppercase italic font-black tracking-tighter">BẠN CÓ CHẮC KHÔNG?</h3>
+            <h3 class="text-xl text-white mt-8 mb-1 uppercase italic font-black tracking-tighter">BẠN CÓ CHẮC KHÔNG?</h3>
             <p class="text-slate-400 text-[10px] normal-case font-medium not-italic mb-5 px-2 leading-relaxed">
               Hành động này không thể hoàn tác. Hệ thống sẽ trừ XU và gửi tiền về ngân hàng của bạn.
             </p>
 
             <!-- Tóm tắt giao dịch -->
-            <div class="bg-blue-50 rounded-2xl py-4 px-5 border border-rose-900/40 mb-6 text-left space-y-2.5">
+            <div class="bg-slate-800/60 rounded-2xl py-4 px-5 border border-rose-900/40 mb-6 text-left space-y-2.5">
               <div class="flex items-center justify-between">
                 <span class="text-slate-500 text-[10px] uppercase tracking-widest font-black">Trừ ví</span>
                 <span class="text-rose-400 font-black text-sm">-{{ formatNumber(amount || 0) }} XU</span>
               </div>
-              <div class="border-t border-blue-100"></div>
+              <div class="border-t border-slate-700/60"></div>
               <div class="flex items-center justify-between">
                 <span class="text-slate-500 text-[10px] uppercase tracking-widest font-black">Nhận về</span>
                 <span class="text-emerald-400 font-black text-sm">+{{ formatNumber((amount || 0) / 12) }} VNĐ</span>
               </div>
-              <div class="border-t border-blue-100"></div>
+              <div class="border-t border-slate-700/60"></div>
               <div class="flex items-start justify-between gap-2">
                 <span class="text-slate-500 text-[10px] uppercase tracking-widest font-black flex-shrink-0">Ngân hàng</span>
-                <span class="text-slate-700 text-[10px] font-bold normal-case not-italic text-right leading-tight">{{ bankInfo }}</span>
+                <span class="text-slate-200 text-[10px] font-bold normal-case not-italic text-right leading-tight">{{ bankInfo }}</span>
               </div>
             </div>
 
             <div class="flex gap-3">
               <button @click="confirmStep = 1"
-                      class="flex-1 py-3.5 bg-blue-50 border border-blue-100 text-slate-400 rounded-xl hover:bg-blue-100 active:scale-95 transition-all text-xs tracking-widest">
+                      class="flex-1 py-3.5 bg-slate-700/40 border border-slate-600/40 text-slate-400 rounded-xl hover:bg-slate-700/60 active:scale-95 transition-all text-xs tracking-widest">
                 QUAY LẠI
               </button>
               <button @click="handleConfirmWithdraw" :disabled="isLoading"

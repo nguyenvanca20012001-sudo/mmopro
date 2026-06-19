@@ -1,12 +1,18 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { jobsData } from '@/data/jobs';
+import { VIP_JOB_IDS } from '@/composables/useVipJobs';
 import Logo from '@/components/Logo.vue';
 
-defineProps<{
+const props = withDefaults(defineProps<{
   username: string;
   isLoggedIn: boolean;
-}>();
+  vipJobConfigs?: Record<string, any>;
+  vipJobsLoaded?: boolean;
+}>(), {
+  vipJobConfigs: () => ({}),
+  vipJobsLoaded: false
+});
 
 const emit = defineEmits(['receiveJob', 'contactSupport', 'routerPush']);
 
@@ -25,9 +31,27 @@ const formatReward = (val: any) => {
 };
 
 
-const VIP_JOBS = ['liobank', 'app-chung-khoan', 'app-chung-khoan-2', 'app-chung-khoan-3', 'app-chung-khoan-4', 'msb-bank', 'vpbank'];
+const isVip = (id: string) => VIP_JOB_IDS.includes(id);
 
-const isVip = (id: string) => VIP_JOBS.includes(id);
+const mergedVipJobs = computed(() => {
+  if (!props.vipJobsLoaded) return []
+  return VIP_JOB_IDS
+    .map(id => {
+      const staticJob = jobsData[id] || {}
+      const config = props.vipJobConfigs?.[id] || {}
+      return {
+        id,
+        title: config.title || staticJob.title,
+        reward: config.reward || staticJob.reward,
+        badge: config.badge || staticJob.badge,
+        color: config.color || staticJob.color,
+        status: config.status || 'open',
+        order: config.order ?? 999,
+      }
+    })
+    .filter(job => job.status !== 'hidden')
+    .sort((a, b) => a.order - b.order)
+})
 
 const getJobIcon = (id: string) => {
   const config: Record<string, { t: string, c: string }> = {
@@ -356,74 +380,85 @@ const getShortDesc = (id: string) => {
         </div>
 
         <!-- TIER VIP -->
-        <div class="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
-          <template v-for="(j, id) in jobsData" :key="id">
-            <div v-if="isVip(id as string)"
-              @click="handleJobClick(id as string)"
-              class="vip-card relative p-5 md:p-7 rounded-[28px] border-[2px] border-amber-500/60 bg-gradient-to-br from-amber-900/30 to-yellow-900/20 transition-all duration-500 flex flex-col group cursor-pointer active:scale-95 overflow-hidden">
+        <div v-if="!vipJobsLoaded" class="flex flex-col items-center justify-center py-10 gap-3">
+          <div class="w-7 h-7 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+          <p class="text-amber-600 text-[10px] font-black italic uppercase tracking-widest">Đang tải công việc VIP...</p>
+        </div>
+        <div v-else class="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
+          <div v-for="job in mergedVipJobs" :key="job.id"
+            @click="handleJobClick(job.id)"
+            class="vip-card relative p-5 md:p-7 rounded-[28px] border-[2px] border-amber-500/60 bg-gradient-to-br from-amber-900/30 to-yellow-900/20 transition-all duration-500 flex flex-col group cursor-pointer active:scale-95 overflow-hidden"
+            :class="(job.status === 'paused' || job.status === 'soldout') ? 'opacity-60 grayscale' : ''">
 
-              <!-- Glow nền VIP -->
-              <div class="absolute inset-0 bg-gradient-to-t from-amber-500/5 to-yellow-300/5 pointer-events-none rounded-[26px]"></div>
-              <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-amber-400/10 rounded-full blur-[60px] pointer-events-none"></div>
+            <!-- Glow nền VIP -->
+            <div class="absolute inset-0 bg-gradient-to-t from-amber-500/5 to-yellow-300/5 pointer-events-none rounded-[26px]"></div>
+            <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-amber-400/10 rounded-full blur-[60px] pointer-events-none"></div>
 
-              <!-- Watermark số thứ tự mờ -->
-              <div class="absolute bottom-3 right-4 text-[60px] md:text-[80px] font-black text-amber-300/10 pointer-events-none select-none leading-none">
-                {{ ['msb-bank','vpbank','tpbank','liobank'].includes(id as string) ? '🏦' : '📊' }}
-              </div>
-
-              <!-- BADGE VIP -->
-              <div class="absolute -top-0 -right-0 z-20 flex items-center gap-1 text-[9px] md:text-[10px] tracking-widest px-3 py-1.5 rounded-bl-2xl rounded-tr-[26px] font-black italic uppercase border-b border-l border-amber-300/40 shadow-lg bg-gradient-to-r from-amber-500 to-yellow-400 text-amber-900">
-                VIP 💎
-              </div>
-
-              <div class="flex justify-between items-start mb-4 relative z-10">
-                <div class="w-12 h-12 md:w-16 md:h-16 rounded-2xl flex items-center justify-center shadow-lg border-[1.5px] border-amber-500/40 bg-amber-600/20 text-amber-400 transition-transform group-hover:scale-110 group-hover:border-amber-500/60">
-                  <template v-if="getJobIcon(id as string).content === '📈'">
-                    <svg viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 md:w-8 md:h-8">
-                      <rect x="2" y="14" width="4" height="8" rx="1"/>
-                      <rect x="9" y="9" width="4" height="13" rx="1"/>
-                      <rect x="16" y="4" width="4" height="18" rx="1"/>
-                      <polyline points="2,10 9,5 16,2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
-                    </svg>
-                  </template>
-                  <span v-else class="font-black text-sm md:text-xl italic">{{ getJobIcon(id as string).content }}</span>
-                </div>
-              </div>
-
-              <h4 class="text-[13px] md:text-lg text-amber-300 font-black italic uppercase leading-tight mb-1">
-                {{ j.title }}
-              </h4>
-
-              <p class="text-[10px] md:text-[13px] text-slate-600 font-medium line-clamp-2 leading-relaxed mb-4 mt-1">
-                {{ getShortDesc(id as string) }}
-              </p>
-
-              <div class="flex flex-col mt-auto relative z-10">
-                <p class="text-[9px] md:text-[10px] font-bold text-amber-600 uppercase tracking-widest mb-1">Thưởng ngay:</p>
-                <div class="flex items-center gap-1.5">
-                  <p class="font-black text-2xl md:text-4xl tracking-tighter italic leading-none text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-yellow-600">
-                    {{ formatReward(j.reward).toLocaleString() }}
-                  </p>
-                  <div class="flex flex-col items-start translate-y-[-2px]">
-                    <svg class="w-5 h-5 md:w-6 md:h-6 drop-shadow-[0_0_8px_rgba(234,179,8,0.8)]" viewBox="0 0 24 24">
-                      <circle cx="12" cy="12" r="10" fill="url(#goldCoinGradient)" />
-                      <path d="M12 7v10M9 10h6M9 14h6" stroke="#854d0e" stroke-width="2" stroke-linecap="round" />
-                    </svg>
-                    <span class="text-[7px] md:text-[9px] text-yellow-500 font-black not-italic tracking-tighter leading-none uppercase">Xu</span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="flex items-center gap-1.5 text-[9px] text-amber-600 mt-3 mb-2">
-                <span class="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></span>
-                <span>Đang mở đăng ký — {{ getSocialProof(id as string) }} người đã nhận</span>
-              </div>
-              <button @click.stop="handleJobClick(id as string)"
-                class="vip-btn w-full py-3.5 md:py-4 rounded-xl text-[11px] md:text-[13px] font-black italic uppercase transition-all relative z-10 border border-amber-400/60 bg-gradient-to-r from-amber-500 to-yellow-500 text-amber-900 shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:shadow-[0_0_35px_rgba(245,158,11,0.5)] hover:from-amber-400 hover:to-yellow-400 active:scale-95">
-                NHẬN NGAY 💰
-              </button>
+            <!-- Watermark số thứ tự mờ -->
+            <div class="absolute bottom-3 right-4 text-[60px] md:text-[80px] font-black text-amber-300/10 pointer-events-none select-none leading-none">
+              {{ ['msb-bank','vpbank','tpbank','liobank'].includes(job.id) ? '🏦' : '📊' }}
             </div>
-          </template>
+
+            <!-- Status overlay -->
+            <div v-if="job.status === 'paused'" class="absolute inset-0 flex items-center justify-center z-30 pointer-events-none">
+              <span class="bg-black/75 text-white text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl">⏸ TẠM DỪNG</span>
+            </div>
+            <div v-if="job.status === 'soldout'" class="absolute inset-0 flex items-center justify-center z-30 pointer-events-none">
+              <span class="bg-black/75 text-red-400 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl">❌ HẾT LƯỢT</span>
+            </div>
+
+            <!-- BADGE VIP -->
+            <div class="absolute -top-0 -right-0 z-20 flex items-center gap-1 text-[9px] md:text-[10px] tracking-widest px-3 py-1.5 rounded-bl-2xl rounded-tr-[26px] font-black italic uppercase border-b border-l border-amber-300/40 shadow-lg bg-gradient-to-r from-amber-500 to-yellow-400 text-amber-900">
+              VIP 💎
+            </div>
+
+            <div class="flex justify-between items-start mb-4 relative z-10">
+              <div class="w-12 h-12 md:w-16 md:h-16 rounded-2xl flex items-center justify-center shadow-lg border-[1.5px] border-amber-500/40 bg-amber-600/20 text-amber-400 transition-transform group-hover:scale-110 group-hover:border-amber-500/60">
+                <template v-if="getJobIcon(job.id).content === '📈'">
+                  <svg viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 md:w-8 md:h-8">
+                    <rect x="2" y="14" width="4" height="8" rx="1"/>
+                    <rect x="9" y="9" width="4" height="13" rx="1"/>
+                    <rect x="16" y="4" width="4" height="18" rx="1"/>
+                    <polyline points="2,10 9,5 16,2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                  </svg>
+                </template>
+                <span v-else class="font-black text-sm md:text-xl italic">{{ getJobIcon(job.id).content }}</span>
+              </div>
+            </div>
+
+            <h4 class="text-[13px] md:text-lg text-amber-300 font-black italic uppercase leading-tight mb-1">
+              {{ job.title }}
+            </h4>
+
+            <p class="text-[10px] md:text-[13px] text-slate-600 font-medium line-clamp-2 leading-relaxed mb-4 mt-1">
+              {{ getShortDesc(job.id) }}
+            </p>
+
+            <div class="flex flex-col mt-auto relative z-10">
+              <p class="text-[9px] md:text-[10px] font-bold text-amber-600 uppercase tracking-widest mb-1">Thưởng ngay:</p>
+              <div class="flex items-center gap-1.5">
+                <p class="font-black text-2xl md:text-4xl tracking-tighter italic leading-none text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-yellow-600">
+                  {{ formatReward(job.reward).toLocaleString() }}
+                </p>
+                <div class="flex flex-col items-start translate-y-[-2px]">
+                  <svg class="w-5 h-5 md:w-6 md:h-6 drop-shadow-[0_0_8px_rgba(234,179,8,0.8)]" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10" fill="url(#goldCoinGradient)" />
+                    <path d="M12 7v10M9 10h6M9 14h6" stroke="#854d0e" stroke-width="2" stroke-linecap="round" />
+                  </svg>
+                  <span class="text-[7px] md:text-[9px] text-yellow-500 font-black not-italic tracking-tighter leading-none uppercase">Xu</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-1.5 text-[9px] text-amber-600 mt-3 mb-2">
+              <span class="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse"></span>
+              <span>Đang mở đăng ký — {{ getSocialProof(job.id) }} người đã nhận</span>
+            </div>
+            <button @click.stop="handleJobClick(job.id)"
+              class="vip-btn w-full py-3.5 md:py-4 rounded-xl text-[11px] md:text-[13px] font-black italic uppercase transition-all relative z-10 border border-amber-400/60 bg-gradient-to-r from-amber-500 to-yellow-500 text-amber-900 shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:shadow-[0_0_35px_rgba(245,158,11,0.5)] hover:from-amber-400 hover:to-yellow-400 active:scale-95">
+              NHẬN NGAY 💰
+            </button>
+          </div>
         </div>
 
       </div>

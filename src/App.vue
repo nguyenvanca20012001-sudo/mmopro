@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, computed, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { auth, db } from '@/firebase' 
 import { onAuthStateChanged, signOut } from "firebase/auth" 
-import { doc, onSnapshot, collection, query, where, updateDoc, increment, arrayUnion } from "firebase/firestore"
+import { doc, onSnapshot, collection, query, where, updateDoc, increment, arrayUnion, limit } from "firebase/firestore"
 
 // --- IMPORT COMPONENT ---
 import AppBrowserBlocker from '@/components/AppBrowserBlocker.vue'
@@ -16,17 +16,20 @@ import ProfileCard from '@/components/home/ProfileCard.vue'
 import Logo from '@/components/Logo.vue'
 import { jobsData } from '@/data/jobs'
 import Swal from 'sweetalert2'
+import { useVipJobs, startVipJobsListener, VIP_JOB_IDS as VIP_IDS } from '@/composables/useVipJobs'
+import { appConfig, startAppConfigListener } from '@/composables/useAppConfig'
+import { setCurrentUserProfile, clearCurrentUserProfile } from '@/composables/useCurrentUser'
+import { supportConfig, startSupportConfigListener, SUPPORT_FANPAGE_URL } from '@/composables/useSupportConfig'
 
 // --- JOB BROWSER (dùng trong CÔNG VIỆC bottom sheet) ---
 const jobIconMap: Record<string, string> = {
+  'view-tiktok': '🎵', 'view-youtube': '▶️', 'seeding-vinfast': '🚗', 'google-map': '⭐',
   'follow-cgv': '🎬', 'review-cinema': '⭐', 'checkin-cinema': '📸',
   'survey-cinema': '📋', 'post-threads': '🧵', 'join-zalo': '💬',
   'app-chung-khoan': '📈', 'app-chung-khoan-2': '📈', 'app-chung-khoan-3': '📈',
   'app-chung-khoan-4': '📈', 'msb-bank': '🏦', 'vpbank': '🏦', 'liobank': '🏦',
 }
-const VIP_IDS = ['liobank', 'app-chung-khoan', 'app-chung-khoan-2', 'app-chung-khoan-3', 'app-chung-khoan-4', 'msb-bank', 'vpbank']
-// ⏸️ TẠM DỪNG — Thêm/xoá job ID ở đây để bật/tắt
-const PAUSED_JOBS = ['vpbank', 'msb-bank', 'app-chung-khoan-2', 'app-chung-khoan']
+const { vipJobConfigs, vipJobsLoading, vipJobsLoaded } = useVipJobs()
 
 // --- Age confirmation modal (mobile bottom sheet) ---
 const showAgeConfirmModal = ref(false)
@@ -130,6 +133,29 @@ const unreadApprovedReport = computed(() => {
 const dismissApproval = (id: string) => {
   dismissedApprovals.value.push(id)
   localStorage.setItem('mmo_dismissed_approvals', JSON.stringify(dismissedApprovals.value))
+}
+
+// ============================================================================
+// SUPPORT MODAL — hệ thống hỗ trợ 1 chiều từ admin
+// ============================================================================
+const showSupportModal = ref(false)
+
+const openSupportModal = () => { showSupportModal.value = true }
+
+const closeSupportModal = () => {
+  showSupportModal.value = false
+  const uid = auth.currentUser?.uid
+  if (uid) {
+    localStorage.setItem(
+      `seenSupportAnnouncementVersion_${uid}`,
+      String(supportConfig.value.announcementVersion)
+    )
+  }
+}
+
+const handleFanpageClick = () => {
+  closeSupportModal()
+  window.open(SUPPORT_FANPAGE_URL, '_blank', 'noopener,noreferrer')
 }
 
 const handleThuTienVeVi = async (report: any) => {
@@ -437,8 +463,10 @@ const initFirebaseSync = (user: any) => {
   isLoggedIn.value = true
 
   unsubscribeUser = onSnapshot(doc(db, "users", user.uid), async (docSnap) => {
+    if (import.meta.env.DEV) console.log('[Firestore Listener] user-doc exists:', docSnap.exists())
     if (docSnap.exists()) {
       const data = docSnap.data()
+      setCurrentUserProfile(data)
       claimedChests.value = Array.isArray(data.claimedChests) ? data.claimedChests : []
       username.value = data.username || data.fullName || 'Member'
       const realBalance = data.balance ? Number(data.balance) : 0;
@@ -463,12 +491,14 @@ const initFirebaseSync = (user: any) => {
     }
   })
   
-  unsubscribeReports = onSnapshot(query(collection(db, "reports"), where("uid", "==", user.uid)), (snapshot) => {
+  unsubscribeReports = onSnapshot(query(collection(db, "reports"), where("uid", "==", user.uid), limit(50)), (snapshot) => {
+    if (import.meta.env.DEV) console.log('[Firestore Listener] user-reports docs:', snapshot.size)
     myReports.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
     isDataLoading.value = false
   })
-  
-  unsubscribeWithdrawals = onSnapshot(query(collection(db, "withdrawals"), where("uid", "==", user.uid)), (snapshot) => {
+
+  unsubscribeWithdrawals = onSnapshot(query(collection(db, "withdrawals"), where("uid", "==", user.uid), limit(20)), (snapshot) => {
+    if (import.meta.env.DEV) console.log('[Firestore Listener] user-withdrawals docs:', snapshot.size)
     myWithdrawals.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
   })
 }
@@ -478,14 +508,18 @@ onMounted(() => {
   window.addEventListener('resize', () => { windowWidth.value = window.innerWidth })
   startToasting()
   startLiveFeed()
-  
+
+  startVipJobsListener()
+  startAppConfigListener()
+  startSupportConfigListener()
+
   onAuthStateChanged(auth, (user) => {
     isAuthChecking.value = false 
     if (user) {
       initFirebaseSync(user)
     } else {
-      isLoggedIn.value = false; isDataLoading.value = false; username.value = 'Member'; userBalance.value = 0; 
-      myReports.value = []; myWithdrawals.value = []; localStorage.clear()
+      isLoggedIn.value = false; isDataLoading.value = false; username.value = 'Member'; userBalance.value = 0;
+      myReports.value = []; myWithdrawals.value = []; clearCurrentUserProfile(); localStorage.clear()
     }
   })
 })
@@ -496,6 +530,57 @@ watch(isAdminRoute, (isAdmin, wasAdmin) => {
     initFirebaseSync(auth.currentUser)
   }
 })
+
+// Auto-popup support khi admin tăng announcementVersion
+watch(supportConfig, (cfg) => {
+  if (!cfg.enabled || !cfg.autoPopupEnabled) return
+  if (isAdminRoute.value || isAuthRoute.value || isLandingRoute.value) return
+  const uid = auth.currentUser?.uid
+  if (!uid) return
+  const key = `seenSupportAnnouncementVersion_${uid}`
+  const seen = Number(localStorage.getItem(key) || 0)
+  const remote = Number(cfg.announcementVersion || 0)
+  if (remote > seen) showSupportModal.value = true
+}, { deep: true })
+
+// ============================================================================
+// FORCE REFRESH — chống reload loop:
+// 1. Chỉ trigger khi Firestore version > version trong localStorage
+// 2. Lưu version mới vào localStorage TRƯỚC khi reload → sau reload không trigger lại
+// 3. forceRefreshEnabled=false: hiện popup, user bấm reload
+// 4. forceRefreshEnabled=true: auto reload sau 3s, không popup
+// ============================================================================
+const showForceRefreshPopup = ref(false)
+const SESSION_VERSION_KEY = 'handledAppVersion'
+
+watch(() => appConfig.value.appVersion, (newVersion) => {
+  if (!newVersion) return
+  if (isAdminRoute.value) return
+
+  const storedRaw = sessionStorage.getItem(SESSION_VERSION_KEY)
+
+  if (storedRaw === null) {
+    // Lần đầu nhận snapshot — ghi version hiện tại, KHÔNG trigger reload
+    sessionStorage.setItem(SESSION_VERSION_KEY, String(newVersion))
+    return
+  }
+
+  const stored = Number(storedRaw)
+  if (newVersion > stored) {
+    if (appConfig.value.forceRefreshEnabled) {
+      sessionStorage.setItem(SESSION_VERSION_KEY, String(newVersion))
+      setTimeout(() => window.location.reload(), 3000)
+    } else {
+      sessionStorage.setItem(SESSION_VERSION_KEY, String(newVersion))
+      showForceRefreshPopup.value = true
+    }
+  }
+})
+
+const handleForceRefresh = () => {
+  sessionStorage.setItem(SESSION_VERSION_KEY, String(appConfig.value.appVersion))
+  window.location.reload()
+}
 
 const handleNav = (path: string) => {
   if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(30);
@@ -517,11 +602,19 @@ const handleNav = (path: string) => {
 
 const handleReceiveJob = (jobId: string) => {
   if (!isLoggedIn.value) { router.push('/login'); return; }
-  if (PAUSED_JOBS.includes(jobId)) {
+  const vipConfig = vipJobConfigs.value[jobId]
+  const status = vipConfig?.status
+  if (status === 'paused') {
     alert('⏸️ CÔNG VIỆC TẠM DỪNG\nChương trình đang được cập nhật. Vui lòng quay lại sau!')
     return
   }
-  if (jobsData[jobId]?.warning && sessionStorage.getItem('age_confirmed_' + jobId) === 'true') {
+  if (status === 'hidden') return
+  if (status === 'soldout') {
+    alert('❌ HẾT LƯỢT ĐĂNG KÝ\nCông việc này đã hết lượt. Vui lòng chọn công việc khác hoặc quay lại sau!')
+    return
+  }
+  const effectiveWarning = vipConfig?.warning !== undefined ? vipConfig.warning : jobsData[jobId]?.warning
+  if (effectiveWarning && sessionStorage.getItem('age_confirmed_' + jobId) === 'true') {
     activePopup.value = ''
     router.push(`/job/${jobId}`)
     return
@@ -531,10 +624,10 @@ const handleReceiveJob = (jobId: string) => {
     router.push('/survey-cinema')
   } else if (jobId === 'APP NGÂN HÀNG' || jobId === 'app-ngan-hang') {
     showBankModal.value = true
-  } else if (jobsData[jobId]?.warning) {
+  } else if (effectiveWarning) {
     activePopup.value = ''
     ageConfirmJobId.value = jobId
-    ageConfirmJobTitle.value = jobsData[jobId]?.title || jobId
+    ageConfirmJobTitle.value = vipConfig?.title || jobsData[jobId]?.title || jobId
     ageConfirmAge.value = jobId === 'app-chung-khoan-3' ? 20 : jobId === 'liobank' ? 22 : 18
     showAgeConfirmModal.value = true
   } else {
@@ -554,25 +647,30 @@ const cancelAgeConfirm = () => {
   ageConfirmJobTitle.value = ''
 }
 
-const handleScrollToHistory = () => {
-  if (route.path !== '/') {
-    router.push('/')
-    setTimeout(() => { document.getElementById('history-section')?.scrollIntoView({ behavior: 'smooth' }) }, 500)
-  } else {
-    document.getElementById('history-section')?.scrollIntoView({ behavior: 'smooth' })
+const handleScrollToHistory = async () => {
+  if (windowWidth.value < 1024) {
+    isMenuOpen.value = false
+    return
   }
-  if (windowWidth.value < 1024) isMenuOpen.value = false
+  if (route.path !== '/') {
+    await router.push('/')
+    await nextTick()
+  }
+  document.getElementById('activity-history-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 const handleScrollToVip = () => {
-  if (route.path !== '/') {
+  activePopup.value = ''
+  if (windowWidth.value < 1024) {
+    activePopup.value = 'cong-viec'
+    jobCategory.value = 'vip'
+    isMenuOpen.value = false
+  } else if (route.path !== '/') {
     router.push('/')
     setTimeout(() => { document.getElementById('vip-section')?.scrollIntoView({ behavior: 'smooth' }) }, 500)
   } else {
     document.getElementById('vip-section')?.scrollIntoView({ behavior: 'smooth' })
   }
-  activePopup.value = ''
-  if (windowWidth.value < 1024) isMenuOpen.value = false
 }
 
 const logout = async () => { 
@@ -580,11 +678,41 @@ const logout = async () => {
 }
 
 const contactSupport = (t: string) => {
-  window.open(t === 'facebook' ? 'https://www.facebook.com/mmopro123' : 'https://zalo.me/g/lenpfa1wvl7xvrwiihw2', '_blank')
+  const fb  = 'https://www.facebook.com/mmopro123'
+  const zl  = 'https://zalo.me/g/lenpfa1wvl7xvrwiihw2'
+  const grp = zl
+  const map: Record<string, string> = { facebook: fb, zalo: zl, group: grp }
+  window.open(map[t] || fb, '_blank')
 }
 
 watch(activePopup, (val) => {
   if (val !== 'cong-viec') jobCategory.value = ''
+})
+
+watch(() => route.query.section, (val) => {
+  if (val === 'vip') {
+    router.replace({ query: {} })
+    nextTick(() => handleScrollToVip())
+  }
+}, { immediate: true })
+
+const mergedVipJobsMobile = computed(() => {
+  if (!vipJobsLoaded.value) return []
+  return VIP_IDS
+    .map(id => {
+      const staticJob = jobsData[id] || {}
+      const config = vipJobConfigs.value[id] || {}
+      return {
+        id,
+        title: config.title || staticJob.title,
+        reward: config.reward || staticJob.reward,
+        badge: config.badge || staticJob.badge,
+        status: config.status || 'open',
+        order: config.order ?? 999,
+      }
+    })
+    .filter(j => j.status !== 'hidden')
+    .sort((a, b) => a.order - b.order)
 })
 </script>
 
@@ -896,12 +1024,16 @@ watch(activePopup, (val) => {
            <JobSection
              :username="username"
              :isLoggedIn="isLoggedIn"
+             :vipJobConfigs="vipJobConfigs"
+             :vipJobsLoaded="vipJobsLoaded"
              @receiveJob="handleReceiveJob"
              @routerPush="handleNav"
              @contactSupport="contactSupport"
            />
            <!-- Desktop: hiển thị history thật -->
-           <HistorySection class="hidden lg:block" id="history-section" :isLoggedIn="isLoggedIn" :isDataLoading="isDataLoading" :myReports="combinedHistory" />
+           <div id="activity-history-section" class="hidden lg:block" style="scroll-margin-top: 90px;">
+             <HistorySection :isLoggedIn="isLoggedIn" :isDataLoading="isDataLoading" :myReports="combinedHistory" />
+           </div>
 
 
 
@@ -1123,99 +1255,110 @@ watch(activePopup, (val) => {
 
           <!-- SCREEN 2a: Basic jobs — 2-column card grid -->
           <div v-else-if="jobCategory === 'basic'" class="overflow-y-auto flex-1 px-3 py-3">
-            <div class="grid grid-cols-2 gap-2.5">
+            <div class="grid grid-cols-2 gap-3">
               <template v-for="(j, id) in jobsData" :key="id">
                 <button v-if="!VIP_IDS.includes(id as string)"
                   @click="handleReceiveJob(id as string)"
-                  class="relative flex flex-col p-4 rounded-[20px] border-[1.5px] transition-all duration-200 active:scale-[0.96] overflow-hidden text-left"
-                  :class="jobCardClass[id as string] || 'bg-blue-50 border-blue-300'">
+                  class="relative flex flex-col p-4 rounded-[22px] border border-blue-200/70
+                         bg-gradient-to-br from-slate-50 to-blue-50/80
+                         shadow-[0_2px_12px_rgba(37,99,235,0.09)]
+                         transition-all duration-200 active:scale-[0.96] overflow-hidden text-left
+                         min-h-[164px]">
 
-                  <!-- Highlight layer -->
-                  <div class="absolute inset-0 bg-gradient-to-t from-transparent to-white/5 pointer-events-none rounded-[18px]"></div>
+                  <!-- Shine overlay -->
+                  <div class="absolute inset-0 bg-gradient-to-br from-white/55 to-transparent pointer-events-none rounded-[21px]"></div>
 
                   <!-- Badge top-right -->
-                  <div class="absolute top-0 right-0 text-[8px] px-2 py-1 rounded-bl-xl rounded-tr-[18px] font-black italic uppercase border-b border-l border-white/15 text-white z-10"
-                       :class="jobBadgeClass[id as string] || 'bg-slate-700'">
+                  <div class="absolute top-0 right-0 text-[8px] px-2.5 py-1
+                              rounded-bl-[14px] rounded-tr-[20px]
+                              font-black italic uppercase text-white z-10
+                              bg-gradient-to-r from-blue-600 to-sky-500">
                     {{ j.badge || 'CƠ BẢN' }}
                   </div>
 
                   <!-- Icon -->
-                  <div class="w-9 h-9 rounded-xl flex items-center justify-center text-lg mb-3 border border-white/10 relative z-10"
-                       :class="jobIconBgClass[id as string] || 'bg-white/5'">
+                  <div class="w-10 h-10 rounded-2xl flex items-center justify-center text-xl mb-2.5
+                              bg-blue-100/90 border border-blue-200/60 relative z-10 shrink-0">
                     {{ jobIconMap[id as string] || '🎯' }}
                   </div>
 
                   <!-- Title -->
-                  <p class="text-slate-800 text-[11px] font-black italic uppercase tracking-tight leading-tight mb-2 flex-1 relative z-10">
+                  <p class="text-slate-700 text-[11px] font-black italic uppercase tracking-tight leading-tight mb-auto flex-1 relative z-10 pr-8">
                     {{ j.title }}
                   </p>
 
                   <!-- Reward -->
-                  <div class="flex items-baseline gap-1 mb-3 relative z-10">
-                    <span class="text-lg font-black italic tracking-tighter"
-                          :class="jobRewardClass[id as string] || 'text-blue-700'">
+                  <div class="flex items-baseline gap-1 mt-2 mb-2.5 relative z-10">
+                    <span class="text-xl font-black italic tracking-tighter text-blue-600">
                       +{{ String(j.reward).replace(/\D/g,'') }}
                     </span>
-                    <span class="text-[9px] font-black text-slate-600">XU</span>
+                    <span class="text-[9px] font-black text-blue-400 not-italic">XU</span>
                   </div>
 
                   <!-- CTA button -->
-                  <div class="w-full py-2 rounded-xl text-white text-[10px] font-black italic uppercase text-center relative z-10"
-                       :class="jobBtnClass[id as string] || 'bg-slate-700'">
+                  <div class="w-full py-2 rounded-xl text-white text-[10px] font-black italic uppercase text-center relative z-10
+                              bg-gradient-to-r from-blue-600 to-blue-500
+                              shadow-[0_2px_8px_rgba(37,99,235,0.28)]">
                     BẮT ĐẦU ⚡
                   </div>
                 </button>
               </template>
             </div>
-            <div class="h-2"></div>
+            <div class="h-4"></div>
           </div>
 
           <!-- SCREEN 2b: VIP jobs — 2-column card grid (amber theme) -->
           <div v-else-if="jobCategory === 'vip'" class="overflow-y-auto flex-1 px-3 py-3">
-            <div class="grid grid-cols-2 gap-2.5">
-              <template v-for="(j, id) in jobsData" :key="id">
-                <button v-if="VIP_IDS.includes(id as string)"
-                  @click="handleReceiveJob(id as string)"
-                  class="relative flex flex-col p-4 rounded-[20px] border-[1.5px] transition-all duration-200 active:scale-[0.96] overflow-hidden text-left bg-gradient-to-br from-amber-900/30 to-yellow-900/20 border-amber-500/60 shadow-[0_4px_12px_rgba(245,158,11,0.2)]"
-                  :class="PAUSED_JOBS.includes(id as string) ? 'opacity-50 grayscale' : ''">
+            <!-- Loading state: chờ Firestore snapshot đầu tiên -->
+            <div v-if="vipJobsLoading" class="flex flex-col items-center justify-center py-16 gap-4">
+              <div class="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+              <p class="text-amber-500 text-[11px] font-black italic uppercase tracking-widest">Đang tải công việc...</p>
+            </div>
+            <div v-else class="grid grid-cols-2 gap-2.5">
+              <button v-for="job in mergedVipJobsMobile" :key="job.id"
+                @click="handleReceiveJob(job.id)"
+                class="relative flex flex-col p-4 rounded-[20px] border-[1.5px] transition-all duration-200 active:scale-[0.96] overflow-hidden text-left bg-gradient-to-br from-amber-900/30 to-yellow-900/20 border-amber-500/60 shadow-[0_4px_12px_rgba(245,158,11,0.2)]"
+                :class="(job.status === 'paused' || job.status === 'soldout') ? 'opacity-60 grayscale' : ''">
 
-                  <!-- Highlight layer -->
-                  <div class="absolute inset-0 bg-gradient-to-t from-amber-500/5 to-yellow-300/5 pointer-events-none rounded-[18px]"></div>
+                <!-- Highlight layer -->
+                <div class="absolute inset-0 bg-gradient-to-t from-amber-500/5 to-yellow-300/5 pointer-events-none rounded-[18px]"></div>
 
-                  <!-- Paused overlay -->
-                  <div v-if="PAUSED_JOBS.includes(id as string)" class="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
-                    <span class="bg-black/70 text-white text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg">⏸ TẠM DỪNG</span>
-                  </div>
+                <!-- Status overlay -->
+                <div v-if="job.status === 'paused'" class="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+                  <span class="bg-black/70 text-white text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg">⏸ TẠM DỪNG</span>
+                </div>
+                <div v-if="job.status === 'soldout'" class="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+                  <span class="bg-black/70 text-red-400 text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg">❌ HẾT LƯỢT</span>
+                </div>
 
-                  <!-- Badge top-right -->
-                  <div class="absolute top-0 right-0 text-[8px] px-2 py-1 rounded-bl-xl rounded-tr-[18px] font-black italic uppercase border-b border-l border-amber-300/40 text-amber-900 z-10 bg-gradient-to-r from-amber-500 to-yellow-400">
-                    {{ j.badge || 'VIP' }}
-                  </div>
+                <!-- Badge top-right -->
+                <div class="absolute top-0 right-0 text-[8px] px-2 py-1 rounded-bl-xl rounded-tr-[18px] font-black italic uppercase border-b border-l border-amber-300/40 text-amber-900 z-10 bg-gradient-to-r from-amber-500 to-yellow-400">
+                  {{ job.badge || 'VIP' }}
+                </div>
 
-                  <!-- Icon -->
-                  <div class="w-9 h-9 rounded-xl flex items-center justify-center text-lg mb-3 border border-amber-500/40 bg-amber-600/20 relative z-10">
-                    {{ jobIconMap[id as string] || '💎' }}
-                  </div>
+                <!-- Icon -->
+                <div class="w-9 h-9 rounded-xl flex items-center justify-center text-lg mb-3 border border-amber-500/40 bg-amber-600/20 relative z-10">
+                  {{ jobIconMap[job.id] || '💎' }}
+                </div>
 
-                  <!-- Title -->
-                  <p class="text-amber-300 text-[11px] font-black italic uppercase tracking-tight leading-tight mb-2 flex-1 relative z-10">
-                    {{ j.title }}
-                  </p>
+                <!-- Title -->
+                <p class="text-amber-300 text-[11px] font-black italic uppercase tracking-tight leading-tight mb-2 flex-1 relative z-10">
+                  {{ job.title }}
+                </p>
 
-                  <!-- Reward -->
-                  <div class="flex items-baseline gap-1 mb-3 relative z-10">
-                    <span class="text-lg font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-yellow-600">
-                      +{{ String(j.reward).replace(/\D/g,'') }}
-                    </span>
-                    <span class="text-[9px] font-black text-amber-500/70">XU</span>
-                  </div>
+                <!-- Reward -->
+                <div class="flex items-baseline gap-1 mb-3 relative z-10">
+                  <span class="text-lg font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-yellow-600">
+                    +{{ String(job.reward).replace(/\D/g,'') }}
+                  </span>
+                  <span class="text-[9px] font-black text-amber-500/70">XU</span>
+                </div>
 
-                  <!-- CTA button -->
-                  <div class="w-full py-2 rounded-xl text-amber-900 text-[10px] font-black italic uppercase text-center relative z-10 bg-gradient-to-r from-amber-500 to-yellow-500">
-                    ĐĂNG KÝ 👑
-                  </div>
-                </button>
-              </template>
+                <!-- CTA button -->
+                <div class="w-full py-2 rounded-xl text-amber-900 text-[10px] font-black italic uppercase text-center relative z-10 bg-gradient-to-r from-amber-500 to-yellow-500">
+                  ĐĂNG KÝ 👑
+                </div>
+              </button>
             </div>
             <div class="h-2"></div>
           </div>
@@ -1264,25 +1407,38 @@ watch(activePopup, (val) => {
 
               <div v-for="item in combinedHistory" :key="item.id"
                    :class="[
-                     'relative bg-[#111726] border border-slate-800/60 p-4 rounded-[20px] flex items-center justify-between shadow-sm',
-                     item.status === 'rejected' ? 'opacity-50 grayscale' : ''
+                     'relative bg-[#111726] border p-4 rounded-[20px] flex items-center justify-between shadow-sm',
+                     item.status === 'rejected'
+                       ? 'border-rose-500/40 bg-rose-500/5 shadow-[0_0_12px_rgba(239,68,68,0.08)]'
+                       : 'border-slate-800/60'
                    ]">
                 <div class="absolute left-0 top-0 bottom-0 w-1 rounded-l-[20px]"
                      :class="item.status === 'approved' || item.status === 'collected' ? 'bg-emerald-500/60'
-                           : item.status === 'pending' ? 'bg-yellow-500/60' : 'bg-rose-500/40'"></div>
+                           : item.status === 'pending' ? 'bg-yellow-500/60' : 'bg-rose-500/70'"></div>
 
                 <div class="pl-2 flex flex-col gap-0.5 flex-1 min-w-0">
                   <span class="text-blue-500 text-[8px] font-black tracking-[2px] opacity-80">{{ item.displayTime }}</span>
                   <h4 class="text-white text-[11px] font-black italic uppercase tracking-tight truncate">
                     {{ item.type === 'withdraw' ? '🏦 RÚT TIỀN VỀ VÍ' : item.jobName }}
                   </h4>
+                  <template v-if="item.status === 'rejected' && item.type !== 'withdraw'">
+                    <p v-if="!item.note || item.note.length <= 80"
+                       class="text-rose-400/80 text-[8px] font-semibold normal-case leading-relaxed">
+                      Lý do: {{ item.note || 'Không đạt điều kiện duyệt.' }}
+                    </p>
+                    <button v-else
+                            @click="Swal.fire({ title: 'Lý do từ chối', text: item.note, icon: 'error', confirmButtonText: 'Đóng', background: '#111726', color: '#f8fafc', iconColor: '#f43f5e' })"
+                            class="text-rose-400 text-[8px] font-black underline underline-offset-2 hover:text-rose-300 transition-colors text-left">
+                      Xem lý do →
+                    </button>
+                  </template>
                 </div>
 
                 <div class="flex items-center gap-3 shrink-0">
                   <div class="flex items-center gap-1.5">
                     <span :class="[
                       'text-lg font-black italic tracking-tighter',
-                      item.status === 'rejected' ? 'text-slate-500' : (item.type === 'withdraw' ? 'text-rose-500' : 'text-emerald-400')
+                      item.status === 'rejected' ? 'text-rose-400' : (item.type === 'withdraw' ? 'text-rose-500' : 'text-emerald-400')
                     ]">
                       {{ item.type === 'withdraw' ? '-' : '+' }}{{ (item.reward || item.amount || 0).toLocaleString('vi-VN') }}
                     </span>
@@ -1380,7 +1536,7 @@ watch(activePopup, (val) => {
       </button>
 
       <!-- ⑤ HỖ TRỢ — vị trí 5 -->
-      <button @click="contactSupport('facebook')" class="flex flex-col items-center gap-1 w-[20%] group relative z-10">
+      <button @click="openSupportModal()" class="flex flex-col items-center gap-1 w-[20%] group relative z-10">
         <div class="relative">
           <div class="absolute inset-[-5px] rounded-full pointer-events-none orbit-ring" style="border:1.5px solid transparent; border-top-color:#0ea5e9; border-right-color:rgba(14,165,233,0.2);"></div>
           <div class="absolute inset-[-5px] rounded-full pointer-events-none orbit-ring-reverse" style="border:1px solid transparent; border-bottom-color:rgba(14,165,233,0.35);"></div>
@@ -1424,7 +1580,7 @@ watch(activePopup, (val) => {
     </Transition>
 
     <div class="fixed bottom-4 right-2 md:bottom-8 md:right-8 z-[999] hidden lg:flex flex-col gap-4 items-end scale-75 md:scale-100 origin-bottom-right">
-      <div class="flex items-center group cursor-pointer" @click="contactSupport('facebook')">
+      <div class="flex items-center group cursor-pointer" @click="openSupportModal()">
         <div class="mr-4 text-right overflow-hidden italic uppercase hidden md:block whitespace-nowrap">
           <p class="text-[9px] text-blue-400 font-black tracking-[2px] mb-1 opacity-80 animate-jump-delay">GIẢI ĐÁP THẮC MẮC</p>
           <p class="text-slate-700 text-sm font-black italic uppercase tracking-tighter">LIÊN HỆ FANPAGE</p>
@@ -1454,6 +1610,71 @@ watch(activePopup, (val) => {
     <AppBrowserBlocker />
 
   </div>
+
+  <!-- AGE CONFIRMATION MODAL (mobile + desktop) -->
+
+  <!-- SUPPORT MODAL — hệ thống hỗ trợ 1 chiều từ admin -->
+  <Teleport to="body">
+    <Transition name="fade">
+      <div v-if="showSupportModal"
+           class="fixed inset-0 z-[99993] flex items-end sm:items-center justify-center px-4 pb-32 sm:pb-4">
+        <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" @click="closeSupportModal"></div>
+        <div class="relative bg-[#111726] border border-slate-700/60 rounded-2xl w-full max-w-sm p-6 shadow-2xl">
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+              </div>
+              <h3 class="text-blue-400 font-black text-base uppercase tracking-wider">{{ supportConfig.title }}</h3>
+            </div>
+            <button @click="closeSupportModal"
+                    class="w-8 h-8 rounded-full bg-slate-700 hover:bg-slate-600 flex items-center justify-center transition-colors flex-shrink-0">
+              <svg class="w-4 h-4 text-slate-300" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <p class="text-slate-300 text-sm leading-relaxed mb-6 whitespace-pre-line">{{ supportConfig.message }}</p>
+          <div class="flex flex-col gap-3">
+            <button @click="handleFanpageClick()"
+                    class="w-full bg-[#1877F2] hover:bg-blue-500 text-white font-black py-3 rounded-xl flex items-center justify-center gap-2 transition-colors active:scale-95">
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+              </svg>
+              Nhắn tin Fanpage
+            </button>
+            <button @click="closeSupportModal"
+                    class="w-full bg-slate-700 hover:bg-slate-600 text-slate-300 py-2.5 rounded-xl font-bold transition-colors active:scale-95">
+              Đóng
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
+
+  <!-- FORCE REFRESH POPUP — z-[99997], chỉ hiện khi forceRefreshEnabled=false
+       forceRefreshEnabled=true → auto reload sau 3s, không hiện popup này -->
+  <Teleport to="body">
+    <Transition name="fade">
+      <div v-if="showForceRefreshPopup"
+           class="fixed inset-0 flex items-center justify-center p-4 z-[99997]"
+           style="background:rgba(0,0,0,0.88);backdrop-filter:blur(6px);">
+        <div class="w-full max-w-[360px] bg-[#111726] border border-blue-500/40 rounded-[28px] p-7 text-center space-y-5">
+          <div class="text-5xl">🔄</div>
+          <h3 class="text-lg text-white font-black italic uppercase tracking-tight">
+            {{ appConfig.refreshMessage }}
+          </h3>
+          <button @click="handleForceRefresh"
+                  class="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black uppercase tracking-widest text-sm transition-all active:scale-95">
+            TẢI LẠI NGAY
+          </button>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
 
   <!-- AGE CONFIRMATION MODAL (mobile + desktop) -->
   <Teleport to="body">

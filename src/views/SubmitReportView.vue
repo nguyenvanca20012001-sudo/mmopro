@@ -1,35 +1,49 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { auth, db } from '@/firebase'
-import { onAuthStateChanged } from "firebase/auth"
-import { collection, addDoc, serverTimestamp, query, where, getDocs } from "firebase/firestore"
+import { auth, db, storage } from '@/firebase'
+import { onAuthStateChanged, signInAnonymously } from "firebase/auth"
+import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
+import { collection, doc, setDoc, serverTimestamp, query, where, getDocs } from "firebase/firestore"
 import Swal from 'sweetalert2'
 import exifr from 'exifr'
+import { getJobStatus, proofSelectableJobs } from '@/composables/useVipJobs'
+import type { ProofJob } from '@/composables/useVipJobs'
+import { currentUserProfile, fetchUserProfileOnce } from '@/composables/useCurrentUser'
+
+interface ProofImage {
+  url: string
+  path: string
+  size: number
+  contentType: string
+}
 
 const router = useRouter()
 const route = useRoute()
 const isLoggedIn = ref(false)
 const userUid = ref('')
-const isLoading = ref(false)
 const showSuccessModal = ref(false)
 const baseUrl = import.meta.env.BASE_URL
+
+// Upload / compress state
+const isCompressing = ref(false)
+const submitPhase = ref<'' | 'validating' | 'uploading' | 'writing'>('')
+const uploadDone = ref(0)
+const uploadTotal = ref(0)
+const isBusy = computed(() => isCompressing.value || submitPhase.value !== '')
+const buttonText = computed(() => {
+  if (isCompressing.value) return 'ĐANG XỬ LÝ ẢNH...'
+  if (submitPhase.value === 'uploading') return `ĐANG TẢI ẢNH ${uploadDone.value}/${uploadTotal.value}...`
+  if (submitPhase.value === 'writing') return 'ĐANG GỬI BẰNG CHỨNG...'
+  if (submitPhase.value === 'validating') return 'ĐANG XỬ LÝ...'
+  return 'XÁC NHẬN GỬI ĐƠN'
+})
 
 const selectedImage = ref<string | null>(null)
 const openImage = (img: string) => { selectedImage.value = img }
 const closeImage = () => { selectedImage.value = null }
 
-const jobOptions = [
-  { id: 'view-tiktok',       name: 'CÀY VIEW TIKTOK (30.000 XU)',              reward: '30.000 xu' },
-  { id: 'view-youtube',      name: 'CÀY VIEW YOUTUBE (30.000 XU)',             reward: '30.000 xu' },
-  { id: 'post-threads',      name: 'ĐĂNG BÀI THREADS (30.000 XU)',             reward: '30.000 xu' },
-  { id: 'seeding-vinfast',   name: 'SEEDING VINFAST (30.000 XU)',              reward: '30.000 xu' },
-  { id: 'google-map',        name: 'GOOGLE MAP (25.000 XU)',                   reward: '25.000 xu' },
-  { id: 'join-zalo',         name: 'NHÓM ZALO (10.000 XU)',                    reward: '10.000 xu' },
-  { id: 'liobank',           name: 'APP LIOBANK (65.000 XU)',                  reward: '65.000 xu' },
-  { id: 'app-chung-khoan-3', name: 'APP CHỨNG KHOÁN SỐ 3 (85.000 XU)',        reward: '85.000 xu' },
-  { id: 'app-chung-khoan-4', name: 'APP CHỨNG KHOÁN SỐ 4 (85.000 XU)',        reward: '85.000 xu' }
-]
+const jobOptions = proofSelectableJobs
 
 const jobSamples: Record<string, string[]> = {
   'app-chung-khoan-4': ['images/anh-maybank2.jpg', 'images/anh-maybank3.jpg', 'images/anh-maybank4.jpg'],
@@ -40,36 +54,78 @@ const jobSamples: Record<string, string[]> = {
   'liobank': ['images/anh-liobank3a.jpg', 'images/anh-liobank3b.jpg', 'images/anh-liobank4.jpg']
 }
 
-const selectedJob = ref(jobOptions[0])
+const selectedJob = ref<ProofJob | undefined>(jobOptions.value[0])
 const fullName = ref('')
 const phoneNumber = ref('')
 const birthYear = ref('')
 const birthMonth = ref('')
 const exifData = ref<any>({ hasExif: false, suspicious: false })
-const images = ref<string[]>([])
+const imageBlobs = ref<Blob[]>([])
+const imagePreviews = ref<string[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
 
-onMounted(() => {
-  const jobIdFromQuery = route.query.job as string
-  if (jobIdFromQuery) {
-    const foundJob = jobOptions.find(j => j.id === jobIdFromQuery)
-    if (foundJob) selectedJob.value = foundJob
-  }
+onUnmounted(() => {
+  imagePreviews.value.forEach(url => URL.revokeObjectURL(url))
+})
 
-  onAuthStateChanged(auth, (user) => {
+// Pre-warm anonymous auth so it's ready before user hits submit
+const ensureAuth = async () => {
+  if (!auth.currentUser) {
+    try { await signInAnonymously(auth) } catch {}
+  }
+}
+
+const applyUrlJob = () => {
+  const jobId = route.query.job as string
+  if (!jobId || selectedJob.value?.id === jobId) return
+  const found = jobOptions.value.find(j => j.id === jobId)
+  if (found) selectedJob.value = found
+}
+
+const prefilled = ref(false)
+
+const prefillFromProfile = () => {
+  if (prefilled.value) return
+  const p = currentUserProfile.value
+  if (!p) return
+  if (!fullName.value && p.fullName) fullName.value = p.fullName
+  if (!phoneNumber.value && p.phone) phoneNumber.value = p.phone
+  if (!birthYear.value && p.dob) birthYear.value = p.dob
+  prefilled.value = true
+}
+
+onMounted(() => {
+  applyUrlJob()
+  onAuthStateChanged(auth, async (user) => {
     if (user) {
       isLoggedIn.value = true
       userUid.value = user.uid
+      ensureAuth()
+      await fetchUserProfileOnce(user.uid)
+      prefillFromProfile()
     } else {
       router.push('/login')
     }
   })
 })
 
-watch(() => route.query.job, (newJobId) => {
-  if (newJobId) {
-    const foundJob = jobOptions.find(j => j.id === newJobId as string)
-    if (foundJob) selectedJob.value = foundJob
+// Fallback: profile may arrive via App.vue snapshot after auth resolves
+const stopProfileWatch = watch(currentUserProfile, () => {
+  if (!prefilled.value) {
+    prefillFromProfile()
+    stopProfileWatch()
+  }
+})
+
+watch(() => route.query.job, applyUrlJob)
+
+// Re-apply URL job after Firestore loads (VIP job may not be in vipJobConfigs at mount time)
+watch(jobOptions, applyUrlJob)
+
+// Reset selection if the selected job disappears from the list (e.g., admin pauses mid-session)
+watch(jobOptions, (newOptions) => {
+  if (selectedJob.value && !newOptions.find(j => j.id === selectedJob.value!.id)) {
+    selectedJob.value = newOptions[0]
   }
 })
 
@@ -87,38 +143,57 @@ const imageRequirementText = computed(() => {
   return "TẢI LÊN ẢNH CHỤP MÀN HÌNH BẰNG CHỨNG XÁC THỰC"
 })
 
-const triggerFileInput = () => { fileInput.value?.click() }
+const triggerFileInput = () => {
+  if (!isBusy.value) fileInput.value?.click()
+}
 
-const compressImage = (file: File): Promise<string> => {
-  return new Promise((resolve) => {
+// Returns a webp Blob. Targets ~300-600KB; hard rejects if still >1MB after two passes.
+// Quality 0.72 first pass: good balance for screenshots with text/QR at 1280px.
+// Quality 0.55 second pass: emergency fallback for very large photos.
+const compressImage = (file: File): Promise<Blob> => {
+  return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.readAsDataURL(file)
     reader.onload = (e) => {
       const img = new Image()
       img.src = e.target?.result as string
       img.onload = () => {
-        const canvas = document.createElement('canvas')
-        const MAX_WIDTH = 800
-        let width = img.width
-        let height = img.height
-        if (width > MAX_WIDTH) {
-          height = Math.round((height * MAX_WIDTH) / width)
-          width = MAX_WIDTH
+        const MAX_DIM = 1280
+        let { width, height } = img
+        if (width > MAX_DIM || height > MAX_DIM) {
+          if (width >= height) {
+            height = Math.round((height * MAX_DIM) / width)
+            width = MAX_DIM
+          } else {
+            width = Math.round((width * MAX_DIM) / height)
+            height = MAX_DIM
+          }
         }
+        const canvas = document.createElement('canvas')
         canvas.width = width
         canvas.height = height
         const ctx = canvas.getContext('2d')
-        if (ctx) {
-          ctx.fillStyle = '#FFFFFF'
-          ctx.fillRect(0, 0, canvas.width, canvas.height)
-          ctx.drawImage(img, 0, 0, width, height)
-          resolve(canvas.toDataURL('image/jpeg', 0.6))
-        } else {
-          resolve(e.target?.result as string)
-        }
+        if (!ctx) { reject(new Error('Canvas không khả dụng')); return }
+        ctx.fillStyle = '#FFFFFF'
+        ctx.fillRect(0, 0, width, height)
+        ctx.drawImage(img, 0, 0, width, height)
+        canvas.toBlob((blob1) => {
+          if (!blob1) { reject(new Error('Không thể nén ảnh')); return }
+          if (blob1.size < 1 * 1024 * 1024) { resolve(blob1); return }
+          // Second pass at lower quality if still over 1MB
+          canvas.toBlob((blob2) => {
+            if (!blob2) { reject(new Error('Không thể nén ảnh')); return }
+            if (blob2.size >= 1 * 1024 * 1024) {
+              reject(new Error('Ảnh quá lớn, vui lòng chọn ảnh khác hoặc chụp lại rõ hơn.'))
+              return
+            }
+            resolve(blob2)
+          }, 'image/webp', 0.55)
+        }, 'image/webp', 0.72)
       }
-      img.onerror = () => { resolve(e.target?.result as string) }
+      img.onerror = () => reject(new Error('Không thể đọc ảnh'))
     }
+    reader.onerror = () => reject(new Error('Không thể đọc file'))
   })
 }
 
@@ -127,25 +202,38 @@ const handleFileUpload = async (event: Event) => {
   if (!target.files?.length) return
   const files = Array.from(target.files)
 
-  if (images.value.length + files.length > 5) {
-    alert('⚠️ CHỈ ĐƯỢC UPLOAD TỐI ĐA 5 ẢNH!')
+  if (imageBlobs.value.length + files.length > 6) {
+    alert('⚠️ Bạn chỉ có thể gửi tối đa 6 ảnh bằng chứng.')
+    target.value = ''
     return
   }
 
+  isCompressing.value = true
   for (const file of files) {
     if (file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif')) {
       alert(`⚠️ LỖI ĐỊNH DẠNG: Bức ảnh "${file.name}" là ảnh HEIC của iPhone nên hệ thống không nhận diện được. Vui lòng CHỤP MÀN HÌNH lại bức ảnh đó rồi tải lên!`)
       continue
     }
     if (!file.type.startsWith('image/')) continue
-    const compressedImage = await compressImage(file)
-    if (images.value.length === 0) await readExif(file)
-    images.value.push(compressedImage)
+    try {
+      const blob = await compressImage(file)
+      if (imageBlobs.value.length === 0) await readExif(file)
+      imagePreviews.value.push(URL.createObjectURL(blob))
+      imageBlobs.value.push(blob)
+    } catch (err: any) {
+      alert('⚠️ ' + (err.message || 'Lỗi khi xử lý ảnh'))
+    }
   }
+  isCompressing.value = false
   target.value = ''
 }
 
-const removeImage = (index: number) => { images.value.splice(index, 1) }
+const removeImage = (index: number) => {
+  const preview = imagePreviews.value[index]
+  if (preview) URL.revokeObjectURL(preview)
+  imageBlobs.value.splice(index, 1)
+  imagePreviews.value.splice(index, 1)
+}
 
 const readExif = async (file: File) => {
   try {
@@ -162,8 +250,71 @@ const readExif = async (file: File) => {
   } catch { exifData.value = { hasExif: false, suspicious: false } }
 }
 
+// Upload blobs in parallel batches of CONCURRENCY.
+// Uses Promise.allSettled per batch so cleanup captures everything that completed
+// even if one upload in the batch failed.
+const uploadImagesToStorage = async (
+  uid: string,
+  proofId: string,
+  blobs: Blob[],
+  onProgress: (done: number, total: number) => void
+): Promise<ProofImage[]> => {
+  const CONCURRENCY = 3
+  const total = blobs.length
+  const results: ProofImage[] = new Array(total)
+  const uploadedPaths: string[] = []
+  let doneCount = 0
+
+  const uploadOne = async (i: number) => {
+    const blob = blobs[i] as Blob
+    const path = `proofs/${uid}/${proofId}/image_${i}.webp`
+    const sRef = storageRef(storage, path)
+    await uploadBytes(sRef, blob, { contentType: 'image/webp' })
+    uploadedPaths.push(path)
+    const url = await getDownloadURL(sRef)
+    results[i] = { url, path, size: blob.size, contentType: 'image/webp' }
+    doneCount++
+    onProgress(doneCount, total)
+  }
+
+  try {
+    for (let i = 0; i < total; i += CONCURRENCY) {
+      const batchIndices = Array.from(
+        { length: Math.min(CONCURRENCY, total - i) },
+        (_, k) => i + k
+      )
+      const batchResults = await Promise.allSettled(batchIndices.map(uploadOne))
+      const failed = batchResults.find(r => r.status === 'rejected')
+      if (failed) {
+        // All uploads in this batch have settled — safe to cleanup everything uploaded so far
+        await Promise.allSettled(uploadedPaths.map(p => deleteObject(storageRef(storage, p))))
+        throw (failed as PromiseRejectedResult).reason
+      }
+    }
+    return results
+  } catch (err) {
+    // Catch any error that escaped the batch loop (e.g. getDownloadURL failure)
+    await Promise.allSettled(uploadedPaths.map(p => deleteObject(storageRef(storage, p))))
+    throw err
+  }
+}
+
 const submitReport = async () => {
-  if (!fullName.value || !phoneNumber.value || !birthYear.value || !birthMonth.value || images.value.length === 0) {
+  const jobStatus = getJobStatus(selectedJob.value.id)
+  if (jobStatus === 'paused') {
+    await Swal.fire({ icon: 'warning', title: 'TẠM DỪNG', text: 'Công việc đang tạm dừng, vui lòng quay lại sau.', confirmButtonColor: '#7c3aed' })
+    return
+  }
+  if (jobStatus === 'soldout') {
+    await Swal.fire({ icon: 'warning', title: 'HẾT LƯỢT', text: 'Công việc đã hết lượt hôm nay.', confirmButtonColor: '#7c3aed' })
+    return
+  }
+  if (jobStatus === 'hidden') {
+    await Swal.fire({ icon: 'error', title: 'KHÔNG KHẢ DỤNG', text: 'Công việc này không khả dụng.', confirmButtonColor: '#7c3aed' })
+    return
+  }
+
+  if (!fullName.value || !phoneNumber.value || !birthYear.value || !birthMonth.value || imageBlobs.value.length === 0) {
     alert('⚠️ VUI LÒNG NHẬP ĐỦ THÔNG TIN VÀ TẢI ẢNH XÁC THỰC!')
     return
   }
@@ -173,17 +324,18 @@ const submitReport = async () => {
     return
   }
 
-  if (fourImageJobs.includes(selectedJob.value.id) && images.value.length < 4) {
+  if (fourImageJobs.includes(selectedJob.value.id) && imageBlobs.value.length < 4) {
     alert('⚠️ CHIẾN DỊCH NGÂN HÀNG TPBANK BẮT BUỘC PHẢI TẢI LÊN ÍT NHẤT 4 ẢNH MẪU!')
     return
   }
 
-  if (threeImageJobs.includes(selectedJob.value.id) && images.value.length < 3) {
+  if (threeImageJobs.includes(selectedJob.value.id) && imageBlobs.value.length < 3) {
     alert('⚠️ CHIẾN DỊCH NÀY BẮT BUỘC PHẢI TẢI LÊN ÍT NHẤT 3 ẢNH MẪU ĐỂ ĐỐI SOÁT!')
     return
   }
 
-  isLoading.value = true
+  submitPhase.value = 'validating'
+  let uploadedPaths: string[] = []
   try {
     // Chặn spam: tối đa 3 đơn pending cùng lúc
     const qSpam = query(
@@ -194,7 +346,7 @@ const submitReport = async () => {
     const snapshotSpam = await getDocs(qSpam)
     if (snapshotSpam.docs.length >= 3) {
       alert("⚠️ HỆ THỐNG TẠM KHÓA: Bạn đang có 3 đơn chờ duyệt. Vui lòng chờ Admin xử lý trước khi gửi thêm!")
-      isLoading.value = false
+      submitPhase.value = ''
       return
     }
 
@@ -202,13 +354,11 @@ const submitReport = async () => {
     const oneTimeJobs = ['view-tiktok', 'view-youtube', 'post-threads', 'seeding-vinfast', 'google-map', 'join-zalo']
 
     if (oneTimeJobs.includes(selectedJob.value.id)) {
-      // Query theo jobId (report mới) VÀ jobName (report cũ có thể không có jobId)
       const [snapById, snapByName] = await Promise.all([
         getDocs(query(collection(db, "reports"), where("uid", "==", userUid.value), where("jobId", "==", selectedJob.value.id))),
-        getDocs(query(collection(db, "reports"), where("uid", "==", userUid.value), where("jobName", "==", selectedJob.value.name)))
+        getDocs(query(collection(db, "reports"), where("uid", "==", userUid.value), where("jobName", "==", selectedJob.value!.title)))
       ])
 
-      // Gộp 2 kết quả, loại trùng theo doc.id
       const seenIds = new Set<string>()
       const allDocs = [...snapById.docs, ...snapByName.docs].filter(doc => {
         if (seenIds.has(doc.id)) return false
@@ -216,8 +366,8 @@ const submitReport = async () => {
         return true
       })
 
-      const isPending  = allDocs.some(doc => doc.data().status === 'pending')
-      const isDone     = allDocs.some(doc => ['approved', 'collected'].includes(doc.data().status))
+      const isPending = allDocs.some(doc => doc.data().status === 'pending')
+      const isDone    = allDocs.some(doc => ['approved', 'collected'].includes(doc.data().status))
 
       if (isDone) {
         Swal.fire({
@@ -226,7 +376,7 @@ const submitReport = async () => {
           text: 'Mỗi tài khoản chỉ được phép làm công việc này 1 lần duy nhất! Đơn của bạn đã hoàn thành trước đó.',
           confirmButtonColor: '#3b82f6'
         })
-        isLoading.value = false
+        submitPhase.value = ''
         return
       }
 
@@ -234,40 +384,75 @@ const submitReport = async () => {
         Swal.fire({
           icon: 'warning',
           title: 'ĐANG CHỜ DUYỆT!',
-          text: `Bạn đang có 1 đơn "${selectedJob.value.name.split(' (')[0]}" chờ duyệt rồi. Không thể nộp thêm!`,
+          text: `Bạn đang có 1 đơn "${selectedJob.value!.title}" chờ duyệt rồi. Không thể nộp thêm!`,
           confirmButtonColor: '#f59e0b'
         })
-        isLoading.value = false
+        submitPhase.value = ''
         return
       }
     }
 
-    await addDoc(collection(db, "reports"), {
+    // Ensure authenticated before uploading to Storage
+    await ensureAuth()
+    const uid = auth.currentUser!.uid
+
+    // Pre-generate the Firestore doc ref so proofId matches the Storage path
+    const reportRef = doc(collection(db, "reports"))
+
+    uploadDone.value = 0
+    uploadTotal.value = imageBlobs.value.length
+    submitPhase.value = 'uploading'
+
+    const proofImages = await uploadImagesToStorage(uid, reportRef.id, imageBlobs.value, (done, total) => {
+      uploadDone.value = done
+      uploadTotal.value = total
+    })
+    uploadedPaths = proofImages.map(p => p.path)
+
+    submitPhase.value = 'writing'
+
+    await setDoc(reportRef, {
       uid: userUid.value,
-      jobId: selectedJob.value.id,
-      jobName: selectedJob.value.name,
-      reward: selectedJob.value.reward,
+      jobId: selectedJob.value!.id,
+      jobName: selectedJob.value!.title,
+      jobTitleSnapshot: selectedJob.value!.title,
+      reward: selectedJob.value!.reward,
+      rewardSnapshot: selectedJob.value!.reward,
       fullName: fullName.value.toUpperCase(),
       phoneRef: phoneNumber.value,
       birthYear: birthYear.value,
       birthMonth: birthMonth.value,
       exif: exifData.value,
-      images: images.value,
+      proofImages,
       status: 'pending',
       createdAt: serverTimestamp()
     })
 
+    imagePreviews.value.forEach(url => URL.revokeObjectURL(url))
+    imageBlobs.value = []
+    imagePreviews.value = []
     showSuccessModal.value = true
   } catch (error: any) {
+    // If setDoc failed after upload succeeded, clean up orphaned Storage files
+    if (uploadedPaths.length && !showSuccessModal.value) {
+      await Promise.allSettled(uploadedPaths.map(p => deleteObject(storageRef(storage, p))))
+    }
     alert('❌ LỖI HỆ THỐNG: ' + error.message)
   } finally {
-    isLoading.value = false
+    submitPhase.value = ''
+    uploadDone.value = 0
+    uploadTotal.value = 0
   }
 }
 
 const closeAndGoHome = () => {
   showSuccessModal.value = false
   router.push('/')
+}
+
+const goToVipSection = () => {
+  showSuccessModal.value = false
+  router.push({ path: '/', query: { section: 'vip' } })
 }
 
 const openFanpage = () => {
@@ -308,7 +493,7 @@ const openFanpage = () => {
               :disabled="!!route.query.job"
               :class="['w-full bg-slate-800/60 border rounded-[20px] py-4 px-5 text-white outline-none appearance-none font-sans font-bold text-[14px] md:text-[15px] not-italic transition-all', !!route.query.job ? 'border-slate-700/80 text-emerald-400 bg-slate-800/60 cursor-not-allowed shadow-inner' : 'border-slate-700/60 focus:border-blue-500 cursor-pointer']"
             >
-              <option v-for="job in jobOptions" :key="job.id" :value="job">{{ job.name }}</option>
+              <option v-for="job in jobOptions" :key="job.id" :value="job">{{ job.title }}</option>
             </select>
             <span v-if="!route.query.job" class="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs font-sans not-italic">⌄</span>
             <span v-else class="absolute right-5 top-1/2 -translate-y-1/2 text-emerald-500 text-lg font-sans not-italic font-black">✓</span>
@@ -370,7 +555,7 @@ const openFanpage = () => {
                    ? 'text-rose-400'
                    : 'text-slate-400 group-hover:text-blue-700'
                ]">
-              {{ imageRequirementText }}
+              {{ isCompressing ? 'ĐANG XỬ LÝ ẢNH...' : imageRequirementText }}
             </p>
           </div>
           <input type="file" ref="fileInput" @change="handleFileUpload" multiple accept="image/jpeg, image/png, image/jpg" class="hidden" />
@@ -389,8 +574,8 @@ const openFanpage = () => {
             </div>
           </div>
 
-          <div v-if="images.length > 0" class="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-            <div v-for="(img, index) in images" :key="index"
+          <div v-if="imagePreviews.length > 0" class="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+            <div v-for="(img, index) in imagePreviews" :key="index"
                  @click="openImage(img)"
                  class="relative group rounded-[18px] overflow-hidden border border-slate-700/60 bg-slate-800/40 aspect-square cursor-zoom-in">
               <img class="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity bg-white" :src="img" />
@@ -401,10 +586,10 @@ const openFanpage = () => {
 
         <button
           @click="submitReport"
-          :disabled="isLoading"
+          :disabled="isBusy"
           class="w-full mt-4 bg-blue-600 hover:bg-blue-500 text-white py-5 rounded-[20px] text-xl font-black italic shadow-[0_10px_30px_rgba(37,99,235,0.3)] transition-all active:scale-95 disabled:opacity-50"
         >
-          {{ isLoading ? 'ĐANG XỬ LÝ...' : 'XÁC NHẬN GỬI ĐƠN' }}
+          {{ buttonText }}
         </button>
 
       </div>
@@ -418,7 +603,7 @@ const openFanpage = () => {
           <div class="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-6 border border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.2)]">
             <span class="text-4xl">✅</span>
           </div>
-          <h2 class="text-2xl text-slate-800 font-black italic tracking-tighter mb-2 uppercase">Gửi đơn thành công!</h2>
+          <h2 class="text-2xl text-slate-800 font-black italic tracking-tighter mb-2 uppercase">{{ isFanpageTask ? 'Gửi đơn thành công!' : 'Đã gửi bằng chứng' }}</h2>
 
           <div v-if="isFanpageTask">
             <p class="text-slate-400 text-[10px] normal-case font-bold leading-relaxed mb-6 italic uppercase">
@@ -435,12 +620,23 @@ const openFanpage = () => {
           </div>
 
           <div v-else>
-            <p class="text-slate-400 text-[10px] normal-case font-bold leading-relaxed mb-8 italic uppercase">
-              Hệ thống đã nhận được bằng chứng.<br/>
-              Đợi khoảng <span class="text-blue-500 font-black">1 giờ</span> để Admin xét duyệt và cộng tiền nhé!
+            <p class="text-slate-600 text-sm font-bold leading-relaxed mb-2">
+              Bằng chứng của bạn đã được gửi thành công.<br/>
+              Vui lòng chờ admin xét duyệt.
             </p>
-            <button class="w-full bg-blue-600 text-white py-4 rounded-2xl text-sm font-black uppercase tracking-[2px] hover:bg-blue-500 transition-all active:scale-95 shadow-lg shadow-blue-900/40" @click="closeAndGoHome">
-              ĐÃ HIỂU
+            <div class="relative rounded-2xl border border-blue-400/30 bg-gradient-to-b from-blue-900/10 to-blue-900/5 p-4 mb-5">
+              <p class="text-blue-500 text-[10px] font-black uppercase tracking-widest text-center mb-2">
+                ⚡ Tham gia công việc VIP hôm nay
+              </p>
+              <p class="neon-blue text-center text-[22px] font-black leading-tight">
+                Nhận thu nhập<br/>65.000 – 100.000 xu
+              </p>
+            </div>
+            <button class="w-full bg-blue-600 text-white py-4 rounded-2xl text-sm font-black uppercase tracking-[2px] hover:bg-blue-500 transition-all active:scale-95 shadow-lg shadow-blue-900/40 mb-3" @click="goToVipSection">
+              👑 Tham khảo ngay
+            </button>
+            <button class="w-full bg-transparent text-slate-400 py-2 rounded-2xl text-[10px] font-black uppercase tracking-[2px] hover:text-slate-600 transition-all" @click="closeAndGoHome">
+              Đóng
             </button>
           </div>
 
@@ -462,6 +658,11 @@ select {
   background-size: 0.8rem;
 }
 select:disabled { background-image: none; }
+
+.neon-blue {
+  color: #3b82f6;
+  text-shadow: 0 0 8px rgba(59, 130, 246, 0.7), 0 0 20px rgba(59, 130, 246, 0.4);
+}
 
 input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button {

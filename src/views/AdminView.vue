@@ -1,25 +1,162 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { auth, db } from '@/firebase' 
 import { onAuthStateChanged, signOut } from "firebase/auth" 
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, getDoc, increment, limit, where, getDocs, addDoc, serverTimestamp, Timestamp } from "firebase/firestore"
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, getDoc, documentId, increment, limit, where, getDocs, addDoc, serverTimestamp, Timestamp, setDoc } from "firebase/firestore"
 import Swal from 'sweetalert2'
+import { jobsData } from '@/data/jobs'
+import { useVipJobs, startVipJobsListener, VIP_JOB_IDS } from '@/composables/useVipJobs'
+import { appConfig, startAppConfigListener, updateAppConfig } from '@/composables/useAppConfig'
+import type { AppConfig } from '@/composables/useAppConfig'
+import { supportConfig, startSupportConfigListener, updateSupportConfig } from '@/composables/useSupportConfig'
+import type { SupportConfig } from '@/composables/useSupportConfig'
 
 const reports = ref<any[]>([])
 const withdrawals = ref<any[]>([]) 
 const dailyNotes = ref<any[]>([]) 
-const usersMap = ref<Record<string, any>>({}) 
+const usersMap = ref<Record<string, any>>({})
+
+// Lazy-load user docs only for UIDs present in the current report/withdrawal batch.
+// Avoids reading the entire users collection (was the biggest read offender).
+// Firestore SDK v9+ supports up to 30 values per `in` query.
+const USERS_BATCH_SIZE = 30
+const ensureUsers = async (uids: string[]) => {
+  const missing = [...new Set(uids)].filter(uid => !!uid && !usersMap.value[uid])
+  if (!missing.length) return
+  for (let i = 0; i < missing.length; i += USERS_BATCH_SIZE) {
+    const batch = missing.slice(i, i + USERS_BATCH_SIZE)
+    if (!batch.length) continue
+    try {
+      const snap = await getDocs(query(collection(db, 'users'), where(documentId(), 'in', batch)))
+      if (import.meta.env.DEV) console.log('[Firestore] users batch docs:', snap.size)
+      snap.docs.forEach(d => { usersMap.value[d.id] = d.data() })
+    } catch {}
+  }
+}
 const isLoading = ref(true)
 const isCheckingAuth = ref(true) 
 const router = useRouter()
 
-const activeTab = ref('app_jobs') // 'app_jobs' | 'other_jobs' | 'withdrawals'
+const activeTab = ref('app_jobs') // 'app_jobs' | 'other_jobs' | 'withdrawals' | 'vip_jobs_config' | 'web_config'
 const statusFilter = ref('pending')
+
+// ============================================================================
+// VIP JOBS CONFIG — Quản lý metadata VIP jobs realtime từ Firestore
+// Listener là singleton (module-scope) — không tạo listener mới nếu đã chạy
+// ============================================================================
+const { vipJobConfigs } = useVipJobs()
+const vipJobEdits = ref<Record<string, any>>({})
+
+const initVipJobEdit = (id: string, firestoreData: Record<string, any>) => {
+  const config = firestoreData[id] || {}
+  const staticJob = jobsData[id] || {}
+  vipJobEdits.value[id] = {
+    title:   config.title   !== undefined ? config.title   : (staticJob.title   || ''),
+    reward:  config.reward  !== undefined ? config.reward  : (staticJob.reward  || ''),
+    badge:   config.badge   !== undefined ? config.badge   : (staticJob.badge   || ''),
+    warning: config.warning !== undefined ? config.warning : (staticJob.warning || ''),
+    order:   config.order   !== undefined ? config.order   : 0,
+    status:  config.status  !== undefined ? config.status  : 'open',
+  }
+}
+
+// Đồng bộ form edits khi composable nhận data từ Firestore
+watch(vipJobConfigs, (configs) => {
+  VIP_JOB_IDS.forEach(id => initVipJobEdit(id, configs))
+}, { immediate: true })
+
+const saveVipJobConfig = async (id: string) => {
+  const edit = vipJobEdits.value[id]
+  if (!edit) return
+  try {
+    await setDoc(doc(db, 'vip_jobs', id), {
+      title:   edit.title,
+      reward:  edit.reward,
+      badge:   edit.badge,
+      warning: edit.warning,
+      order:   Number(edit.order) || 0,
+      status:  edit.status,
+      updatedAt: serverTimestamp(),
+    }, { merge: true })
+    await Swal.fire({ icon: 'success', title: 'ĐÃ LƯU!', text: `Cấu hình "${id}" đã cập nhật realtime.`, timer: 1500, showConfirmButton: false })
+  } catch (e) {
+    Swal.fire('Lỗi!', String(e), 'error')
+  }
+}
+
+// ============================================================================
+// WEB CONFIG — Quản lý app_config/overall realtime
+// webConfigEdit là bản local của form; watch(appConfig) sync khi Firestore cập nhật
+// ============================================================================
+const webConfigEdit = ref<AppConfig>({ ...appConfig.value, appVersion: Number(appConfig.value.appVersion) || 1 })
+const isSavingWebConfig = ref(false)
+
+// immediate: true đảm bảo sync ngay khi component mount, không bị trống nếu snapshot đã fired trước
+watch(appConfig, (cfg) => {
+  webConfigEdit.value = { ...cfg, appVersion: Number(cfg.appVersion) || 1 }
+}, { deep: true, immediate: true })
+
+const saveWebConfig = async () => {
+  isSavingWebConfig.value = true
+  try {
+    await updateAppConfig({ ...webConfigEdit.value })
+    await Swal.fire({ icon: 'success', title: 'ĐÃ LƯU!', text: 'Cấu hình web đã cập nhật realtime.', timer: 1500, showConfirmButton: false })
+  } catch (e) {
+    Swal.fire('Lỗi!', String(e), 'error')
+  } finally {
+    isSavingWebConfig.value = false
+  }
+}
+
+const incrementVersion = () => {
+  webConfigEdit.value.appVersion = (webConfigEdit.value.appVersion || 1) + 1
+}
+
+// ============================================================================
+// SUPPORT CONFIG — Quản lý support_config/overall realtime
+// ============================================================================
+const supportConfigEdit = ref<SupportConfig>({ ...supportConfig.value })
+const isSavingSupportConfig = ref(false)
+
+watch(supportConfig, (cfg) => {
+  supportConfigEdit.value = { ...cfg }
+}, { deep: true, immediate: true })
+
+const incrementSupportVersion = () => {
+  supportConfigEdit.value.announcementVersion = (supportConfigEdit.value.announcementVersion || 1) + 1
+}
+
+const saveSupportConfig = async () => {
+  isSavingSupportConfig.value = true
+  try {
+    await updateSupportConfig({ ...supportConfigEdit.value })
+    await Swal.fire({ icon: 'success', title: 'ĐÃ LƯU!', text: 'Cấu hình hỗ trợ đã cập nhật realtime.', timer: 1500, showConfirmButton: false })
+  } catch (e: any) {
+    const msg = e?.code === 'permission-denied'
+      ? 'Lỗi: Không có quyền ghi. Kiểm tra Firestore Rules.'
+      : String(e)
+    Swal.fire('Lỗi!', msg, 'error')
+  } finally {
+    isSavingSupportConfig.value = false
+  }
+}
+
+const statusLabels: Record<string, string> = {
+  open:    '✅ Mở',
+  paused:  '⏸ Tạm dừng',
+  hidden:  '🚫 Ẩn',
+  soldout: '❌ Hết lượt',
+}
 
 const selectedImage = ref<string | null>(null)
 const openImage = (img: string) => { selectedImage.value = img }
 const closeImage = () => { selectedImage.value = null }
+
+const getImageUrls = (rp: any): string[] => {
+  if (rp.proofImages?.length) return rp.proofImages.map((p: any) => p.url)
+  return rp.images ?? []
+}
 
 const selectedReportId = ref<string | null>(null)
 const showRejectPopup = ref(false)
@@ -216,6 +353,7 @@ const selectedOtherJobs = ref<string[]>([])
 
 watch(activeTab, () => {
   selectedOtherJobs.value = []
+  if (!isCheckingAuth.value) loadData(statusFilter.value)
 })
 
 const isAllOtherJobsSelected = computed(() => {
@@ -290,53 +428,61 @@ const bulkApproveOtherJobs = async () => {
 // ============================================================================
 let unsubReports: any = null;
 let unsubWithdrawals: any = null;
-let unsubUsers: any = null;
 
+// Tab-aware: only start the listener that the active tab needs.
+// Switching from reports tab → withdrawals tab unsubscribes the reports listener (and vice-versa).
 const loadData = (newStatus: string) => {
-  if (searchQuery.value.trim() !== '') return;
+  if (searchQuery.value.trim() !== '') return
 
-  isLoading.value = true;
+  isLoading.value = true
 
-  if (unsubReports) unsubReports();
-  if (unsubWithdrawals) unsubWithdrawals();
+  const needsReports = activeTab.value === 'app_jobs' || activeTab.value === 'other_jobs'
+  const needsWithdrawals = activeTab.value === 'withdrawals'
 
-  let qReports;
-  if (newStatus === 'all') {
-    qReports = query(collection(db, "reports"), orderBy("createdAt", "desc"), limit(100));
-  } else {
-    qReports = query(collection(db, "reports"), where("status", "==", newStatus), limit(100));
+  if (!needsReports && unsubReports) { unsubReports(); unsubReports = null }
+  if (!needsWithdrawals && unsubWithdrawals) { unsubWithdrawals(); unsubWithdrawals = null }
+
+  if (needsReports) {
+    if (unsubReports) { unsubReports(); unsubReports = null }
+    const qReports = newStatus === 'all'
+      ? query(collection(db, "reports"), orderBy("createdAt", "desc"), limit(100))
+      : query(collection(db, "reports"), where("status", "==", newStatus), limit(100))
+
+    unsubReports = onSnapshot(qReports, async (snapshot) => {
+      if (import.meta.env.DEV) console.log('[Firestore Listener] reports docs:', snapshot.size)
+      let data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      const getTime = (t: any) => t?.toDate ? t.toDate().getTime() : (t ? new Date(t).getTime() : Date.now() + 15000)
+      data.sort((a, b) => getTime(b.createdAt) - getTime(a.createdAt))
+      reports.value = data
+      isLoading.value = false
+      await ensureUsers(data.map((r: any) => r.uid).filter(Boolean))
+    }, (error) => {
+      console.error("LỖI BẰNG CHỨNG:", error)
+      isLoading.value = false
+    })
   }
 
-  unsubReports = onSnapshot(qReports, (snapshot) => {
-    let data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  if (needsWithdrawals) {
+    if (unsubWithdrawals) { unsubWithdrawals(); unsubWithdrawals = null }
+    const qWithdrawals = newStatus === 'all'
+      ? query(collection(db, "withdrawals"), orderBy("createdAt", "desc"), limit(50))
+      : query(collection(db, "withdrawals"), where("status", "==", newStatus), limit(50))
 
-    const getTime = (t: any) => t?.toDate ? t.toDate().getTime() : (t ? new Date(t).getTime() : Date.now() + 15000);
-    data.sort((a, b) => getTime(b.createdAt) - getTime(a.createdAt));
-
-    reports.value = data;
-    isLoading.value = false;
-  }, (error) => {
-    console.error("LỖI BẰNG CHỨNG:", error);
-    isLoading.value = false;
-  });
-
-  let qWithdrawals;
-  if (newStatus === 'all') {
-    qWithdrawals = query(collection(db, "withdrawals"), orderBy("createdAt", "desc"), limit(50));
-  } else {
-    qWithdrawals = query(collection(db, "withdrawals"), where("status", "==", newStatus), limit(50));
+    unsubWithdrawals = onSnapshot(qWithdrawals, async (snapshot) => {
+      if (import.meta.env.DEV) console.log('[Firestore Listener] withdrawals docs:', snapshot.size)
+      let wData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      const getTime = (t: any) => t?.toDate ? t.toDate().getTime() : new Date(t || 0).getTime()
+      wData.sort((a, b) => getTime(b.createdAt) - getTime(a.createdAt))
+      withdrawals.value = wData
+      await ensureUsers(wData.map((w: any) => w.uid).filter(Boolean))
+    }, (error) => {
+      console.error("LỖI RÚT TIỀN:", error)
+    })
   }
 
-  unsubWithdrawals = onSnapshot(qWithdrawals, (snapshot) => {
-    let wData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    const getTime = (t: any) => t?.toDate ? t.toDate().getTime() : new Date(t || 0).getTime();
-    wData.sort((a, b) => getTime(b.createdAt) - getTime(a.createdAt));
-    withdrawals.value = wData;
-  }, (error) => {
-    console.error("LỖI RÚT TIỀN:", error);
-  });
+  if (!needsReports && !needsWithdrawals) isLoading.value = false
 
-  loadNotes();
+  loadNotes()
 }
 
 watch(statusFilter, (newVal) => {
@@ -420,20 +566,21 @@ onMounted(() => {
 
       isCheckingAuth.value = false;
 
-      if (unsubUsers) unsubUsers();
-      unsubUsers = onSnapshot(collection(db, "users"), (snapshot) => {
-        const map: Record<string, any> = {}
-        snapshot.docs.forEach(doc => { map[doc.id] = doc.data() })
-        usersMap.value = map
-      })
-
       loadData(statusFilter.value);
-      loadDashboardStats(); 
-      
+      loadDashboardStats();
+      startVipJobsListener()          // idempotent — nếu listener đã chạy từ App.vue thì return ngay
+      startAppConfigListener()        // idempotent — khởi động listener config web
+      startSupportConfigListener()    // idempotent — khởi động listener hỗ trợ
+
     } else {
-      router.push('/login') 
+      router.push('/login')
     }
   })
+})
+
+onUnmounted(() => {
+  if (unsubReports) unsubReports()
+  if (unsubWithdrawals) unsubWithdrawals()
 })
 
 const isAppJob = (jobName: string) => {
@@ -520,6 +667,11 @@ const approveReport = async (report: any) => {
     });
     if (balanceUpdated) {
       alert("ĐÃ DUYỆT VÀ CỘNG XU THÀNH CÔNG!");
+      // Refresh usersMap entry so next approve shows the updated balance
+      try {
+        const freshUser = await getDoc(doc(db, 'users', report.uid))
+        if (freshUser.exists()) usersMap.value[report.uid] = freshUser.data()
+      } catch {}
     } else {
       alert("ĐÃ DUYỆT ĐƠN! (Tài khoản user không tồn tại nên XU không được cộng)");
     }
@@ -775,6 +927,15 @@ const handleAdminLogout = async () => {
       <button :class="['flex-1 py-4 rounded-xl tracking-widest transition-all text-xs md:text-sm', activeTab === 'withdrawals' ? 'bg-emerald-600 text-white shadow-[0_0_20px_rgba(16,185,129,0.3)]' : 'bg-[#111726] text-slate-500 hover:bg-[#1a2335]']" @click="activeTab = 'withdrawals'">
         QUẢN LÝ RÚT TIỀN ({{ filteredWithdrawals.length }})
       </button>
+      <button :class="['flex-1 py-4 rounded-xl tracking-widest transition-all text-xs md:text-sm', activeTab === 'vip_jobs_config' ? 'bg-amber-600 text-white shadow-[0_0_20px_rgba(217,119,6,0.3)]' : 'bg-[#111726] text-slate-500 hover:bg-[#1a2335]']" @click="activeTab = 'vip_jobs_config'">
+        ⚙️ CẤU HÌNH JOB VIP
+      </button>
+      <button :class="['flex-1 py-4 rounded-xl tracking-widest transition-all text-xs md:text-sm', activeTab === 'web_config' ? 'bg-violet-600 text-white shadow-[0_0_20px_rgba(124,58,237,0.3)]' : 'bg-[#111726] text-slate-500 hover:bg-[#1a2335]']" @click="activeTab = 'web_config'">
+        🌐 CẤU HÌNH WEB
+      </button>
+      <button :class="['flex-1 py-4 rounded-xl tracking-widest transition-all text-xs md:text-sm', activeTab === 'support_config' ? 'bg-sky-600 text-white shadow-[0_0_20px_rgba(14,165,233,0.3)]' : 'bg-[#111726] text-slate-500 hover:bg-[#1a2335]']" @click="activeTab = 'support_config'">
+        💬 HỖ TRỢ / THÔNG BÁO
+      </button>
     </div>
 
     <div class="bg-[#111726] border border-slate-800 rounded-[30px] overflow-hidden shadow-2xl relative">
@@ -847,12 +1008,12 @@ const handleAdminLogout = async () => {
                 <div class="flex flex-col items-center gap-2">
                   <div class="flex justify-center gap-2 flex-wrap">
                     <a class="bg-blue-600 text-[8px] text-white p-2 rounded" v-if="rp.taskLink" :href="rp.taskLink" target="_blank">LINK BÀI</a>
-                    <div class="cursor-pointer" v-for="(img, idx) in rp.images" :key="idx" @click="openImage(img)">
+                    <div class="cursor-pointer" v-for="(img, idx) in getImageUrls(rp)" :key="idx" @click="openImage(img)">
                       <div class="w-12 h-12 rounded-lg border border-slate-700 overflow-hidden hover:scale-110 hover:border-blue-500 transition-all">
                         <img class="w-full h-full object-cover" :src="img" />
                       </div>
                     </div>
-                    <div class="text-slate-700 text-[9px]" v-if="!rp.images?.length && !rp.taskLink">KHÔNG CÓ ẢNH</div>
+                    <div class="text-slate-700 text-[9px]" v-if="!getImageUrls(rp).length && !rp.taskLink">KHÔNG CÓ ẢNH</div>
                   </div>
                   <!-- EXIF BADGE — array format -->
                   <template v-if="rp.exif && Array.isArray(rp.exif) && rp.exif.length">
@@ -950,6 +1111,231 @@ const handleAdminLogout = async () => {
             </tr>
           </tbody>
         </table>
+
+        <!-- ================================================================ -->
+        <!-- TAB: CẤU HÌNH JOB VIP                                           -->
+        <!-- ================================================================ -->
+        <div v-else-if="activeTab === 'vip_jobs_config'" class="p-6 md:p-8 space-y-4">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="w-1.5 h-6 bg-amber-500 rounded-full shadow-[0_0_10px_rgba(245,158,11,0.6)]"></div>
+            <h3 class="text-base md:text-xl text-amber-400 tracking-tight">CẤU HÌNH JOB VIP REALTIME</h3>
+            <span class="text-[9px] text-slate-500 normal-case not-italic font-normal border border-slate-700 px-2 py-0.5 rounded hidden md:inline">Thay đổi sẽ cập nhật ngay lập tức — không cần deploy</span>
+          </div>
+
+          <div class="grid grid-cols-1 gap-4">
+            <div v-for="id in VIP_JOB_IDS" :key="id" class="bg-[#090e17] border border-slate-700/60 rounded-2xl p-5 space-y-4">
+
+              <!-- Job header -->
+              <div class="flex items-center justify-between gap-3 flex-wrap">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-amber-400 text-lg">💎</span>
+                  <span class="text-amber-300 font-black uppercase tracking-wide text-sm">{{ id }}</span>
+                  <span :class="[
+                    'text-[9px] px-2 py-0.5 rounded-full font-black uppercase border',
+                    vipJobEdits[id]?.status === 'open'    ? 'text-emerald-400 border-emerald-500/40 bg-emerald-500/10' :
+                    vipJobEdits[id]?.status === 'paused'  ? 'text-yellow-400 border-yellow-500/40 bg-yellow-500/10' :
+                    vipJobEdits[id]?.status === 'hidden'  ? 'text-slate-400 border-slate-600/40 bg-slate-700/20' :
+                    'text-red-400 border-red-500/40 bg-red-500/10'
+                  ]">{{ statusLabels[vipJobEdits[id]?.status] || '...' }}</span>
+                </div>
+                <button
+                  @click="saveVipJobConfig(id)"
+                  class="bg-amber-600 hover:bg-amber-500 text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-[0_0_15px_rgba(217,119,6,0.3)]">
+                  💾 LƯU
+                </button>
+              </div>
+
+              <!-- Edit fields -->
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3" v-if="vipJobEdits[id]">
+
+                <!-- Status -->
+                <div class="flex flex-col gap-1">
+                  <label class="text-[9px] text-slate-500 uppercase tracking-widest font-black">Trạng thái</label>
+                  <select v-model="vipJobEdits[id].status"
+                    class="bg-[#111726] text-white border border-slate-700 rounded-xl px-3 py-2.5 text-[11px] font-black outline-none focus:border-amber-500 transition-colors cursor-pointer">
+                    <option value="open">✅ Mở (open)</option>
+                    <option value="paused">⏸ Tạm dừng (paused)</option>
+                    <option value="hidden">🚫 Ẩn (hidden)</option>
+                    <option value="soldout">❌ Hết lượt (soldout)</option>
+                  </select>
+                </div>
+
+                <!-- Order -->
+                <div class="flex flex-col gap-1">
+                  <label class="text-[9px] text-slate-500 uppercase tracking-widest font-black">Thứ tự hiển thị (nhỏ hơn = lên đầu)</label>
+                  <input type="number" v-model.number="vipJobEdits[id].order" min="0" max="99"
+                    class="bg-[#111726] text-white border border-slate-700 rounded-xl px-3 py-2.5 text-[11px] font-black outline-none focus:border-amber-500 transition-colors font-sans not-italic normal-case" />
+                </div>
+
+                <!-- Badge -->
+                <div class="flex flex-col gap-1">
+                  <label class="text-[9px] text-slate-500 uppercase tracking-widest font-black">Badge (VD: SIÊU HOT)</label>
+                  <input type="text" v-model="vipJobEdits[id].badge"
+                    class="bg-[#111726] text-white border border-slate-700 rounded-xl px-3 py-2.5 text-[11px] outline-none focus:border-amber-500 transition-colors font-sans not-italic normal-case" />
+                </div>
+
+                <!-- Title -->
+                <div class="flex flex-col gap-1 md:col-span-2">
+                  <label class="text-[9px] text-slate-500 uppercase tracking-widest font-black">Tiêu đề (title)</label>
+                  <input type="text" v-model="vipJobEdits[id].title"
+                    class="bg-[#111726] text-white border border-slate-700 rounded-xl px-3 py-2.5 text-[11px] outline-none focus:border-amber-500 transition-colors font-sans not-italic normal-case" />
+                </div>
+
+                <!-- Reward -->
+                <div class="flex flex-col gap-1">
+                  <label class="text-[9px] text-slate-500 uppercase tracking-widest font-black">Thưởng (VD: 100.000 xu)</label>
+                  <input type="text" v-model="vipJobEdits[id].reward"
+                    class="bg-[#111726] text-white border border-slate-700 rounded-xl px-3 py-2.5 text-[11px] outline-none focus:border-amber-500 transition-colors font-sans not-italic normal-case" />
+                </div>
+
+                <!-- Warning -->
+                <div class="flex flex-col gap-1 lg:col-span-3">
+                  <label class="text-[9px] text-slate-500 uppercase tracking-widest font-black">Cảnh báo tuổi (warning — để trống = không cảnh báo)</label>
+                  <input type="text" v-model="vipJobEdits[id].warning"
+                    class="bg-[#111726] text-white border border-slate-700 rounded-xl px-3 py-2.5 text-[11px] outline-none focus:border-amber-500 transition-colors font-sans not-italic normal-case" />
+                </div>
+
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- TAB: CẤU HÌNH WEB REALTIME (app_config/overall)            -->
+        <!-- ============================================================ -->
+        <div v-else-if="activeTab === 'web_config'" class="p-6 md:p-8 space-y-6">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="w-1.5 h-6 bg-violet-500 rounded-full shadow-[0_0_10px_rgba(124,58,237,0.6)]"></div>
+            <h3 class="text-base md:text-xl text-violet-400 tracking-tight">CẤU HÌNH WEB REALTIME</h3>
+            <span class="hidden md:inline text-[9px] text-slate-500 normal-case not-italic font-normal border border-slate-700 px-2 py-0.5 rounded">Thay đổi cập nhật ngay — không cần deploy</span>
+          </div>
+
+          <div class="grid grid-cols-1 gap-5">
+
+            <!-- FORCE REFRESH / APP VERSION -->
+            <div class="bg-[#090e17] border border-slate-700/60 rounded-2xl p-5 space-y-4">
+              <div class="flex items-center gap-2">
+                <span class="text-amber-400 text-lg">🔄</span>
+                <span class="text-amber-300 font-black uppercase tracking-wide text-sm">BẮT BUỘC TẢI LẠI / CẬP NHẬT PHIÊN BẢN</span>
+              </div>
+              <div class="flex items-center gap-4">
+                <button
+                  type="button"
+                  role="switch"
+                  :aria-checked="webConfigEdit.forceRefreshEnabled"
+                  @click="webConfigEdit.forceRefreshEnabled = !webConfigEdit.forceRefreshEnabled"
+                  :class="['relative inline-flex h-7 w-14 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out border-2 border-transparent focus:outline-none', webConfigEdit.forceRefreshEnabled ? 'bg-amber-500' : 'bg-slate-600']">
+                  <span :class="['pointer-events-none inline-block h-6 w-6 rounded-full bg-white shadow-lg transform transition duration-200 ease-in-out', webConfigEdit.forceRefreshEnabled ? 'translate-x-7' : 'translate-x-0']"></span>
+                </button>
+                <div class="flex flex-col gap-0.5">
+                  <span class="text-slate-200 text-sm font-bold">Tự động reload sau 3s</span>
+                  <span class="text-slate-500 text-[11px] normal-case not-italic font-normal">Nếu tắt → user thấy popup và tự bấm Tải lại ngay</span>
+                  <span :class="webConfigEdit.forceRefreshEnabled ? 'text-amber-400' : 'text-slate-600'" class="text-[10px] font-black uppercase tracking-widest">
+                    {{ webConfigEdit.forceRefreshEnabled ? '● BẬT' : '○ TẮT' }}
+                  </span>
+                </div>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div class="flex flex-col gap-1">
+                  <label class="text-[9px] text-slate-500 uppercase tracking-widest font-black">App version hiện tại</label>
+                  <div class="flex gap-2">
+                    <input type="number" v-model.number="webConfigEdit.appVersion" min="1"
+                      class="bg-[#111726] text-white border border-slate-700 rounded-xl px-3 py-2.5 text-[11px] font-black outline-none focus:border-violet-500 transition-colors font-sans not-italic normal-case flex-1" />
+                    <button @click="incrementVersion"
+                      class="bg-amber-600 hover:bg-amber-500 text-white px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap">
+                      +1
+                    </button>
+                  </div>
+                </div>
+                <div class="flex flex-col gap-1 md:col-span-2">
+                  <label class="text-[9px] text-slate-500 uppercase tracking-widest font-black">Thông báo tải lại (khi không auto)</label>
+                  <input type="text" v-model="webConfigEdit.refreshMessage"
+                    class="bg-[#111726] text-white border border-slate-700 rounded-xl px-3 py-2.5 text-[11px] outline-none focus:border-violet-500 transition-colors font-sans not-italic normal-case" />
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- SAVE BUTTON -->
+          <div class="pt-2">
+            <button @click="saveWebConfig" :disabled="isSavingWebConfig"
+                    class="w-full bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white py-4 rounded-xl font-black uppercase tracking-widest text-sm transition-all active:scale-95 shadow-[0_0_20px_rgba(124,58,237,0.3)]">
+              {{ isSavingWebConfig ? '⏳ ĐANG LƯU...' : '💾 LƯU CẤU HÌNH' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- TAB: HỖ TRỢ / THÔNG BÁO REALTIME (support_config/overall)  -->
+        <!-- ============================================================ -->
+        <div v-else-if="activeTab === 'support_config'" class="p-6 md:p-8 space-y-6 max-w-2xl mx-auto">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="w-1.5 h-6 bg-sky-500 rounded-full shadow-[0_0_10px_rgba(14,165,233,0.6)]"></div>
+            <h3 class="text-base md:text-xl text-sky-400 tracking-tight">HỖ TRỢ / THÔNG BÁO REALTIME</h3>
+          </div>
+
+          <!-- Toggle: enabled -->
+          <div class="flex items-center justify-between bg-[#090e17] rounded-xl p-4 border border-slate-700/60">
+            <div>
+              <p class="text-white font-bold text-sm">Bật/tắt thông báo hỗ trợ</p>
+              <p class="text-slate-500 text-xs mt-0.5">Nếu tắt, nút Hỗ trợ sẽ ẩn trên web user</p>
+            </div>
+            <button type="button" @click="supportConfigEdit.enabled = !supportConfigEdit.enabled"
+                    :class="['relative w-14 h-7 rounded-full transition-colors duration-200 border-2 border-transparent focus:outline-none', supportConfigEdit.enabled ? 'bg-sky-600' : 'bg-slate-600']">
+              <span :class="['pointer-events-none inline-block h-6 w-6 rounded-full bg-white shadow-lg transform transition duration-200 ease-in-out', supportConfigEdit.enabled ? 'translate-x-7' : 'translate-x-0']"></span>
+            </button>
+          </div>
+
+          <!-- Toggle: autoPopupEnabled -->
+          <div class="flex items-center justify-between bg-[#090e17] rounded-xl p-4 border border-slate-700/60">
+            <div>
+              <p class="text-white font-bold text-sm">Tự bật popup cho user</p>
+              <p class="text-slate-500 text-xs mt-0.5">User đang online sẽ thấy popup ngay khi tăng version</p>
+            </div>
+            <button type="button" @click="supportConfigEdit.autoPopupEnabled = !supportConfigEdit.autoPopupEnabled"
+                    :class="['relative w-14 h-7 rounded-full transition-colors duration-200 border-2 border-transparent focus:outline-none', supportConfigEdit.autoPopupEnabled ? 'bg-emerald-600' : 'bg-slate-600']">
+              <span :class="['pointer-events-none inline-block h-6 w-6 rounded-full bg-white shadow-lg transform transition duration-200 ease-in-out', supportConfigEdit.autoPopupEnabled ? 'translate-x-7' : 'translate-x-0']"></span>
+            </button>
+          </div>
+
+          <!-- Announcement Version -->
+          <div class="bg-[#090e17] rounded-xl p-4 border border-slate-700/60 space-y-3">
+            <p class="text-[9px] text-slate-500 uppercase tracking-widest font-black">Announcement Version</p>
+            <div class="flex items-center gap-4">
+              <span class="text-3xl font-black text-sky-400">{{ supportConfigEdit.announcementVersion }}</span>
+              <button @click="incrementSupportVersion"
+                      class="bg-sky-700 hover:bg-sky-600 text-white text-xs font-black px-4 py-2 rounded-lg transition-colors active:scale-95 uppercase tracking-widest">
+                +1 Version
+              </button>
+            </div>
+            <p class="text-slate-500 text-xs">Tăng version để trigger popup realtime cho tất cả user đang online</p>
+          </div>
+
+          <!-- Title -->
+          <div class="space-y-2">
+            <label class="text-[9px] text-slate-500 uppercase tracking-widest font-black">Tiêu đề bảng hỗ trợ</label>
+            <input v-model="supportConfigEdit.title" type="text"
+                   class="w-full bg-[#090e17] border border-slate-700 text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-sky-500 transition-colors font-sans not-italic normal-case" />
+          </div>
+
+          <!-- Message -->
+          <div class="space-y-2">
+            <label class="text-[9px] text-slate-500 uppercase tracking-widest font-black">Nội dung thông báo</label>
+            <textarea v-model="supportConfigEdit.message" rows="4"
+                      class="w-full bg-[#090e17] border border-slate-700 text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-sky-500 transition-colors resize-none font-sans not-italic normal-case"></textarea>
+          </div>
+
+          <!-- Save -->
+          <button @click="saveSupportConfig" :disabled="isSavingSupportConfig"
+                  class="w-full bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white font-black py-4 rounded-xl transition-all active:scale-95 tracking-widest text-sm uppercase shadow-[0_0_20px_rgba(14,165,233,0.3)]">
+            {{ isSavingSupportConfig ? '⏳ ĐANG LƯU...' : '💾 LƯU THÔNG BÁO' }}
+          </button>
+
+          <p class="text-slate-600 text-xs text-center italic">
+            Nút "Nhắn tin Fanpage" được cố định trong hệ thống — admin không thể chỉnh link.
+          </p>
+        </div>
 
         <div class="p-20 text-center text-slate-700 tracking-widest text-xs" v-if="!isLoading && ((activeTab === 'app_jobs' && filteredAppReports.length === 0) || (activeTab === 'other_jobs' && filteredOtherReports.length === 0) || (activeTab === 'withdrawals' && filteredWithdrawals.length === 0))">
           HIỆN CHƯA CÓ YÊU CẦU NÀO TRONG MỤC NÀY.

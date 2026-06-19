@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { ref } from 'vue'
+
 // Props nhận dữ liệu từ App.vue truyền xuống
 defineProps<{
   myReports: any[]
@@ -9,6 +11,14 @@ defineProps<{
 const formatNumber = (val: any) => {
   const n = typeof val === 'number' ? val : (parseInt(String(val).replace(/\D/g, ''), 10) || 0);
   return n.toLocaleString('vi-VN');
+}
+
+const showReasonModal = ref(false)
+const selectedReason = ref('')
+
+const openReason = (reason: string) => {
+  selectedReason.value = reason
+  showReasonModal.value = true
 }
 </script>
 
@@ -43,15 +53,17 @@ const formatNumber = (val: any) => {
     <div v-else class="space-y-3">
       <div v-for="item in myReports" :key="item.id"
            :class="[
-             'group bg-[#111726] border border-slate-800/60 p-5 md:p-6 rounded-[25px] flex items-center justify-between transition-all duration-300 shadow-lg relative overflow-hidden',
-             item.status === 'rejected' ? 'opacity-60 grayscale' : 'hover:border-red-700/40 hover:shadow-[0_0_20px_rgba(185,28,28,0.1)]'
+             'group bg-[#111726] border p-5 md:p-6 rounded-[25px] flex items-center justify-between transition-all duration-300 shadow-lg relative overflow-hidden',
+             item.status === 'rejected'
+               ? 'border-rose-500/40 bg-rose-500/5 shadow-[0_0_16px_rgba(239,68,68,0.08)]'
+               : 'border-slate-800/60 hover:border-red-700/40 hover:shadow-[0_0_20px_rgba(185,28,28,0.1)]'
            ]">
 
         <!-- Left accent strip by status -->
         <div class="absolute left-0 top-0 bottom-0 w-1 rounded-l-[25px]"
              :class="item.status === 'approved' || item.status === 'collected' ? 'bg-emerald-500/60'
                    : item.status === 'pending' ? 'bg-yellow-500/60'
-                   : 'bg-rose-500/40'"></div>
+                   : 'bg-rose-500/70'"></div>
 
         <div class="absolute inset-0 bg-red-700/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
 
@@ -63,13 +75,24 @@ const formatNumber = (val: any) => {
           <p v-if="item.type === 'withdraw'" class="text-slate-500 text-[9px] normal-case font-bold opacity-70">
             {{ item.bankInfo }}
           </p>
+          <template v-if="item.status === 'rejected' && item.type !== 'withdraw'">
+            <p v-if="!item.note || item.note.length <= 80"
+               class="text-rose-400/80 text-[9px] font-semibold normal-case mt-0.5 leading-relaxed">
+              Lý do: {{ item.note || 'Không đạt điều kiện duyệt.' }}
+            </p>
+            <button v-else
+                    @click="openReason(item.note)"
+                    class="text-rose-400 text-[9px] font-black underline underline-offset-2 mt-0.5 hover:text-rose-300 transition-colors text-left">
+              Xem lý do →
+            </button>
+          </template>
         </div>
 
         <div class="relative z-10 flex items-center gap-4 md:gap-6">
           <div class="flex items-center gap-2">
             <span :class="[
               'text-xl md:text-2xl font-black italic tracking-tighter',
-              item.status === 'rejected' ? 'text-slate-500' : (item.type === 'withdraw' ? 'text-rose-500' : 'text-emerald-400')
+              item.status === 'rejected' ? 'text-rose-400' : (item.type === 'withdraw' ? 'text-rose-500' : 'text-emerald-400')
             ]">
               {{ item.type === 'withdraw' ? '-' : '+' }}{{ formatNumber(item.reward || item.amount || 0) }}
             </span>
@@ -106,6 +129,26 @@ const formatNumber = (val: any) => {
       </div>
     </div>
   </div>
+
+  <Teleport to="body">
+    <div v-if="showReasonModal"
+         class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+         @click.self="showReasonModal = false">
+      <div class="bg-[#111726] border border-rose-500/40 rounded-[20px] p-6 max-w-sm w-full shadow-[0_0_40px_rgba(239,68,68,0.2)]">
+        <div class="flex items-center gap-2 mb-4">
+          <span class="text-rose-400 text-lg">⚠️</span>
+          <h3 class="text-rose-400 text-xs font-black uppercase tracking-[2px]">Lý do từ chối</h3>
+        </div>
+        <p class="text-slate-200 text-sm font-semibold leading-relaxed normal-case">
+          {{ selectedReason }}
+        </p>
+        <button @click="showReasonModal = false"
+                class="mt-5 w-full py-2.5 bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-black rounded-xl hover:bg-rose-500/20 transition-colors uppercase tracking-widest">
+          Đóng
+        </button>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>

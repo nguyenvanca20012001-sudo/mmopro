@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { jobsData } from '@/data/jobs'
+import { vipJobConfigs } from '@/composables/useVipJobs'
 import Swal from 'sweetalert2'
 
 const route = useRoute()
@@ -10,6 +11,13 @@ const showGuide = ref(true)
 const baseUrl = import.meta.env.BASE_URL
 
 const currentJob = ref(jobsData[route.params.id as string] || jobsData['app-chung-khoan'])
+
+const jobStatus = computed(() => (vipJobConfigs.value[route.params.id as string]?.status as string) ?? 'open')
+const jobStatusMessage = computed(() => {
+  if (jobStatus.value === 'paused')  return 'Công việc đang tạm dừng, vui lòng quay lại sau.'
+  if (jobStatus.value === 'soldout') return 'Công việc đã hết lượt hôm nay.'
+  return ''
+})
 
 onMounted(() => {
   const jobId = route.params.id as string
@@ -88,12 +96,29 @@ const handleCopy = (text: string) => {
           </span>
         </div>
 
-        <div class="mt-6 max-w-xl mx-auto bg-[#1a0f14] border border-red-500/40 rounded-2xl p-4 shadow-[0_0_20px_rgba(239,68,68,0.15)] animate-in fade-in zoom-in duration-500" v-if="currentJob.warning">
-          <div class="flex items-start gap-3">
-            <span class="text-red-500 text-xl animate-pulse">⚠️</span>
-            <p class="text-red-500 text-[11px] md:text-xs font-black uppercase italic tracking-[1px] leading-relaxed text-left">
+        <div class="mt-6 max-w-xl mx-auto bg-[#1a0f14] border border-red-500/50 rounded-2xl overflow-hidden shadow-[0_0_24px_rgba(239,68,68,0.18)]">
+          <div class="bg-red-500/20 border-b border-red-500/30 px-4 py-2.5 flex items-center gap-2">
+            <span class="text-red-400 text-base">⚠️</span>
+            <span class="text-red-400 text-[11px] md:text-xs font-black uppercase tracking-[2px]">Điều kiện bắt buộc</span>
+          </div>
+          <div class="px-4 py-3 text-left">
+            <p v-if="currentJob.warning" class="text-red-400 text-[11px] md:text-xs font-bold uppercase italic tracking-[1px] leading-relaxed">
               {{ currentJob.warning }}
             </p>
+            <ul v-else class="space-y-1.5">
+              <li class="flex items-start gap-2 text-red-300 text-[11px] md:text-xs font-semibold leading-relaxed">
+                <span class="text-red-500 mt-0.5 shrink-0">•</span>
+                Không xóa bài đăng, hủy follow hoặc rời nhóm sau khi hoàn thành.
+              </li>
+              <li class="flex items-start gap-2 text-red-300 text-[11px] md:text-xs font-semibold leading-relaxed">
+                <span class="text-red-500 mt-0.5 shrink-0">•</span>
+                Chụp bằng chứng đúng theo hướng dẫn từng bước, ảnh phải rõ nét.
+              </li>
+              <li class="flex items-start gap-2 text-red-300 text-[11px] md:text-xs font-semibold leading-relaxed">
+                <span class="text-red-500 mt-0.5 shrink-0">•</span>
+                Tài khoản phải là tài khoản thật, không dùng tài khoản ảo/clone.
+              </li>
+            </ul>
           </div>
         </div>
       </div>
@@ -135,7 +160,7 @@ const handleCopy = (text: string) => {
 
             <!-- Text -->
             <div class="text-left flex-1 relative z-10">
-              <h3 class="text-gray-900 font-black italic uppercase tracking-tight leading-tight mb-1.5"
+              <h3 class="text-blue-400 font-black italic uppercase tracking-tight leading-tight mb-1.5"
                   :class="showGuide ? 'text-base' : 'text-lg'">
                 {{ showGuide ? 'ĐANG XEM HƯỚNG DẪN' : 'HƯỚNG DẪN TỪNG BƯỚC' }}
               </h3>
@@ -271,9 +296,22 @@ const handleCopy = (text: string) => {
       <section class="bg-[#111726] rounded-[45px] border border-slate-800/50 p-8 md:p-10 text-center shadow-xl mb-20">
         <h2 class="text-lg text-slate-400 font-black italic mb-6 tracking-wide uppercase opacity-60">BẠN ĐÃ LÀM XONG?</h2>
 
-        <button class="w-full bg-[#00df89] hover:bg-[#00c578] text-[#090e17] py-5 rounded-2xl text-xl font-black italic uppercase shadow-[0_10px_40px_rgba(0,223,137,0.25)] transition-all active:scale-95" @click="router.push(`/submit-report?job=${route.params.id}`)">
+        <!-- Job paused or soldout: disabled button + status message -->
+        <div v-if="jobStatus === 'paused' || jobStatus === 'soldout'" class="space-y-4">
+          <p class="text-slate-400 text-sm font-bold">{{ jobStatusMessage }}</p>
+          <button disabled class="w-full bg-slate-700 text-slate-500 py-5 rounded-2xl text-xl font-black italic uppercase cursor-not-allowed opacity-50">
+            NỘP BẰNG CHỨNG NGAY
+          </button>
+        </div>
+
+        <!-- Job open: normal button -->
+        <button v-else-if="jobStatus === 'open'"
+          class="w-full bg-[#00df89] hover:bg-[#00c578] text-[#090e17] py-5 rounded-2xl text-xl font-black italic uppercase shadow-[0_10px_40px_rgba(0,223,137,0.25)] transition-all active:scale-95"
+          @click="router.push(`/submit-report?job=${route.params.id}`)">
           NỘP BẰNG CHỨNG NGAY
         </button>
+
+        <!-- Job hidden: no button -->
       </section>
     </div>
   </div>

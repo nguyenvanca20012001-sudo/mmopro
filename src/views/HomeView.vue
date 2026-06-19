@@ -157,7 +157,9 @@ const logout = async () => {
           :username="username" :isLoggedIn="isLoggedIn" :userBalance="userBalance" :totalWithdrawn="totalWithdrawn"
           @receiveJob="handleReceiveJob" @contactSupport="contactSupport" @routerPush="(p) => router.push(p)"
         />
-        <HistorySection id="history-section" :isLoggedIn="isLoggedIn" :isDataLoading="isDataLoading" :myReports="combinedHistory" />
+        <div class="hidden lg:block">
+          <HistorySection id="history-section" :isLoggedIn="isLoggedIn" :isDataLoading="isDataLoading" :myReports="combinedHistory" />
+        </div>
         <InfoSection @contactSupport="contactSupport" />
       </main>
     </div>
