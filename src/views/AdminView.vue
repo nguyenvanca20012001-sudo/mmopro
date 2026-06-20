@@ -174,6 +174,7 @@ const VIP_JOB_STATS = [
   { id: 'msb-bank',          label: 'MSB BANK',        group: 'bank'  },
   { id: 'vpbank',            label: 'VP BANK',         group: 'bank'  },
   { id: 'liobank',           label: 'LIOBANK',         group: 'bank'  },
+  { id: 'tpbank',            label: 'TP BANK',         group: 'bank'  },
   { id: 'app-chung-khoan',   label: 'CK SỐ 1 / KAFI', group: 'stock' },
   { id: 'app-chung-khoan-2', label: 'CK SỐ 2 / DNSE', group: 'stock' },
   { id: 'app-chung-khoan-3', label: 'CK SỐ 3 / KIS',  group: 'stock' },
@@ -195,6 +196,7 @@ const matchJobToId = (data: any): string | null => {
   if (snap.includes('msb'))                                         return 'msb-bank'
   if (snap.includes('vpbank') || snap.includes('vp bank'))          return 'vpbank'
   if (snap.includes('liobank') || snap.includes('lio bank'))        return 'liobank'
+  if (snap.includes('tpbank') || snap.includes('tp bank'))          return 'tpbank'
   if (snap.includes('kafi') || snap.includes('chứng khoán số 1'))   return 'app-chung-khoan'
   if (snap.includes('dnse') || snap.includes('chứng khoán số 2'))   return 'app-chung-khoan-2'
   if (snap.includes('kis')  || snap.includes('chứng khoán số 3'))   return 'app-chung-khoan-3'
@@ -217,8 +219,9 @@ const loadDashboardStats = async () => {
 
     const qStats = query(
       collection(db, "reports"),
-      where("createdAt", ">=", Timestamp.fromDate(startOfDay)),
-      limit(200)
+      where("approvedAt", ">=", Timestamp.fromDate(startOfDay)),
+      orderBy("approvedAt", "desc"),
+      limit(2000)
     )
     const snap = await getDocs(qStats)
 
@@ -229,7 +232,8 @@ const loadDashboardStats = async () => {
         newTotal++
         const jid = matchJobToId(data)
         if (jid) {
-          newAppTotal++
+          const grp = VIP_JOB_STATS.find(j => j.id === jid)?.group
+          if (grp === 'bank') newAppTotal++
           if (newBreakdown[jid] !== undefined) newBreakdown[jid]++
         }
       }
@@ -255,7 +259,8 @@ const updateLocalStatsOnApprove = (report: any) => {
   statsTodayTotal.value++
   const jid = matchJobToId(report)
   if (jid) {
-    statsTodayAppTotal.value++
+    const grp = VIP_JOB_STATS.find(j => j.id === jid)?.group
+    if (grp === 'bank') statsTodayAppTotal.value++
     const entry = statsAppBreakdown.value[jid]
     if (entry) entry.today++
   }
@@ -444,7 +449,7 @@ const bulkApproveOtherJobs = async () => {
         updateLocalStatsOnApprove(report);
       }
 
-      selectedOtherJobs.value = [] 
+      selectedOtherJobs.value = []
       Swal.fire('THÀNH CÔNG!', 'Đã quét sạch các đơn được chọn!', 'success')
       
     } catch (error) {
@@ -710,7 +715,7 @@ const approveReport = async (report: any) => {
     } else {
       alert("ĐÃ DUYỆT ĐƠN! (Tài khoản user không tồn tại nên XU không được cộng)");
     }
-    updateLocalStatsOnApprove(report.jobName);
+    updateLocalStatsOnApprove(report);
   } catch (error) { alert("LỖI KHI DUYỆT: " + error) }
 }
 
