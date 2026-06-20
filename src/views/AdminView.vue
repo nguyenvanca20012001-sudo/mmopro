@@ -35,7 +35,8 @@ const ensureUsers = async (uids: string[]) => {
   }
 }
 const isLoading = ref(true)
-const isCheckingAuth = ref(true) 
+const isCheckingAuth = ref(true)
+const withdrawalsError = ref('')
 const router = useRouter()
 
 const activeTab = ref('app_jobs') // 'app_jobs' | 'other_jobs' | 'withdrawals' | 'vip_jobs_config' | 'web_config'
@@ -163,71 +164,100 @@ const showRejectPopup = ref(false)
 const rejectReason = ref('')
 
 // ============================================================================
-// 1. DASHBOARD THỐNG KÊ (ĐÃ FIX TRÀN RAM - CHỈ KÉO ĐÚNG ĐƠN HÔM NAY)
+// 1. DASHBOARD THỐNG KÊ
 // ============================================================================
 const statsTodayTotal = ref(0)
 const statsTodayAppTotal = ref(0)
-const statsAppBreakdown = ref<Record<string, { today: number }>>({
-  'CK SỐ 1 (Kafi)': { today: 0 },
-  'CK SỐ 2 (DNSE)': { today: 0 },
-  'CK SỐ 3 (KIS)': { today: 0 },
-  'MSB BANK': { today: 0 },
-  'VP BANK': { today: 0 },
-  'TP BANK': { today: 0 }
-})
+
+const VIP_JOB_STATS = [
+  { id: 'mbbank',            label: 'APP ABBANK',      group: 'bank'  },
+  { id: 'msb-bank',          label: 'MSB BANK',        group: 'bank'  },
+  { id: 'vpbank',            label: 'VP BANK',         group: 'bank'  },
+  { id: 'liobank',           label: 'LIOBANK',         group: 'bank'  },
+  { id: 'app-chung-khoan',   label: 'CK SỐ 1 / KAFI', group: 'stock' },
+  { id: 'app-chung-khoan-2', label: 'CK SỐ 2 / DNSE', group: 'stock' },
+  { id: 'app-chung-khoan-3', label: 'CK SỐ 3 / KIS',  group: 'stock' },
+  { id: 'app-chung-khoan-4', label: 'CK SỐ 4',        group: 'stock' },
+] as const
+
+const statsAppBreakdown = ref<Record<string, { label: string; group: string; today: number }>>(
+  Object.fromEntries(VIP_JOB_STATS.map(j => [j.id, { label: j.label, group: j.group, today: 0 }]))
+)
 const isStatsLoading = ref(false)
 
-const loadDashboardStats = async () => {
-  isStatsLoading.value = true;
-  try {
-    const now = new Date();
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+// Ưu tiên jobId (reports mới), fallback jobTitleSnapshot → jobName (reports cũ)
+// Trả về null cho job cơ bản (tiktok, youtube, zalo...)
+const matchJobToId = (data: any): string | null => {
+  if (data.jobId && statsAppBreakdown.value[data.jobId]) return data.jobId
+  const snap = (data.jobTitleSnapshot || data.jobName || '').toLowerCase()
+  if (!snap) return null
+  if (snap.includes('abbank'))                                      return 'mbbank'
+  if (snap.includes('msb'))                                         return 'msb-bank'
+  if (snap.includes('vpbank') || snap.includes('vp bank'))          return 'vpbank'
+  if (snap.includes('liobank') || snap.includes('lio bank'))        return 'liobank'
+  if (snap.includes('kafi') || snap.includes('chứng khoán số 1'))   return 'app-chung-khoan'
+  if (snap.includes('dnse') || snap.includes('chứng khoán số 2'))   return 'app-chung-khoan-2'
+  if (snap.includes('kis')  || snap.includes('chứng khoán số 3'))   return 'app-chung-khoan-3'
+  if (snap.includes('chứng khoán số 4'))                            return 'app-chung-khoan-4'
+  return null
+}
 
-    statsTodayTotal.value = 0;
-    statsTodayAppTotal.value = 0;
-    Object.keys(statsAppBreakdown.value).forEach(k => statsAppBreakdown.value[k].today = 0);
+const loadDashboardStats = async () => {
+  isStatsLoading.value = true
+  // Không reset refs ngay — giữ số cũ hiển thị trong khi load
+  try {
+    const now = new Date()
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+
+    // Tính toán vào local vars, gán một lần khi xong
+    let newTotal = 0
+    let newAppTotal = 0
+    const newBreakdown: Record<string, number> = {}
+    Object.keys(statsAppBreakdown.value).forEach(k => { newBreakdown[k] = 0 })
 
     const qStats = query(
       collection(db, "reports"),
       where("createdAt", ">=", Timestamp.fromDate(startOfDay)),
       limit(200)
-    );
-    const snap = await getDocs(qStats);
+    )
+    const snap = await getDocs(qStats)
 
-    snap.forEach(doc => {
-      const data = doc.data();
-      if (data.status === 'approved') {
-        statsTodayTotal.value++;
-        if (isAppJob(data.jobName)) {
-          statsTodayAppTotal.value++;
-          const nameLower = (data.jobName || '').toLowerCase();
-          if (nameLower.includes('chứng khoán số 1') || nameLower.includes('kafi')) statsAppBreakdown.value['CK SỐ 1 (Kafi)'].today++;
-          else if (nameLower.includes('chứng khoán số 2') || nameLower.includes('dnse')) statsAppBreakdown.value['CK SỐ 2 (DNSE)'].today++;
-          else if (nameLower.includes('chứng khoán số 3') || nameLower.includes('kis')) statsAppBreakdown.value['CK SỐ 3 (KIS)'].today++;
-          else if (nameLower.includes('msb')) statsAppBreakdown.value['MSB BANK'].today++;
-          else if (nameLower.includes('vpbank') || nameLower.includes('vp bank')) statsAppBreakdown.value['VP BANK'].today++;
-          else if (nameLower.includes('tpbank') || nameLower.includes('tp bank')) statsAppBreakdown.value['TP BANK'].today++;
+    snap.forEach(docSnap => {
+      const data = docSnap.data()
+      // Đếm cả approved VÀ collected (collected = đã duyệt, user đã thu về ví)
+      if (data.status === 'approved' || data.status === 'collected') {
+        newTotal++
+        const jid = matchJobToId(data)
+        if (jid) {
+          newAppTotal++
+          if (newBreakdown[jid] !== undefined) newBreakdown[jid]++
         }
       }
-    });
+    })
+
+    // Gán tất cả cùng lúc khi đã có đủ dữ liệu
+    statsTodayTotal.value = newTotal
+    statsTodayAppTotal.value = newAppTotal
+    for (const k of Object.keys(statsAppBreakdown.value)) {
+      const entry = statsAppBreakdown.value[k]
+      if (entry) entry.today = newBreakdown[k] ?? 0
+    }
   } catch (err) {
-    console.error("Lỗi tải thống kê: ", err);
+    console.error("Lỗi tải thống kê: ", err)
+    // Không reset — giữ số cũ nếu có lỗi
   } finally {
-    isStatsLoading.value = false;
+    isStatsLoading.value = false
   }
 }
 
-const updateLocalStatsOnApprove = (jobName: string) => {
-  statsTodayTotal.value++;
-  if (isAppJob(jobName)) {
-    statsTodayAppTotal.value++;
-    const nameLower = (jobName || '').toLowerCase();
-    if (nameLower.includes('chứng khoán số 1') || nameLower.includes('kafi')) statsAppBreakdown.value['CK SỐ 1 (Kafi)'].today++;
-    else if (nameLower.includes('chứng khoán số 2') || nameLower.includes('dnse')) statsAppBreakdown.value['CK SỐ 2 (DNSE)'].today++;
-    else if (nameLower.includes('chứng khoán số 3') || nameLower.includes('kis')) statsAppBreakdown.value['CK SỐ 3 (KIS)'].today++;
-    else if (nameLower.includes('msb')) statsAppBreakdown.value['MSB BANK'].today++;
-    else if (nameLower.includes('vpbank') || nameLower.includes('vp bank')) statsAppBreakdown.value['VP BANK'].today++;
-    else if (nameLower.includes('tpbank') || nameLower.includes('tp bank')) statsAppBreakdown.value['TP BANK'].today++;
+// Tăng số ngay khi admin duyệt (không đợi F5)
+const updateLocalStatsOnApprove = (report: any) => {
+  statsTodayTotal.value++
+  const jid = matchJobToId(report)
+  if (jid) {
+    statsTodayAppTotal.value++
+    const entry = statsAppBreakdown.value[jid]
+    if (entry) entry.today++
   }
 }
 
@@ -239,8 +269,8 @@ const saveDailyNote = async () => {
   const dateStr = `Ngày ${now.getDate()}/${now.getMonth() + 1}`;
   
   let detailArr: string[] = [];
-  for (const [name, val] of Object.entries(statsAppBreakdown.value)) {
-    if (val.today > 0) detailArr.push(`${val.today} ${name}`);
+  for (const [, val] of Object.entries(statsAppBreakdown.value)) {
+    if (val.today > 0) detailArr.push(`${val.today} ${val.label}`);
   }
   
   const finalContent = detailArr.length > 0 ? detailArr.join(' - ') : "Chưa có đơn app nào.";
@@ -411,7 +441,7 @@ const bulkApproveOtherJobs = async () => {
           approvedAt: serverTimestamp()
         })
         
-        updateLocalStatsOnApprove(report.jobName);
+        updateLocalStatsOnApprove(report);
       }
 
       selectedOtherJobs.value = [] 
@@ -463,6 +493,7 @@ const loadData = (newStatus: string) => {
   }
 
   if (needsWithdrawals) {
+    withdrawalsError.value = ''
     if (unsubWithdrawals) { unsubWithdrawals(); unsubWithdrawals = null }
     const qWithdrawals = newStatus === 'all'
       ? query(collection(db, "withdrawals"), orderBy("createdAt", "desc"), limit(50))
@@ -474,9 +505,13 @@ const loadData = (newStatus: string) => {
       const getTime = (t: any) => t?.toDate ? t.toDate().getTime() : new Date(t || 0).getTime()
       wData.sort((a, b) => getTime(b.createdAt) - getTime(a.createdAt))
       withdrawals.value = wData
+      withdrawalsError.value = ''
+      isLoading.value = false
       await ensureUsers(wData.map((w: any) => w.uid).filter(Boolean))
     }, (error) => {
       console.error("LỖI RÚT TIỀN:", error)
+      withdrawalsError.value = error.message || 'Lỗi tải dữ liệu rút tiền'
+      isLoading.value = false
     })
   }
 
@@ -879,9 +914,9 @@ const handleAdminLogout = async () => {
           <div class="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
         </div>
         
-        <div class="grid grid-cols-2 md:grid-cols-3 gap-3" v-else>
-          <div class="bg-[#090e17] border border-slate-700/50 rounded-xl p-4 flex flex-col gap-2 shadow-inner" v-for="(data, name) in statsAppBreakdown" :key="name">
-            <div class="text-[10px] md:text-xs text-blue-400 font-black tracking-widest uppercase border-b border-slate-800 pb-2">{{ name }}</div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3" v-else>
+          <div class="bg-[#090e17] border border-slate-700/50 rounded-xl p-4 flex flex-col gap-2 shadow-inner" v-for="(data, jobId) in statsAppBreakdown" :key="jobId">
+            <div :class="['text-[10px] md:text-xs font-black tracking-widest uppercase border-b border-slate-800 pb-2', data.group === 'bank' ? 'text-emerald-400' : 'text-blue-400']">{{ data.label }}</div>
             <div class="flex justify-between items-center mt-1">
               <span class="text-slate-500 text-[10px] uppercase font-bold">Hôm nay:</span>
               <span :class="['text-base font-black', data.today > 0 ? 'text-emerald-400 drop-shadow-[0_0_5px_rgba(16,185,129,0.5)]' : 'text-slate-500']">{{ data.today }}</span>
@@ -1061,6 +1096,10 @@ const handleAdminLogout = async () => {
             </tr>
           </tbody>
         </table>
+
+        <div v-if="withdrawalsError && activeTab === 'withdrawals' && !isLoading" class="p-6 text-center text-red-400 text-xs tracking-widest">
+          ⚠️ LỖI: {{ withdrawalsError }}
+        </div>
 
         <table class="w-full text-left border-collapse" v-else-if="activeTab === 'withdrawals'">
           <thead>
