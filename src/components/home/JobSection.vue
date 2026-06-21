@@ -47,6 +47,7 @@ const mergedVipJobs = computed(() => {
         color: config.color || staticJob.color,
         status: config.status || 'open',
         order: config.order ?? 999,
+        ageRequirement: (config.ageRequirement ?? staticJob.ageRequirement ?? undefined) as number | undefined,
       }
     })
     .filter(job => job.status !== 'hidden')
@@ -117,6 +118,13 @@ const getShortDesc = (id: string) => {
     'liobank':  'Mở tài khoản LioBank thẻ 2 in 1'
   };
   return desc[id] || 'Làm nhiệm vụ ngay';
+}
+
+const getAgeBadgeClass = (age: number): string => {
+  if (age <= 15) return 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+  if (age <= 18) return 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30'
+  if (age <= 20) return 'bg-orange-500/15 text-orange-400 border-orange-500/30'
+  return 'bg-red-500/15 text-red-400 border-red-500/30'
 }
 </script>
 
@@ -432,9 +440,16 @@ const getShortDesc = (id: string) => {
               {{ job.title }}
             </h4>
 
-            <p class="text-[10px] md:text-[13px] text-slate-600 font-medium line-clamp-2 leading-relaxed mb-4 mt-1">
+            <p class="text-[10px] md:text-[13px] text-slate-600 font-medium line-clamp-2 leading-relaxed mb-2 mt-1">
               {{ getShortDesc(job.id) }}
             </p>
+
+            <div v-if="job.ageRequirement" class="mb-3">
+              <span :class="getAgeBadgeClass(job.ageRequirement)"
+                class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-wide border">
+                🪪 TỪ {{ job.ageRequirement }} TUỔI
+              </span>
+            </div>
 
             <div class="flex flex-col mt-auto relative z-10">
               <p class="text-[9px] md:text-[10px] font-bold text-amber-600 uppercase tracking-widest mb-1">Thưởng ngay:</p>

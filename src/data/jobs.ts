@@ -194,6 +194,7 @@ export const jobsData: Record<string, any> = {
 
   'liobank': {
     title: "APP LIOBANK",
+    ageRequirement: 22,
     reward: "65.000 xu",
     color: "text-green-400",
     badge: "HOT",
@@ -231,6 +232,7 @@ export const jobsData: Record<string, any> = {
 
   'app-chung-khoan-3': {
     title: "APP CHỨNG KHOÁN SỐ 3",
+    ageRequirement: 20,
     reward: "85.000 xu",
     color: "text-orange-500",
     badge: "SIÊU HOT",
@@ -268,6 +270,7 @@ export const jobsData: Record<string, any> = {
 
   'app-chung-khoan-4': {
     title: "APP CHỨNG KHOÁN SỐ 4",
+    ageRequirement: 18,
     reward: "85.000 xu",
     color: "text-orange-500",
     badge: "SIÊU HOT",
@@ -437,6 +440,7 @@ export const jobsData: Record<string, any> = {
 
   'mbbank': {
     title: "APP ABBANK",
+    ageRequirement: 15,
     subtitle: "Mở tài khoản ABBANK",
     reward: "85.000 xu",
     color: "text-orange-500",

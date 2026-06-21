@@ -53,12 +53,13 @@ const initVipJobEdit = (id: string, firestoreData: Record<string, any>) => {
   const config = firestoreData[id] || {}
   const staticJob = jobsData[id] || {}
   vipJobEdits.value[id] = {
-    title:   config.title   !== undefined ? config.title   : (staticJob.title   || ''),
-    reward:  config.reward  !== undefined ? config.reward  : (staticJob.reward  || ''),
-    badge:   config.badge   !== undefined ? config.badge   : (staticJob.badge   || ''),
-    warning: config.warning !== undefined ? config.warning : (staticJob.warning || ''),
-    order:   config.order   !== undefined ? config.order   : 0,
-    status:  config.status  !== undefined ? config.status  : 'open',
+    title:          config.title          !== undefined ? config.title          : (staticJob.title   || ''),
+    reward:         config.reward         !== undefined ? config.reward         : (staticJob.reward  || ''),
+    badge:          config.badge          !== undefined ? config.badge          : (staticJob.badge   || ''),
+    warning:        config.warning        !== undefined ? config.warning        : (staticJob.warning || ''),
+    order:          config.order          !== undefined ? config.order          : 0,
+    status:         config.status         !== undefined ? config.status         : 'open',
+    ageRequirement: config.ageRequirement !== undefined ? config.ageRequirement : (staticJob.ageRequirement ?? null),
   }
 }
 
@@ -72,13 +73,14 @@ const saveVipJobConfig = async (id: string) => {
   if (!edit) return
   try {
     await setDoc(doc(db, 'vip_jobs', id), {
-      title:   edit.title,
-      reward:  edit.reward,
-      badge:   edit.badge,
-      warning: edit.warning,
-      order:   Number(edit.order) || 0,
-      status:  edit.status,
-      updatedAt: serverTimestamp(),
+      title:          edit.title,
+      reward:         edit.reward,
+      badge:          edit.badge,
+      warning:        edit.warning,
+      order:          Number(edit.order) || 0,
+      status:         edit.status,
+      ageRequirement: (edit.ageRequirement !== null && edit.ageRequirement !== '') ? Number(edit.ageRequirement) : null,
+      updatedAt:      serverTimestamp(),
     }, { merge: true })
     await Swal.fire({ icon: 'success', title: 'ĐÃ LƯU!', text: `Cấu hình "${id}" đã cập nhật realtime.`, timer: 1500, showConfirmButton: false })
   } catch (e) {
@@ -1233,10 +1235,17 @@ const handleAdminLogout = async () => {
                 </div>
 
                 <!-- Warning -->
-                <div class="flex flex-col gap-1 lg:col-span-3">
+                <div class="flex flex-col gap-1 lg:col-span-2">
                   <label class="text-[9px] text-slate-500 uppercase tracking-widest font-black">Cảnh báo tuổi (warning — để trống = không cảnh báo)</label>
                   <input type="text" v-model="vipJobEdits[id].warning"
                     class="bg-[#111726] text-white border border-slate-700 rounded-xl px-3 py-2.5 text-[11px] outline-none focus:border-amber-500 transition-colors font-sans not-italic normal-case" />
+                </div>
+
+                <!-- Age Requirement -->
+                <div class="flex flex-col gap-1">
+                  <label class="text-[9px] text-slate-500 uppercase tracking-widest font-black">Yêu cầu tuổi (để trống = không hiện badge)</label>
+                  <input type="number" v-model.number="vipJobEdits[id].ageRequirement" min="0" max="99" placeholder="VD: 18"
+                    class="bg-[#111726] text-white border border-slate-700 rounded-xl px-3 py-2.5 text-[11px] font-black outline-none focus:border-amber-500 transition-colors font-sans not-italic normal-case" />
                 </div>
 
               </div>

@@ -709,11 +709,19 @@ const mergedVipJobsMobile = computed(() => {
         badge: config.badge || staticJob.badge,
         status: config.status || 'open',
         order: config.order ?? 999,
+        ageRequirement: (config.ageRequirement ?? (staticJob as any).ageRequirement ?? undefined) as number | undefined,
       }
     })
     .filter(j => j.status !== 'hidden')
     .sort((a, b) => a.order - b.order)
 })
+
+const getMobileAgeBadgeClass = (age: number): string => {
+  if (age <= 15) return 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+  if (age <= 18) return 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30'
+  if (age <= 20) return 'bg-orange-500/15 text-orange-400 border-orange-500/30'
+  return 'bg-red-500/15 text-red-400 border-red-500/30'
+}
 </script>
 
 <template>
@@ -1342,9 +1350,17 @@ const mergedVipJobsMobile = computed(() => {
                 </div>
 
                 <!-- Title -->
-                <p class="text-amber-300 text-[11px] font-black italic uppercase tracking-tight leading-tight mb-2 flex-1 relative z-10">
+                <p class="text-amber-300 text-[11px] font-black italic uppercase tracking-tight leading-tight mb-1.5 flex-1 relative z-10">
                   {{ job.title }}
                 </p>
+
+                <!-- Age badge -->
+                <div v-if="job.ageRequirement" class="mb-2 relative z-10">
+                  <span :class="getMobileAgeBadgeClass(job.ageRequirement)"
+                    class="inline-flex items-center justify-center gap-1 w-full px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wide border">
+                    🪪 YÊU CẦU: TỪ {{ job.ageRequirement }} TUỔI
+                  </span>
+                </div>
 
                 <!-- Reward -->
                 <div class="flex items-baseline gap-1 mb-3 relative z-10">
