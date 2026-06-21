@@ -628,7 +628,7 @@ const handleReceiveJob = (jobId: string) => {
     activePopup.value = ''
     ageConfirmJobId.value = jobId
     ageConfirmJobTitle.value = vipConfig?.title || jobsData[jobId]?.title || jobId
-    ageConfirmAge.value = jobId === 'app-chung-khoan-3' ? 20 : jobId === 'liobank' ? 22 : 18
+    ageConfirmAge.value = jobId === 'app-chung-khoan-3' ? 20 : jobId === 'liobank' ? 22 : jobId === 'mbbank' ? 15 : 18
     showAgeConfirmModal.value = true
   } else {
     router.push(`/job/${jobId}`)

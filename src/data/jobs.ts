@@ -441,7 +441,7 @@ export const jobsData: Record<string, any> = {
     reward: "85.000 xu",
     color: "text-orange-500",
     badge: "SIÊU HOT",
-    warning: "Người đăng ký phải từ 18 tuổi trở lên. Số điện thoại và CCCD/CMND chưa từng đăng ký MB Bank trước đó. Phải hoàn tất xác thực tài khoản mới được tính thưởng. Nghiêm cấm gian lận hoặc gửi bằng chứng giả.",
+    warning: "Người đăng ký phải từ 15 tuổi trở lên. Số điện thoại và CCCD/CMND chưa từng đăng ký MB Bank trước đó. Phải hoàn tất xác thực tài khoản mới được tính thưởng. Nghiêm cấm gian lận hoặc gửi bằng chứng giả.",
     zaloGuideUrl: "",
     steps: [
       {
