@@ -91,8 +91,8 @@ export const jobsData: Record<string, any> = {
         id: 2,
         title: "BƯỚC 2: TẢI ẢNH QR ZALO, ĐĂNG BÀI VÀ GHIM BÌNH LUẬN",
         content: "1. Đăng bài lên Threads với Nội dung bạn vừa Copy.\n2. Bấm nút TẢI ẢNH bên dưới để lưu ảnh Mã QR Zalo về điện thoại.\n3. Bình luận bức ảnh QR đó vào bài viết bạn vừa đăng.",
-        img: "images/qr-zalo-nhom6.jpg",
-        downloadLink: "images/qr-zalo-nhom6.jpg",
+        img: "images/qr-zalo-nhom7.jpg",
+        downloadLink: "images/qr-zalo-nhom7.jpg",
         buttonText: "📥 TẢI MÃ QR ZALO VỀ MÁY"
       },
       {
@@ -169,15 +169,16 @@ export const jobsData: Record<string, any> = {
     steps: [
       {
         id: 1,
-        title: "THAM GIA NHÓM ZALO MMO PRO ",
-        content: "MỌI NGƯỜI ƯU TIÊN THAM GIA NHÓM SỐ 5 NHÁ .",
+        title: "THAM GIA NHÓM ZALO MMO PRO - nhóm 5,6,7 ",
+        content: "MỌI NGƯỜI ƯU TIÊN THAM GIA NHÓM SỐ 5,6,7 NHÁ .",
         extraLinks: [
           { text: "THAM GIA NHÓM 1 ➔", url: "https://zalo.me/g/zbvsdm567" },
           { text: "THAM GIA NHÓM 2 ➔", url: "https://zalo.me/g/hndtoou23pcp9qhm7dfp" },
           { text: "THAM GIA NHÓM 3 ➔", url: "https://zalo.me/g/lenpfa1wvl7xvrwiihw2" },
           { text: "THAM GIA NHÓM 4 ➔", url: "https://zalo.me/g/ycooilv3vlgg6v1qgt1x" },
           { text: "THAM GIA NHÓM 5 ➔", url: "https://zalo.me/g/cbfjgrygtu5lspswsec2" },
-          { text: "THAM GIA NHÓM 6 ➔", url: "https://zalo.me/g/zphocdbaiwzvp6k4bufq" }
+          { text: "THAM GIA NHÓM 6 ➔", url: "https://zalo.me/g/zphocdbaiwzvp6k4bufq" },
+          { text: "THAM GIA NHÓM 7 ➔", url: "https://zalo.me/g/cajkbdiz9tc3rfrxwzui" }
         ]
       },
       {
@@ -435,6 +436,47 @@ export const jobsData: Record<string, any> = {
         title: "LƯU LẠI ẢNH VÀ GỬI",
         content: "GỬI 2 ẢNH ĐÓ VÀ CHỜ PHÊ DUYỆT HOA HỒNG TRONG 24H."
       }
+    ]
+  },
+
+  'lpbank-plus': {
+    title: "APP LPBank Plus",
+    ageRequirement: 15,
+    subtitle: "Mở tài khoản LPBank Plus",
+    reward: "85.000 xu",
+    color: "text-orange-500",
+    badge: "SIÊU HOT",
+    warning: "Người đăng ký phải từ 15 tuổi trở lên. Số điện thoại và CCCD/CMND chưa từng đăng ký LPBank Plus trước đó. Phải hoàn tất xác thực tài khoản mới được tính thưởng. Nghiêm cấm gian lận hoặc gửi bằng chứng giả.",
+    zaloGuideUrl: "",
+    steps: [
+      {
+        id: 1,
+        title: "TẢI ĐÚNG APP LPBANK PLUS - CHÚ Ý CHỮ PLUS ",
+        content: "TÊN APP : LPBANK PLUS TẢI ĐÚNG APP HOẶC CHỌN TẢI ỨNG DỤNG.",
+        downloadLink: "https://content.lpbank.com.vn/share/down_app/index.html",
+        buttonText: "🚀 TẢI ỨNG DỤNG",
+        img: "images/anh-lpbank-buoc1.jpg",
+      },
+      {
+        id: 2,
+        title: "NHẬP MÃ GIỚI THIỆU : 0366045803 ",
+        content: "BẮT BUỘC NHẬP MÃ GIỚI THIỆU 0366045803 VÀ CHỤP LẠI ẢNH.",
+        referralCode: "0366045803",
+        img: "images/anh-lpbank1.jpg",
+        note: "NHẬP MÃ GIỚI THIỆU : 0366045803  (BẮT BUỘC)",
+      },
+      {
+        id: 3,
+        title: "CHUYỂN VÀO LPBANK 50K VÀ CHUYỂN RA ",
+        content: "CHỤP LẠI ẢNH CHUYỂN TIỀN RA VÀ GỬI BẰNG CHỨNG .",
+        img: "images/anh-lpbank2.jpg",
+      },
+      {
+        id: 4,
+        title: "VÀO GỬI BẰNG CHỨNG ĐỂ XEM ẢNH CẦN GỬI ",
+        content: "CHỜ ĐỢI BÊN MÌNH DUYỆT ĐƠN VÀ NHẬN HOA HỒNG .",
+        
+      },
     ]
   },
 

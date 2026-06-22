@@ -52,7 +52,8 @@ const jobSamples: Record<string, string[]> = {
   'msb-bank': ['images/anh-msb2.jpg', 'images/anh-msb3.jpg', 'images/anh-msb10.jpg'],
   'app-chung-khoan-2': ['images/anh-dnse2.jpg', 'images/anh-dnse3.jpg', 'images/anh-dnse10.jpg'],
   'app-chung-khoan-3': ['images/anh-kis1.jpg', 'images/anh-kis2.jpg', 'images/anh-kis10.jpg'],
-  'liobank': ['images/anh-liobank3a.jpg', 'images/anh-liobank3b.jpg', 'images/anh-liobank4.jpg']
+  'liobank': ['images/anh-liobank3a.jpg', 'images/anh-liobank3b.jpg', 'images/anh-liobank4.jpg'],
+  'lpbank-plus': ['anh-lpbank3.jpg', 'anh-lpbank2.jpg']
 }
 
 const selectedJob = ref<ProofJob | undefined>(jobOptions.value[0])
@@ -136,11 +137,13 @@ const isFanpageTask = computed(() =>
 
 const fourImageJobs: string[] = []
 const threeImageJobs = ['vpbank', 'msb-bank', 'app-chung-khoan', 'app-chung-khoan-2', 'app-chung-khoan-3', 'app-chung-khoan-4', 'liobank', 'mbbank']
+const twoImageJobs = ['lpbank-plus']
 
 const imageRequirementText = computed(() => {
   const jobId = selectedJob.value.id
   if (fourImageJobs.includes(jobId)) return "YÊU CẦU BẮT BUỘC NỘP TỪ 4 ẢNH TRỞ LÊN (XEM MẪU BÊN DƯỚI)"
   if (threeImageJobs.includes(jobId)) return "YÊU CẦU BẮT BUỘC NỘP TỪ 3 ẢNH TRỞ LÊN (XEM MẪU BÊN DƯỚI)"
+  if (twoImageJobs.includes(jobId)) return "YÊU CẦU BẮT BUỘC NỘP TỪ 2 ẢNH TRỞ LÊN (XEM MẪU BÊN DƯỚI)"
   return "TẢI LÊN ẢNH CHỤP MÀN HÌNH BẰNG CHỨNG XÁC THỰC"
 })
 
@@ -332,6 +335,11 @@ const submitReport = async () => {
 
   if (threeImageJobs.includes(selectedJob.value.id) && imageBlobs.value.length < 3) {
     alert('⚠️ CHIẾN DỊCH NÀY BẮT BUỘC PHẢI TẢI LÊN ÍT NHẤT 3 ẢNH MẪU ĐỂ ĐỐI SOÁT!')
+    return
+  }
+
+  if (twoImageJobs.includes(selectedJob.value.id) && imageBlobs.value.length < 2) {
+    alert('⚠️ CHIẾN DỊCH NÀY BẮT BUỘC PHẢI TẢI LÊN ÍT NHẤT 2 ẢNH MẪU ĐỂ ĐỐI SOÁT!')
     return
   }
 
@@ -552,7 +560,7 @@ const openFanpage = () => {
             <div class="text-4xl group-hover:scale-110 transition-transform mb-3">📸</div>
             <p :class="[
                  'text-[11px] md:text-[12px] tracking-widest transition-colors uppercase text-center leading-relaxed font-black',
-                 fourImageJobs.includes(selectedJob.id) || threeImageJobs.includes(selectedJob.id)
+                 fourImageJobs.includes(selectedJob.id) || threeImageJobs.includes(selectedJob.id) || twoImageJobs.includes(selectedJob.id)
                    ? 'text-rose-400'
                    : 'text-slate-400 group-hover:text-blue-700'
                ]">
@@ -565,7 +573,7 @@ const openFanpage = () => {
             <p class="text-[10px] md:text-[11px] text-yellow-400 font-black tracking-widest mb-3 uppercase italic leading-relaxed">
               ⚠️ Bạn phải gửi đủ {{ jobSamples[selectedJob.id].length }} ảnh mẫu này (Chạm để zoom to):
             </p>
-            <div :class="['grid gap-2', jobSamples[selectedJob.id].length >= 4 ? 'grid-cols-4' : 'grid-cols-3']">
+            <div :class="['grid gap-2', jobSamples[selectedJob.id].length >= 4 ? 'grid-cols-4' : jobSamples[selectedJob.id].length === 2 ? 'grid-cols-2' : 'grid-cols-3']">
               <div v-for="(img, idx) in jobSamples[selectedJob.id]" :key="idx"
                    @click="openImage(baseUrl + img)"
                    class="relative rounded-xl overflow-hidden border border-slate-700/60 bg-slate-900 aspect-[3/4] cursor-zoom-in group hover:border-blue-500 transition-colors">

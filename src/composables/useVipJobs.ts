@@ -4,7 +4,7 @@ import { db } from '@/firebase'
 import { jobsData } from '@/data/jobs'
 
 // Canonical VIP job IDs — single source of truth cho toàn app
-export const VIP_JOB_IDS = ['liobank', 'app-chung-khoan', 'app-chung-khoan-2', 'app-chung-khoan-3', 'app-chung-khoan-4', 'msb-bank', 'vpbank', 'mbbank']
+export const VIP_JOB_IDS = ['liobank', 'app-chung-khoan', 'app-chung-khoan-2', 'app-chung-khoan-3', 'app-chung-khoan-4', 'msb-bank', 'vpbank', 'mbbank', 'lpbank-plus']
 
 export type ProofJob = { id: string; title: string; reward: string }
 

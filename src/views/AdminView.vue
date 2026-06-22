@@ -88,6 +88,32 @@ const saveVipJobConfig = async (id: string) => {
   }
 }
 
+const seedMissingVipJobs = async () => {
+  const missing = VIP_JOB_IDS.filter(id => !vipJobConfigs.value[id])
+  if (missing.length === 0) {
+    await Swal.fire({ icon: 'info', title: 'Không có job thiếu', text: 'Tất cả job VIP đã có trong Firestore.', timer: 2000, showConfirmButton: false })
+    return
+  }
+  try {
+    for (const id of missing) {
+      const staticJob = (jobsData[id] || {}) as any
+      await setDoc(doc(db, 'vip_jobs', id), {
+        title:          staticJob.title  || id,
+        reward:         staticJob.reward || '',
+        badge:          staticJob.badge  || '',
+        warning:        staticJob.warning || '',
+        order:          99,
+        status:         'hidden',
+        ageRequirement: staticJob.ageRequirement ?? null,
+        updatedAt:      serverTimestamp(),
+      }, { merge: true })
+    }
+    await Swal.fire({ icon: 'success', title: 'ĐÃ SEED!', text: `Đã tạo ${missing.length} job: ${missing.join(', ')}`, timer: 3000, showConfirmButton: false })
+  } catch (e) {
+    Swal.fire('Lỗi!', String(e), 'error')
+  }
+}
+
 // ============================================================================
 // WEB CONFIG — Quản lý app_config/overall realtime
 // webConfigEdit là bản local của form; watch(appConfig) sync khi Firestore cập nhật
@@ -176,6 +202,7 @@ const VIP_JOB_STATS = [
   { id: 'msb-bank',          label: 'MSB BANK',        group: 'bank'  },
   { id: 'vpbank',            label: 'VP BANK',         group: 'bank'  },
   { id: 'liobank',           label: 'LIOBANK',         group: 'bank'  },
+  { id: 'lpbank-plus',      label: 'APP LPBank Plus', group: 'bank'  },
   { id: 'tpbank',            label: 'TP BANK',         group: 'bank'  },
   { id: 'app-chung-khoan',   label: 'CK SỐ 1 / KAFI', group: 'stock' },
   { id: 'app-chung-khoan-2', label: 'CK SỐ 2 / DNSE', group: 'stock' },
@@ -195,6 +222,7 @@ const matchJobToId = (data: any): string | null => {
   const snap = (data.jobTitleSnapshot || data.jobName || '').toLowerCase()
   if (!snap) return null
   if (snap.includes('abbank'))                                      return 'mbbank'
+  if (snap.includes('lpbank'))                                      return 'lpbank-plus'
   if (snap.includes('msb'))                                         return 'msb-bank'
   if (snap.includes('vpbank') || snap.includes('vp bank'))          return 'vpbank'
   if (snap.includes('liobank') || snap.includes('lio bank'))        return 'liobank'
@@ -628,7 +656,7 @@ onUnmounted(() => {
 const isAppJob = (jobName: string) => {
   if (!jobName) return false;
   const name = jobName.toLowerCase();
-  const keywords = ['app', 'ngân hàng', 'chứng khoán', 'vpbank', 'tpbank', 'mbbank', 'msb', 'cake', 'tnex', 'kafi', 'dnse', 'kis', 'liobank', 'lio'];
+  const keywords = ['app', 'ngân hàng', 'chứng khoán', 'vpbank', 'tpbank', 'mbbank', 'msb', 'cake', 'tnex', 'kafi', 'dnse', 'kis', 'liobank', 'lio', 'lpbank'];
   return keywords.some(kw => name.includes(kw));
 }
 
@@ -1162,10 +1190,14 @@ const handleAdminLogout = async () => {
         <!-- TAB: CẤU HÌNH JOB VIP                                           -->
         <!-- ================================================================ -->
         <div v-else-if="activeTab === 'vip_jobs_config'" class="p-6 md:p-8 space-y-4">
-          <div class="flex items-center gap-3 mb-2">
+          <div class="flex items-center gap-3 mb-2 flex-wrap">
             <div class="w-1.5 h-6 bg-amber-500 rounded-full shadow-[0_0_10px_rgba(245,158,11,0.6)]"></div>
             <h3 class="text-base md:text-xl text-amber-400 tracking-tight">CẤU HÌNH JOB VIP REALTIME</h3>
             <span class="text-[9px] text-slate-500 normal-case not-italic font-normal border border-slate-700 px-2 py-0.5 rounded hidden md:inline">Thay đổi sẽ cập nhật ngay lập tức — không cần deploy</span>
+            <button @click="seedMissingVipJobs"
+              class="ml-auto bg-emerald-700 hover:bg-emerald-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-[0_0_10px_rgba(16,185,129,0.3)]">
+              🌱 SEED JOB VIP CÒN THIẾU
+            </button>
           </div>
 
           <div class="grid grid-cols-1 gap-4">
