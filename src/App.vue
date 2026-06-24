@@ -678,7 +678,7 @@ const logout = async () => {
 }
 
 const contactSupport = (t: string) => {
-  const fb  = 'https://www.facebook.com/mmopro123'
+  const fb  = 'http://facebook.com/mmopro168'
   const zl  = 'https://zalo.me/g/lenpfa1wvl7xvrwiihw2'
   const grp = zl
   const map: Record<string, string> = { facebook: fb, zalo: zl, group: grp }

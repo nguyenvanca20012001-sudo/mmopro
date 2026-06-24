@@ -465,7 +465,7 @@ const goToVipSection = () => {
 }
 
 const openFanpage = () => {
-  window.open('https://www.facebook.com/mmopro123', '_blank')
+  window.open('http://facebook.com/mmopro168', '_blank')
   closeAndGoHome()
 }
 </script>

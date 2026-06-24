@@ -103,7 +103,7 @@ const handleReceiveJob = (jobId: string) => {
 }
 
 const contactSupport = () => {
-  window.open('https://www.facebook.com/mmopro123', '_blank')
+  window.open('http://facebook.com/mmopro168', '_blank')
 }
 
 const logout = async () => { 
