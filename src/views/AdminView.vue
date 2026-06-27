@@ -701,6 +701,10 @@ const getVndAmount = (wd: any) => {
   return finalVnd;
 }
 
+const selectedQrImage = ref<string | null>(null)
+const openQrModal = (url: string) => { selectedQrImage.value = url }
+const closeQrModal = () => { selectedQrImage.value = null }
+
 const fixUserWallet = async (uid: string) => {
   const currentVal = usersMap.value[uid]?.balance || 0;
   const newVal = prompt(`Khách đang có: ${currentVal} XU.\n\nNhập số tiền chuẩn để sửa ví (CHỈ NHẬP SỐ):`, "0");
@@ -1140,7 +1144,7 @@ const handleAdminLogout = async () => {
           <thead>
             <tr class="bg-[#0d121f] text-emerald-500 text-[10px] tracking-[2px] border-b border-slate-800">
               <th class="p-6 min-w-[200px]">NGƯỜI RÚT</th>
-              <th class="p-6 min-w-[250px]">THÔNG TIN NGÂN HÀNG</th>
+              <th class="p-6 min-w-[250px]">QR / NGÂN HÀNG</th>
               <th class="p-6 text-center min-w-[150px]">SỐ TIỀN</th>
               <th class="p-6 text-center min-w-[120px]">TRẠNG THÁI</th>
               <th class="p-6 text-right min-w-[200px]">HÀNH ĐỘNG</th>
@@ -1160,7 +1164,15 @@ const handleAdminLogout = async () => {
                 <div class="text-slate-500 text-[10px] mt-0.5 font-sans not-italic">{{ formatDate(wd.createdAt) }}</div>
               </td>
               <td class="p-6">
-                <div class="text-slate-300 text-[11px] font-sans not-italic leading-relaxed max-w-[250px] bg-[#0d121f] p-3 rounded-xl border border-slate-700">{{ wd.bankInfo }}</div>
+                <div v-if="wd.qrImage?.url">
+                  <img :src="wd.qrImage.url" alt="QR Ngân hàng"
+                       class="w-24 h-24 object-cover rounded-xl border border-slate-700 cursor-pointer hover:border-blue-500 hover:scale-105 transition-all shadow-md"
+                       @click="openQrModal(wd.qrImage.url)"
+                       title="Click để xem lớn" />
+                  <p class="text-slate-600 text-[9px] mt-1 normal-case font-medium not-italic">Nhấn để zoom</p>
+                </div>
+                <div v-else-if="wd.bankInfo" class="text-slate-300 text-[11px] font-sans not-italic leading-relaxed max-w-[250px] bg-[#0d121f] p-3 rounded-xl border border-slate-700">{{ wd.bankInfo }}</div>
+                <div v-else class="text-slate-600 text-[10px] italic normal-case font-medium not-italic">Không có thông tin</div>
               </td>
               
               <td class="p-6 text-center">
@@ -1428,6 +1440,28 @@ const handleAdminLogout = async () => {
       </div>
     </div>
   </div>
+
+  <!-- QR Zoom Modal -->
+  <Transition name="fade">
+    <div v-if="selectedQrImage" class="fixed inset-0 z-[9000] flex items-center justify-center px-4">
+      <div class="absolute inset-0 bg-black/90 backdrop-blur-md" @click="closeQrModal"></div>
+      <div class="relative z-10 bg-[#111827] border border-slate-700/60 rounded-[24px] p-6 max-w-sm w-full shadow-2xl text-center">
+        <h3 class="text-white text-sm font-black tracking-widest mb-4 uppercase">QR NHẬN TIỀN</h3>
+        <img :src="selectedQrImage" alt="QR Ngân hàng"
+             class="w-full max-h-[60vh] object-contain rounded-2xl border border-slate-700 mb-5" />
+        <div class="flex gap-3">
+          <button @click="closeQrModal"
+                  class="flex-1 py-3 bg-slate-700/60 border border-slate-600/40 text-slate-300 hover:text-white rounded-xl text-[10px] tracking-widest transition-all active:scale-95 uppercase font-black italic">
+            ĐÓNG
+          </button>
+          <a :href="selectedQrImage" target="_blank" rel="noopener"
+             class="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[10px] tracking-widest transition-all active:scale-95 flex items-center justify-center uppercase font-black italic">
+            MỞ ẢNH GỐC
+          </a>
+        </div>
+      </div>
+    </div>
+  </Transition>
 </template>
 
 <style scoped>

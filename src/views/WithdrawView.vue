@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { auth, db } from '@/firebase'
-import { collection, addDoc, doc, updateDoc } from "firebase/firestore"
+import { auth, db, storage } from '@/firebase'
+import { collection, doc, setDoc, updateDoc } from "firebase/firestore"
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import Swal from 'sweetalert2'
 
 const router = useRouter()
@@ -14,7 +15,6 @@ const props = defineProps<{
 }>()
 
 const amount = ref<number | null>(null)
-const bankInfo = ref('')
 const isLoading = ref(false)
 
 const hasPendingWithdraw = computed(() => props.myWithdrawals.some(w => w.status === 'pending'))
@@ -38,6 +38,12 @@ const requiredJobs = computed(() => {
   }
   return 9
 })
+
+// QR upload state
+const qrBlob = ref<Blob | null>(null)
+const qrPreviewUrl = ref<string | null>(null)
+const isCompressing = ref(false)
+const qrFileInputEl = ref<HTMLInputElement | null>(null)
 
 const formatNumber = (num: number) => {
   return Math.floor(num).toLocaleString('vi-VN')
@@ -104,7 +110,97 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (intervalId) clearInterval(intervalId)
+  if (qrPreviewUrl.value) URL.revokeObjectURL(qrPreviewUrl.value)
 })
+
+// Image compression — same algorithm as SubmitReportView
+const compressImage = (file: File): Promise<Blob> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.readAsDataURL(file)
+    reader.onload = (e) => {
+      const img = new Image()
+      img.src = e.target?.result as string
+      img.onload = () => {
+        const MAX_DIM = 1280
+        let { width, height } = img
+        if (width > MAX_DIM || height > MAX_DIM) {
+          if (width >= height) {
+            height = Math.round((height * MAX_DIM) / width)
+            width = MAX_DIM
+          } else {
+            width = Math.round((width * MAX_DIM) / height)
+            height = MAX_DIM
+          }
+        }
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        if (!ctx) { reject(new Error('Canvas không khả dụng')); return }
+        ctx.fillStyle = '#FFFFFF'
+        ctx.fillRect(0, 0, width, height)
+        ctx.drawImage(img, 0, 0, width, height)
+        canvas.toBlob((blob1) => {
+          if (!blob1) { reject(new Error('Không thể nén ảnh')); return }
+          if (blob1.size < 1 * 1024 * 1024) { resolve(blob1); return }
+          canvas.toBlob((blob2) => {
+            if (!blob2) { reject(new Error('Không thể nén ảnh')); return }
+            if (blob2.size >= 1 * 1024 * 1024) {
+              reject(new Error('Ảnh quá lớn, vui lòng chọn ảnh khác hoặc chụp lại rõ hơn.'))
+              return
+            }
+            resolve(blob2)
+          }, 'image/webp', 0.55)
+        }, 'image/webp', 0.72)
+      }
+      img.onerror = () => reject(new Error('Không thể đọc ảnh'))
+    }
+    reader.onerror = () => reject(new Error('Không thể đọc file'))
+  })
+}
+
+const handleQrFileChange = async (event: Event) => {
+  const target = event.target as HTMLInputElement
+  if (!target.files?.length) return
+  const file = target.files[0]
+  if (!file) return
+  if (!file.type.startsWith('image/')) {
+    Swal.fire({
+      title: 'ĐỊNH DẠNG KHÔNG HỢP LỆ!',
+      text: 'Chỉ chấp nhận ảnh jpg, jpeg, png, webp.',
+      icon: 'warning',
+      confirmButtonColor: '#eab308',
+      customClass: { popup: 'rounded-[30px]' }
+    })
+    target.value = ''
+    return
+  }
+  isCompressing.value = true
+  try {
+    const blob = await compressImage(file)
+    if (qrPreviewUrl.value) URL.revokeObjectURL(qrPreviewUrl.value)
+    qrBlob.value = blob
+    qrPreviewUrl.value = URL.createObjectURL(blob)
+  } catch (err: any) {
+    Swal.fire({
+      title: 'LỖI ẢNH!',
+      text: err.message || 'Không thể xử lý ảnh.',
+      icon: 'error',
+      confirmButtonColor: '#ef4444',
+      customClass: { popup: 'rounded-[30px]' }
+    })
+  } finally {
+    isCompressing.value = false
+    target.value = ''
+  }
+}
+
+const removeQr = () => {
+  if (qrPreviewUrl.value) URL.revokeObjectURL(qrPreviewUrl.value)
+  qrBlob.value = null
+  qrPreviewUrl.value = null
+}
 
 const triggerWithdraw = () => {
   if (hasPendingWithdraw.value) {
@@ -140,10 +236,10 @@ const triggerWithdraw = () => {
     return
   }
 
-  if (!bankInfo.value.trim() || bankInfo.value.length < 10) {
+  if (!qrBlob.value) {
     Swal.fire({
-      title: 'THIẾU THÔNG TIN NHẬN TIỀN!',
-      text: 'Vui lòng nhập chính xác thông tin nhận tiền (Tên Ngân hàng - STK - Tên Chủ Thẻ)!',
+      title: 'CHƯA CÓ ẢNH QR!',
+      text: 'Vui lòng tải ảnh mã QR ngân hàng để xác nhận rút tiền!',
       icon: 'warning',
       confirmButtonColor: '#eab308',
       customClass: { popup: 'rounded-[30px]' }
@@ -157,7 +253,7 @@ const triggerWithdraw = () => {
 
 const handleConfirmWithdraw = async () => {
   const user = auth.currentUser
-  if (isLoading.value || !user || !amount.value) return
+  if (isLoading.value || !user || !amount.value || !qrBlob.value) return
 
   if (approvedJobsCount.value < requiredJobs.value) {
     Swal.fire({
@@ -173,16 +269,28 @@ const handleConfirmWithdraw = async () => {
   isLoading.value = true
 
   try {
-    const withdrawalRef = collection(db, "withdrawals")
+    const withdrawalDocRef = doc(collection(db, "withdrawals"))
+    const withdrawalId = withdrawalDocRef.id
     const realMoneyVND = Math.floor(amount.value / 12)
 
-    await addDoc(withdrawalRef, {
+    // Upload QR first — do not create doc if upload fails
+    const qrPath = `withdrawal_qr/${user.uid}/${withdrawalId}/qr.webp`
+    const sRef = storageRef(storage, qrPath)
+    await uploadBytes(sRef, qrBlob.value, { contentType: 'image/webp' })
+    const qrUrl = await getDownloadURL(sRef)
+
+    await setDoc(withdrawalDocRef, {
       uid: user.uid,
       amount: amount.value,
       realMoney: realMoneyVND,
-      bankInfo: bankInfo.value,
       status: 'pending',
-      createdAt: new Date()
+      createdAt: new Date(),
+      qrImage: {
+        url: qrUrl,
+        path: qrPath,
+        size: qrBlob.value.size,
+        contentType: 'image/webp'
+      }
     })
 
     const userRef = doc(db, "users", user.uid)
@@ -279,24 +387,50 @@ const handleConfirmWithdraw = async () => {
             </div>
           </div>
 
+          <!-- QR Upload Section -->
           <div>
-            <label class="block text-blue-400 text-[10px] tracking-widest mb-3">THÔNG TIN NHẬN TIỀN (VNĐ)</label>
-            <textarea
-              v-model="bankInfo"
-              rows="3"
-              placeholder="VD: MB BANK - 123456789 - NGUYEN VAN A"
-              class="w-full bg-slate-800/60 border border-slate-700/60 rounded-2xl px-5 py-4 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all resize-none normal-case font-medium not-italic text-sm leading-relaxed shadow-inner"
-            ></textarea>
+            <label class="block text-[11px] tracking-[3px] mb-2 font-black" style="background: linear-gradient(90deg, #60a5fa, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">TẢI ẢNH QR NGÂN HÀNG</label>
+            <p class="text-slate-300 text-xs normal-case font-medium not-italic mb-4 leading-relaxed">
+              Vui lòng tải ảnh mã QR ngân hàng chính chủ để nhận tiền.<br>
+              <span class="text-slate-400">Ảnh QR cần rõ số tài khoản, ngân hàng và tên người nhận.</span>
+            </p>
+
+            <input ref="qrFileInputEl" type="file" accept="image/jpg,image/jpeg,image/png,image/webp"
+                   class="hidden" @change="handleQrFileChange" />
+
+            <div v-if="qrPreviewUrl" class="relative inline-block mb-3">
+              <img :src="qrPreviewUrl" alt="QR Preview"
+                   class="w-40 h-40 object-cover rounded-2xl border-2 border-blue-500/40 shadow-lg" />
+              <button @click="removeQr"
+                      class="absolute -top-2 -right-2 w-7 h-7 bg-rose-600 hover:bg-rose-500 text-white rounded-full flex items-center justify-center text-xs font-black shadow transition-all active:scale-90">
+                ✕
+              </button>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <button v-if="!qrPreviewUrl"
+                      @click="qrFileInputEl?.click()"
+                      :disabled="isCompressing"
+                      class="flex items-center gap-2 px-5 py-3 bg-slate-800/80 border-2 border-dashed border-slate-600/60 hover:border-blue-500/60 text-slate-400 hover:text-blue-400 rounded-2xl transition-all text-[10px] tracking-widest active:scale-95 disabled:opacity-60">
+                <span>{{ isCompressing ? '⏳ ĐANG XỬ LÝ...' : '📷 Chọn ảnh QR' }}</span>
+              </button>
+              <button v-else @click="qrFileInputEl?.click()" :disabled="isCompressing"
+                      class="text-slate-500 hover:text-blue-400 text-[9px] tracking-widest transition-all active:scale-95 normal-case font-medium not-italic">
+                Chọn lại
+              </button>
+            </div>
           </div>
 
           <button
             @click="triggerWithdraw"
-            :disabled="isLoading || hasPendingWithdraw"
+            :disabled="isLoading || hasPendingWithdraw || (!qrBlob && !isCompressing)"
             :class="[
               'w-full py-4 rounded-2xl text-sm tracking-widest transition-all mt-2',
               hasPendingWithdraw
                 ? 'bg-slate-700/40 text-slate-500 cursor-not-allowed border border-slate-600/40'
-                : 'bg-yellow-500 hover:bg-yellow-400 text-[#090e17] active:scale-95 confirm-glow'
+                : (!qrBlob && !isCompressing)
+                  ? 'bg-slate-700/40 text-slate-500 cursor-not-allowed border border-slate-600/40'
+                  : 'bg-yellow-500 hover:bg-yellow-400 text-[#090e17] active:scale-95 confirm-glow'
             ]"
           >
             {{ isLoading ? 'ĐANG XỬ LÝ...' : (hasPendingWithdraw ? 'ĐANG CÓ LỆNH CHỜ DUYỆT' : 'XÁC NHẬN RÚT TIỀN') }}
@@ -352,7 +486,7 @@ const handleConfirmWithdraw = async () => {
 
         <div class="relative w-full max-w-md bg-[#111827] border border-slate-700/60 rounded-[30px] p-8 md:p-10 text-center shadow-2xl">
 
-          <template v-if="amount === 250000 && approvedJobsCount < requiredJobs">
+          <template v-if="approvedJobsCount < requiredJobs">
             <!-- Amber top accent line -->
             <div class="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-amber-500 to-transparent rounded-t-[30px]"></div>
             <!-- Ambient glow -->
@@ -376,7 +510,7 @@ const handleConfirmWithdraw = async () => {
               </div>
               <h3 class="text-xl md:text-2xl text-white font-black tracking-tighter mb-2 uppercase italic">CẦN THÊM NHIỆM VỤ</h3>
               <p class="text-slate-400 text-[11px] normal-case font-medium not-italic mb-5 px-2 leading-relaxed">
-                Hoàn thành đủ <span class="text-amber-400 font-bold">{{ requiredJobs }} nhiệm vụ</span> được duyệt để mở khóa rút tiền mốc <span class="text-amber-400 font-bold">250.000 XU</span>
+                Hoàn thành đủ <span class="text-amber-400 font-bold">{{ requiredJobs }} nhiệm vụ</span> được duyệt để mở khóa rút tiền mốc <span class="text-amber-400 font-bold">{{ formatNumber(amount || 0) }} XU</span>
               </p>
 
               <!-- Progress card -->
@@ -482,8 +616,9 @@ const handleConfirmWithdraw = async () => {
               </div>
               <div class="border-t border-slate-700/60"></div>
               <div class="flex items-start justify-between gap-2">
-                <span class="text-slate-500 text-[10px] uppercase tracking-widest font-black flex-shrink-0">Ngân hàng</span>
-                <span class="text-slate-200 text-[10px] font-bold normal-case not-italic text-right leading-tight">{{ bankInfo }}</span>
+                <span class="text-slate-500 text-[10px] uppercase tracking-widest font-black flex-shrink-0">Ảnh QR</span>
+                <img v-if="qrPreviewUrl" :src="qrPreviewUrl"
+                     class="w-20 h-20 object-cover rounded-xl border border-slate-600" alt="QR" />
               </div>
             </div>
 

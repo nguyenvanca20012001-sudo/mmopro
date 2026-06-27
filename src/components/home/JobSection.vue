@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
+import { useRouter } from 'vue-router';
 import { jobsData } from '@/data/jobs';
 import { VIP_JOB_IDS } from '@/composables/useVipJobs';
 import Logo from '@/components/Logo.vue';
@@ -9,9 +10,11 @@ const props = withDefaults(defineProps<{
   isLoggedIn: boolean;
   vipJobConfigs?: Record<string, any>;
   vipJobsLoaded?: boolean;
+  threadsOldJobDone?: boolean;
 }>(), {
   vipJobConfigs: () => ({}),
-  vipJobsLoaded: false
+  vipJobsLoaded: false,
+  threadsOldJobDone: false,
 });
 
 const emit = defineEmits(['receiveJob', 'contactSupport', 'routerPush']);
@@ -125,6 +128,27 @@ const getAgeBadgeClass = (age: number): string => {
   if (age <= 18) return 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30'
   if (age <= 20) return 'bg-orange-500/15 text-orange-400 border-orange-500/30'
   return 'bg-red-500/15 text-red-400 border-red-500/30'
+}
+
+// ============================================================
+// THREADS VIP DAILY — mở khóa khi đã làm post-threads
+// ============================================================
+const router = useRouter()
+const showThreadsVipModal = ref(false)
+const threadsVipUnlocked = computed(() => !!props.threadsOldJobDone)
+
+const handleThreadsVipClick = () => {
+  if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(50)
+  if (threadsVipUnlocked.value) {
+    router.push('/job/threads-daily')
+  } else {
+    showThreadsVipModal.value = true
+  }
+}
+
+const goToPostThreadsJob = () => {
+  showThreadsVipModal.value = false
+  router.push('/job/post-threads')
 }
 </script>
 
@@ -272,6 +296,76 @@ const getAgeBadgeClass = (age: number): string => {
             <span class="text-[10px] md:text-xs font-black uppercase tracking-widest text-blue-400 border border-blue-500/30 bg-blue-600/10 px-3 py-1 rounded-full">⚡ CƠ BẢN — NHANH & DỄ</span>
           </div>
           <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
+
+            <!-- THREADS VIP DAILY CARD — popup only, no report -->
+            <div
+              @click="handleThreadsVipClick"
+              class="relative p-5 md:p-7 rounded-[28px] border-[2px] transition-all duration-500 flex flex-col group cursor-pointer active:scale-95 hover:-translate-y-1 shadow-2xl overflow-hidden"
+              :class="threadsVipUnlocked
+                ? 'bg-gradient-to-br from-purple-900/40 to-fuchsia-800/20 border-purple-500/60 shadow-[0_4px_20px_rgba(168,85,247,0.2)]'
+                : 'bg-gradient-to-br from-slate-900/60 to-slate-800/20 border-slate-600/40 opacity-60'"
+            >
+              <div class="absolute inset-0 bg-gradient-to-t from-transparent to-white/5 pointer-events-none rounded-[26px]"></div>
+
+              <div class="absolute -top-0 -right-0 z-20 text-[9px] md:text-[10px] tracking-widest px-3 py-1.5 rounded-bl-2xl rounded-tr-[26px] font-black italic uppercase border-b border-l border-white/20 shadow-lg"
+                   :class="threadsVipUnlocked ? 'bg-purple-600 text-white' : 'bg-slate-600 text-slate-300'">
+                HẰNG NGÀY
+              </div>
+
+              <div class="flex justify-between items-start mb-4 relative z-10">
+                <div class="w-12 h-12 md:w-16 md:h-16 rounded-2xl flex items-center justify-center shadow-lg border-[1.5px] border-white/20 transition-transform group-hover:scale-110"
+                     :class="threadsVipUnlocked ? 'bg-purple-600/30' : 'bg-slate-700/60'">
+                  <span class="text-xl md:text-2xl">🧵</span>
+                </div>
+              </div>
+
+              <h4 class="text-[13px] md:text-lg font-black italic uppercase leading-tight mb-1"
+                  :class="threadsVipUnlocked ? 'text-purple-300' : 'text-slate-400'">
+                ĐĂNG BÀI THREADS HẰNG NGÀY
+              </h4>
+
+              <p class="text-[10px] md:text-[13px] text-slate-400 font-medium leading-relaxed mt-1 mb-2">
+                Đăng bài mỗi ngày • Không giới hạn
+              </p>
+
+              <div class="flex flex-col gap-0.5 mb-2">
+                <span class="text-[9px] md:text-[10px] text-slate-300">✅ Đăng hằng ngày</span>
+                <span class="text-[9px] md:text-[10px] text-slate-300">✅ Không giới hạn</span>
+                <span class="text-[9px] md:text-[10px] text-slate-300">✅ Nhiều nick Threads</span>
+              </div>
+
+              <div class="text-[9px] md:text-[10px] font-black uppercase tracking-wide mb-2"
+                   :class="threadsVipUnlocked ? 'text-emerald-400' : 'text-red-400'">
+                {{ threadsVipUnlocked ? '✅ ĐÃ MỞ KHÓA' : '🔒 CẦN HOÀN THÀNH JOB THREADS TRƯỚC' }}
+              </div>
+
+              <div class="flex flex-col mt-auto relative z-10">
+                <p class="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Thưởng ngay:</p>
+                <div class="flex items-center gap-1.5">
+                  <p class="font-black text-base md:text-xl tracking-tighter italic leading-none"
+                     :class="threadsVipUnlocked ? 'text-purple-400' : 'text-slate-500'">
+                    20K–100K
+                  </p>
+                  <div class="flex flex-col items-start translate-y-[-2px]">
+                    <svg class="w-4 h-4 md:w-5 md:h-5 drop-shadow-[0_0_5px_rgba(234,179,8,0.5)]" viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="10" fill="url(#goldCoinGradient)" />
+                      <path d="M12 7v10M9 10h6M9 14h6" stroke="#854d0e" stroke-width="2" stroke-linecap="round" />
+                    </svg>
+                    <span class="text-[7px] md:text-[9px] text-yellow-500 font-black not-italic tracking-tighter leading-none uppercase">Xu</span>
+                  </div>
+                </div>
+              </div>
+
+              <button @click.stop="handleThreadsVipClick"
+                class="mt-3 w-full py-3 md:py-4 rounded-xl text-[10px] md:text-[11px] font-black italic uppercase transition-all shadow-md relative z-10"
+                :class="threadsVipUnlocked
+                  ? 'bg-gradient-to-r from-purple-600 to-fuchsia-500 text-white'
+                  : 'bg-slate-700 text-slate-400'">
+                {{ threadsVipUnlocked ? 'XEM HƯỚNG DẪN' : 'CHƯA MỞ KHÓA 🔒' }}
+              </button>
+            </div>
+            <!-- END THREADS VIP DAILY CARD -->
+
             <template v-for="(j, id) in jobsData" :key="id">
               <div v-if="!isVip(id as string)"
                 @click="handleJobClick(id as string)"
@@ -481,6 +575,35 @@ const getAgeBadgeClass = (age: number): string => {
       </div>
     </section>
   </div>
+
+  <!-- THREADS VIP MODAL -->
+  <Teleport to="body">
+    <div v-if="showThreadsVipModal"
+      class="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+      style="background: rgba(0,0,0,0.72);"
+      @click.self="showThreadsVipModal = false">
+      <div class="bg-[#111726] border border-slate-700/60 rounded-[28px] p-7 max-w-sm w-full shadow-2xl">
+
+        <!-- Locked state: yêu cầu hoàn thành post-threads trước -->
+        <div class="text-center mb-6">
+          <div class="text-5xl mb-4">🔒</div>
+          <h3 class="text-white text-xl font-black italic uppercase tracking-tight mb-3">Chưa đủ điều kiện</h3>
+          <p class="text-slate-300 text-sm leading-relaxed">Bạn cần hoàn thành công việc <span class="text-yellow-400 font-black">Đăng bài Threads</span> trước để mở khóa nhiệm vụ Đăng bài Threads hằng ngày.</p>
+        </div>
+        <div class="flex flex-col gap-3">
+          <button @click="showThreadsVipModal = false"
+            class="w-full py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-black uppercase text-sm tracking-wider active:scale-95 transition-all">
+            Đóng
+          </button>
+          <button @click="goToPostThreadsJob"
+            class="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-500 text-white font-black uppercase text-sm tracking-wider active:scale-95 transition-all">
+            Làm job Threads 🧵
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </Teleport>
 
 </template>
 

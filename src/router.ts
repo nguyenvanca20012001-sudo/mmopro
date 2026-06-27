@@ -16,6 +16,8 @@ import WithdrawView from '@/views/WithdrawView.vue'
 // @ts-ignore
 import JobDetailView from '@/views/JobDetailView.vue'
 // @ts-ignore
+import ThreadsDailyView from '@/views/ThreadsDailyView.vue'
+// @ts-ignore
 import AdminView from '@/views/AdminView.vue'
 // @ts-ignore
 import ProfileView from '@/views/Profile.vue'
@@ -28,6 +30,7 @@ const routes = [
   { path: '/register', name: 'register', component: RegisterView },
   { path: '/submit-report', name: 'submit-report', component: SubmitReportView },
   { path: '/withdraw', name: 'withdraw', component: WithdrawView },
+  { path: '/job/threads-daily', name: 'threads-daily', component: ThreadsDailyView },
   { path: '/job/:id', name: 'job-detail', component: JobDetailView },
   { path: '/admin', name: 'admin', component: AdminView },
   { path: '/profile', name: 'profile', component: ProfileView },

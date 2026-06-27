@@ -1,0 +1,156 @@
+<script setup lang="ts">
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+const THREADS_DAILY_ZALO_URL = "https://zalo.me/g/psez4wrsgoacecb4puu7"
+
+const joinZalo = () => {
+  if (THREADS_DAILY_ZALO_URL) {
+    window.open(THREADS_DAILY_ZALO_URL, '_blank')
+  }
+}
+
+const rewardTiers = [
+  { views: '500 view', qr: '50 view',    reward: '20.000 xu', highlight: false },
+  { views: '500 view', qr: '200 view',   reward: '40.000 xu', highlight: false },
+  { views: '500 view', qr: '400 view',   reward: '60.000 xu', highlight: false },
+  { views: '500 view', qr: '600 view',   reward: '80.000 xu', highlight: false },
+  { views: '500 view', qr: '1.000 view', reward: '100.000 xu', highlight: true  },
+]
+
+const steps = [
+  'Tham gia nhóm Zalo để nhận nội dung đăng bài hằng ngày.',
+  'Đọc hướng dẫn trong nhóm.',
+  'Dùng tài khoản Threads để đăng bài theo nội dung được giao.',
+  'Có thể dùng nhiều nick Threads để đăng nhiều hơn.',
+]
+</script>
+
+<template>
+  <div class="min-h-screen bg-transparent text-white p-4 md:p-8 font-black italic uppercase text-left relative">
+
+    <!-- Back button -->
+    <button @click="router.back()"
+      class="flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-6 active:scale-95 not-italic normal-case">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+      </svg>
+      <span class="text-sm font-black uppercase tracking-wide">Quay lại</span>
+    </button>
+
+    <div class="max-w-lg mx-auto space-y-5">
+
+      <!-- Header card -->
+      <div class="relative bg-gradient-to-br from-purple-900/40 to-fuchsia-800/20 border-[2px] border-purple-500/60 rounded-[28px] p-6 md:p-8 overflow-hidden shadow-[0_4px_30px_rgba(168,85,247,0.25)]">
+        <div class="absolute inset-0 bg-gradient-to-t from-transparent to-white/5 pointer-events-none rounded-[26px]"></div>
+
+        <div class="absolute -top-0 -right-0 z-10 text-[10px] tracking-widest px-4 py-1.5 rounded-bl-2xl rounded-tr-[26px] font-black italic uppercase border-b border-l border-white/20 shadow-lg bg-purple-600 text-white">
+          HẰNG NGÀY
+        </div>
+
+        <!-- Mô tả — hiển thị trên "CÔNG VIỆC ĐẶC BIỆT" -->
+        <p class="text-slate-300 text-sm font-medium not-italic normal-case leading-relaxed mb-4 relative z-10">
+          Đăng bài mỗi ngày, không giới hạn số lần. Có thể dùng nhiều nick Threads để tăng thu nhập.
+        </p>
+
+        <div class="flex items-center gap-4 mb-4 relative z-10">
+          <div class="w-14 h-14 rounded-2xl bg-purple-600/30 border border-purple-400/30 flex items-center justify-center text-3xl shadow-lg">
+            🧵
+          </div>
+          <div>
+            <p class="text-[10px] text-purple-300 tracking-widest mb-1">CÔNG VIỆC ĐẶC BIỆT</p>
+            <h1 class="text-lg md:text-xl text-white leading-tight tracking-tight">
+              ĐĂNG BÀI THREADS<br/>
+              <span class="text-purple-300">HẰNG NGÀY</span>
+            </h1>
+          </div>
+        </div>
+
+        <!-- Reward -->
+        <div class="relative z-10 flex items-center gap-2 bg-purple-900/30 border border-purple-500/30 rounded-2xl px-4 py-3">
+          <svg class="w-8 h-8 shrink-0 drop-shadow-[0_0_8px_rgba(234,179,8,0.6)]" viewBox="0 0 24 24">
+            <defs>
+              <linearGradient id="tGold" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#fde047" />
+                <stop offset="50%" style="stop-color:#eab308" />
+                <stop offset="100%" style="stop-color:#854d0e" />
+              </linearGradient>
+            </defs>
+            <circle cx="12" cy="12" r="10" fill="url(#tGold)" />
+            <path d="M12 7v10M9 10h6M9 14h6" stroke="#854d0e" stroke-width="2" stroke-linecap="round" />
+          </svg>
+          <div>
+            <p class="text-[9px] text-slate-400 not-italic normal-case tracking-widest">Thưởng mỗi lần đăng bài</p>
+            <p class="text-2xl text-yellow-400 leading-none tracking-tighter">20.000 – 100.000 <span class="text-sm text-yellow-500">XU</span></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bảng mức thưởng -->
+      <div class="bg-[#111726]/80 border border-slate-800/60 rounded-[24px] p-5">
+        <p class="text-[10px] text-purple-300 tracking-widest mb-4">BẢNG MỨC THƯỞNG</p>
+        <div class="space-y-2">
+          <!-- Header -->
+          <div class="grid grid-cols-3 gap-2 px-2 mb-1">
+            <p class="text-[9px] text-slate-500 not-italic normal-case tracking-wide">View bài đăng</p>
+            <p class="text-[9px] text-slate-500 not-italic normal-case tracking-wide text-center">View mắt ghim QR</p>
+            <p class="text-[9px] text-slate-500 not-italic normal-case tracking-wide text-right">Thưởng</p>
+          </div>
+          <!-- Tiers -->
+          <div v-for="tier in rewardTiers" :key="tier.reward"
+            class="grid grid-cols-3 gap-2 items-center bg-slate-800/40 border border-slate-700/40 rounded-xl px-3 py-2.5"
+            :class="tier.highlight ? 'border-purple-500/40 bg-purple-900/20' : ''">
+            <p class="text-white text-[11px] not-italic normal-case font-black">{{ tier.views }}</p>
+            <p class="text-slate-300 text-[11px] not-italic normal-case font-black text-center">{{ tier.qr }}</p>
+            <p class="text-right font-black text-[12px] not-italic"
+               :class="tier.highlight ? 'text-yellow-400' : 'text-emerald-400'">
+              {{ tier.reward }}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Hướng dẫn -->
+      <div class="bg-[#111726]/80 border border-slate-800/60 rounded-[24px] p-5 space-y-3">
+        <p class="text-[10px] text-purple-300 tracking-widest mb-3">HƯỚNG DẪN</p>
+        <div v-for="(step, i) in steps" :key="i"
+          class="flex items-start gap-3">
+          <div class="w-6 h-6 rounded-full bg-purple-600/30 border border-purple-500/40 flex items-center justify-center text-purple-300 text-[10px] font-black shrink-0 mt-0.5">
+            {{ i + 1 }}
+          </div>
+          <p class="text-slate-300 text-sm font-medium not-italic normal-case leading-relaxed">{{ step }}</p>
+        </div>
+      </div>
+
+      <!-- Các điểm mạnh -->
+      <div class="grid grid-cols-3 gap-3">
+        <div class="bg-[#111726]/60 border border-slate-800/60 rounded-[20px] p-4 text-center">
+          <div class="text-2xl mb-1">♾️</div>
+          <p class="text-[9px] text-slate-300 not-italic normal-case leading-tight">Không giới hạn</p>
+        </div>
+        <div class="bg-[#111726]/60 border border-slate-800/60 rounded-[20px] p-4 text-center">
+          <div class="text-2xl mb-1">📅</div>
+          <p class="text-[9px] text-slate-300 not-italic normal-case leading-tight">Đăng mỗi ngày</p>
+        </div>
+        <div class="bg-[#111726]/60 border border-slate-800/60 rounded-[20px] p-4 text-center">
+          <div class="text-2xl mb-1">🧵</div>
+          <p class="text-[9px] text-slate-300 not-italic normal-case leading-tight">Nhiều nick Threads</p>
+        </div>
+      </div>
+
+      <!-- CTA -->
+      <div class="pb-8">
+        <button
+          @click="joinZalo"
+          :disabled="!THREADS_DAILY_ZALO_URL"
+          class="w-full py-5 rounded-2xl text-sm tracking-widest transition-all active:scale-95 shadow-xl"
+          :class="THREADS_DAILY_ZALO_URL
+            ? 'bg-gradient-to-r from-purple-600 to-fuchsia-500 text-white shadow-[0_0_30px_rgba(168,85,247,0.4)]'
+            : 'bg-slate-700/50 text-slate-500 cursor-not-allowed'">
+          {{ THREADS_DAILY_ZALO_URL ? 'THAM GIA CÔNG VIỆC 🧵' : 'ADMIN CHƯA CẤU HÌNH LINK NHÓM.' }}
+        </button>
+      </div>
+
+    </div>
+  </div>
+</template>
