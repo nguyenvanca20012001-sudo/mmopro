@@ -717,6 +717,41 @@ const fixUserWallet = async (uid: string) => {
   }
 }
 
+const congXu = async (uid: string) => {
+  const username = usersMap.value[uid]?.username || uid
+  const currentVal = usersMap.value[uid]?.balance || 0
+  const { value: inputVal, isConfirmed } = await Swal.fire({
+    title: 'Cộng xu cho tài khoản',
+    html: `<div style="margin-bottom:8px;color:#aaa">User: <b style="color:#fff">${username}</b> — Hiện có: <b style="color:#facc15">${currentVal.toLocaleString('vi-VN')} XU</b></div>`,
+    input: 'number',
+    inputPlaceholder: 'Nhập số xu muốn cộng',
+    inputAttributes: { min: '1', step: '1' },
+    showCancelButton: true,
+    cancelButtonText: 'Hủy',
+    confirmButtonText: 'Xác nhận cộng xu',
+    confirmButtonColor: '#10b981',
+    inputValidator: (value) => {
+      if (!value) return 'Vui lòng nhập số xu'
+      const num = Number(value)
+      if (!Number.isInteger(num) || num <= 0) return 'Chỉ nhập số nguyên dương lớn hơn 0'
+    }
+  })
+  if (!isConfirmed || !inputVal) return
+  const amount = Math.floor(Number(inputVal))
+  try {
+    await updateDoc(doc(db, 'users', uid), { balance: increment(amount) })
+    addDoc(collection(db, 'admin_notes'), {
+      dateLabel: new Date().toLocaleDateString('vi-VN'),
+      content: `Admin cộng ${amount.toLocaleString('vi-VN')} xu cho ${username}`,
+      totalToday: 0,
+      createdAt: new Date()
+    }).catch(() => {})
+    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Đã cộng xu thành công', showConfirmButton: false, timer: 2500 })
+  } catch (e) {
+    Swal.fire({ icon: 'error', title: 'Lỗi', text: String(e) })
+  }
+}
+
 const approveReport = async (report: any) => {
   const cleanRewardString = String(report.reward || '0').replace(/\D/g, '');
   const rewardValue = Number(cleanRewardString) || 0;
@@ -1059,6 +1094,7 @@ const handleAdminLogout = async () => {
                   </div>
                   <div class="flex flex-col items-end gap-1">
                     <button class="bg-yellow-600/20 text-yellow-500 hover:bg-yellow-500 hover:text-white border border-yellow-600/50 px-2 py-1 rounded-lg text-[8px] transition-all" @click="fixUserWallet(rp.uid)">SỬA VÍ</button>
+                    <button class="bg-green-600/20 text-green-400 hover:bg-green-500 hover:text-white border border-green-600/50 px-2 py-1 rounded-lg text-[8px] transition-all" @click="congXu(rp.uid)">+ CỘNG XU</button>
                   </div>
                 </div>
                 <div>
