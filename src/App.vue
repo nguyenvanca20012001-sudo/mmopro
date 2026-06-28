@@ -20,6 +20,7 @@ import { useVipJobs, startVipJobsListener, VIP_JOB_IDS as VIP_IDS } from '@/comp
 import { appConfig, startAppConfigListener } from '@/composables/useAppConfig'
 import { setCurrentUserProfile, clearCurrentUserProfile } from '@/composables/useCurrentUser'
 import { supportConfig, startSupportConfigListener, SUPPORT_FANPAGE_URL } from '@/composables/useSupportConfig'
+import { startBasicJobConfigsListener } from '@/composables/useBasicJobConfigs'
 
 // --- JOB BROWSER (dùng trong CÔNG VIỆC bottom sheet) ---
 const jobIconMap: Record<string, string> = {
@@ -540,6 +541,7 @@ onMounted(() => {
   startVipJobsListener()
   startAppConfigListener()
   startSupportConfigListener()
+  startBasicJobConfigsListener()
 
   onAuthStateChanged(auth, (user) => {
     isAuthChecking.value = false 

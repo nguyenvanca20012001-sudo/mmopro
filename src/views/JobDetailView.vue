@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { jobsData } from '@/data/jobs'
 import { vipJobConfigs, VIP_JOB_IDS } from '@/composables/useVipJobs'
+import { basicJobConfigs, startBasicJobConfigsListener } from '@/composables/useBasicJobConfigs'
 import Swal from 'sweetalert2'
 
 const route = useRoute()
@@ -35,6 +36,19 @@ const jobStatusMessage = computed(() => {
 watch(jobStatus, (status) => {
   if (status === 'hidden') router.push('/')
 }, { immediate: true })
+
+startBasicJobConfigsListener()
+
+const basicConfig = computed(() => basicJobConfigs.value['post-threads'])
+
+const effectiveRandomTemplates = computed<string[]>(() => {
+  if (jobId !== 'post-threads') return []
+  const contents = (basicConfig.value?.postContents as string[] | undefined)
+    ?.filter((c: string) => c?.trim())
+  return contents?.length ? contents : []
+})
+
+const effectiveSteps = computed<any[]>(() => _staticJob.steps || [])
 
 const selectedImage = ref<string | null>(null)
 const openImage = (img: string) => { selectedImage.value = img }
@@ -71,6 +85,91 @@ const handleCopy = (text: string) => {
       alert('Lỗi sao chép, hãy copy thủ công nhé!')
     }
     document.body.removeChild(textArea)
+  })
+}
+
+const handleRandomCopy = (stepTemplates: string[]) => {
+  const pool = effectiveRandomTemplates.value.length
+    ? effectiveRandomTemplates.value
+    : stepTemplates.filter((t: string) => t?.trim())
+
+  if (!pool.length) {
+    Swal.fire({
+      title: 'Chú ý',
+      text: 'Admin chưa cấu hình nội dung bài đăng.',
+      icon: 'warning',
+      timer: 2000,
+      showConfirmButton: false,
+      toast: true,
+      position: 'top-end'
+    })
+    return
+  }
+
+  const item = pool[Math.floor(Math.random() * pool.length)] ?? ''
+  if (!item) return
+  navigator.clipboard.writeText(item)
+    .then(() => {
+      Swal.fire({
+        title: 'Đã copy!',
+        text: 'Đã copy 1 mẫu bài đăng ngẫu nhiên!',
+        icon: 'success',
+        timer: 1500,
+        showConfirmButton: false,
+        toast: true,
+        position: 'top-end'
+      })
+    })
+    .catch(() => {
+      Swal.fire({
+        title: 'Nội dung bài đăng',
+        html: `<textarea style="width:100%;height:120px;background:#1e293b;color:#e2e8f0;padding:10px;border-radius:8px;font-size:12px;border:1px solid #334155;" readonly>${item}</textarea>`,
+        confirmButtonText: 'Đóng'
+      })
+    })
+}
+
+const handleRandomDownload = (links: string[]) => {
+  const validLinks = links.filter(Boolean)
+  if (!validLinks.length) {
+    Swal.fire({
+      title: 'Chú ý',
+      text: 'Ảnh mẫu chưa được cấu hình.',
+      icon: 'warning',
+      timer: 2000,
+      showConfirmButton: false,
+      toast: true,
+      position: 'top-end'
+    })
+    return
+  }
+
+  const randomIndex = Math.floor(Math.random() * validLinks.length)
+  const imageUrl = validLinks[randomIndex] ?? ''
+  if (!imageUrl) return
+
+  console.log("Random thread image selected:", imageUrl)
+
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+  if (isMobile) {
+    window.open(`${imageUrl}?v=${Date.now()}`, '_blank')
+  } else {
+    const fileName = `threads-bai-dang-${Date.now()}-${Math.floor(Math.random() * 100000)}.jpg`
+    const a = document.createElement('a')
+    a.href = imageUrl
+    a.download = fileName
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+  }
+  Swal.fire({
+    title: 'Đã tải!',
+    text: 'Đã tải ngẫu nhiên 1 ảnh bài đăng!',
+    icon: 'success',
+    timer: 1500,
+    showConfirmButton: false,
+    toast: true,
+    position: 'top-end'
   })
 }
 </script>
@@ -184,14 +283,14 @@ const handleCopy = (text: string) => {
               <!-- Step number pills -->
               <div class="flex items-center gap-1.5 flex-wrap">
                 <span
-                  v-for="step in currentJob.steps" :key="step.id"
+                  v-for="step in effectiveSteps" :key="step.id"
                   class="inline-flex items-center justify-center w-5 h-5 rounded-full text-[9px] font-black"
                   :class="showGuide ? 'bg-emerald-800 text-emerald-300' : 'bg-emerald-400 text-[#090e17]'">
                   {{ step.id }}
                 </span>
                 <span class="text-[9px] font-black uppercase tracking-wider"
                       :class="showGuide ? 'text-emerald-600' : 'text-emerald-300'">
-                  {{ currentJob.steps?.length || 0 }} BƯỚC
+                  {{ effectiveSteps.length || 0 }} BƯỚC
                 </span>
               </div>
             </div>
@@ -206,7 +305,13 @@ const handleCopy = (text: string) => {
         </div>
 
         <div class="mt-8 pt-8 border-t border-slate-800/50 space-y-8 animate-in fade-in duration-500" v-if="showGuide">
-          <div class="relative pl-10" v-for="step in currentJob.steps" :key="step.id">
+
+          <div v-if="_staticJob.notice" class="flex items-center gap-3 bg-[#1c1200] border border-yellow-500/60 rounded-2xl px-5 py-4 shadow-[0_0_20px_rgba(234,179,8,0.15)]">
+            <span class="text-yellow-400 text-xl shrink-0">📢</span>
+            <p class="text-yellow-300 text-sm font-black uppercase tracking-wide leading-snug">{{ _staticJob.notice }}</p>
+          </div>
+
+          <div class="relative pl-10" v-for="step in effectiveSteps" :key="step.id">
             <div class="absolute left-4 top-0 bottom-0 w-[2px] bg-slate-700/30"></div>
 
             <div class="absolute left-0 top-1 w-8 h-8 rounded-full bg-[#00df89] text-[#090e17] flex items-center justify-center text-sm font-black shadow-lg shadow-emerald-500/20">
@@ -217,7 +322,8 @@ const handleCopy = (text: string) => {
               <h4 class="text-[#3b82f6] text-base md:text-lg italic font-black mb-2 uppercase tracking-tight">
                 {{ step.title }}
               </h4>
-              <p class="text-slate-400 text-xs italic normal-case opacity-80 leading-relaxed mb-5">
+              <p v-if="step.contentHtml" class="text-xs italic normal-case leading-relaxed mb-5" v-html="step.contentHtml"></p>
+              <p v-else class="text-slate-400 text-xs italic normal-case opacity-80 leading-relaxed mb-5">
                 {{ step.content }}
               </p>
 
@@ -237,6 +343,19 @@ const handleCopy = (text: string) => {
                   <button class="absolute top-1/2 -translate-y-1/2 right-4 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-xl text-[10px] font-black uppercase shadow-lg active:scale-95 transition-all flex items-center gap-1.5"
                     @click="handleCopy(temp)">
                     📋 COPY
+                  </button>
+                </div>
+              </div>
+
+              <div class="mb-8" v-if="step.randomTemplates && step.randomTemplates.length > 0">
+                <p class="text-slate-300 text-[11px] font-black uppercase tracking-widest mb-1">Nội dung bài đăng Threads</p>
+                <p class="text-slate-500 text-[11px] normal-case italic font-medium mb-3">Bấm COPY để nhận ngẫu nhiên 1 mẫu bài đăng.</p>
+                <div class="bg-[#0d121f] p-5 rounded-2xl border border-slate-700/80 shadow-inner">
+                  <p class="text-slate-500 text-[12px] normal-case italic opacity-80 mb-3">Hệ thống sẽ tự chọn ngẫu nhiên 1 bài đăng khi bạn bấm COPY.</p>
+                  <button
+                    class="w-full bg-blue-600 hover:bg-blue-500 text-white px-4 py-3 rounded-xl text-[11px] font-black uppercase shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
+                    @click="handleRandomCopy(step.randomTemplates)">
+                    📋 COPY NGẪU NHIÊN
                   </button>
                 </div>
               </div>
@@ -268,9 +387,17 @@ const handleCopy = (text: string) => {
                 </a>
 
                 <button class="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-emerald-400 px-5 py-3 rounded-xl text-[11px] font-black uppercase transition-all shadow-md border border-slate-700 active:scale-95"
-                  v-if="!step.downloadLink.includes('.png') && !step.downloadLink.includes('.jpg')"
+                  v-if="!step.downloadLink.includes('.png') && !step.downloadLink.includes('.jpg') && !step.downloadLink.startsWith('https://')"
                   @click="handleCopy(step.downloadLink)">
                   📋 SAO CHÉP LINK
+                </button>
+              </div>
+
+              <div class="mb-6 flex flex-wrap items-center gap-3" v-if="step.randomDownloadLinks && step.randomDownloadLinks.length > 0">
+                <button
+                  class="inline-flex items-center gap-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-xl text-[11px] font-black uppercase hover:shadow-lg hover:shadow-blue-500/30 transition-all active:scale-95"
+                  @click="handleRandomDownload(step.randomDownloadLinks)">
+                  {{ step.buttonText || '📥 TẢI ẢNH BÀI ĐĂNG' }}
                 </button>
               </div>
 
@@ -285,8 +412,8 @@ const handleCopy = (text: string) => {
               <div class="flex flex-col md:flex-row gap-6 items-start">
                 <div class="w-full md:max-w-[400px] rounded-2xl overflow-hidden border border-slate-700/50 shadow-2xl bg-slate-900 cursor-zoom-in group relative"
                      v-if="step.img"
-                     @click="openImage(baseUrl + step.img)">
-                  <img class="w-full h-auto object-contain hover:scale-105 transition-transform duration-500" :src="baseUrl + step.img" />
+                     @click="openImage(step.img?.startsWith('http') ? step.img : (baseUrl + step.img))">
+                  <img class="w-full h-auto object-contain hover:scale-105 transition-transform duration-500" :src="step.img?.startsWith('http') ? step.img : (baseUrl + step.img)" />
                   <div class="absolute bottom-2 right-2 bg-black/70 backdrop-blur text-white text-[8px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">🔍 CHẠM ĐỂ PHÓNG TO</div>
                 </div>
 
@@ -301,7 +428,7 @@ const handleCopy = (text: string) => {
                      v-for="(imgSrc, idx) in step.images" :key="idx"
                      @click="openImage(baseUrl + imgSrc)">
                   <img class="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300" :src="baseUrl + imgSrc" />
-                  <div class="absolute top-1.5 left-1.5 bg-blue-600/90 backdrop-blur-sm text-white text-[8px] md:text-[10px] font-black px-2 py-0.5 rounded shadow-sm">ẢNH {{ idx + 1 }}</div>
+                  <div class="absolute top-1.5 left-1.5 bg-blue-600/90 backdrop-blur-sm text-white text-[8px] md:text-[10px] font-black px-2 py-0.5 rounded shadow-sm">ẢNH {{ (idx as number) + 1 }}</div>
                 </div>
               </div>
 

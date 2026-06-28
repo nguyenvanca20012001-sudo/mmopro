@@ -3,7 +3,7 @@ import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { auth, db } from '@/firebase' 
 import { onAuthStateChanged, signOut } from "firebase/auth" 
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, getDoc, documentId, increment, limit, where, getDocs, addDoc, serverTimestamp, Timestamp, setDoc } from "firebase/firestore"
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, getDoc, documentId, increment, limit, startAfter, where, getDocs, addDoc, serverTimestamp, Timestamp, setDoc } from "firebase/firestore"
 import Swal from 'sweetalert2'
 import { jobsData } from '@/data/jobs'
 import { useVipJobs, startVipJobsListener, VIP_JOB_IDS } from '@/composables/useVipJobs'
@@ -11,6 +11,9 @@ import { appConfig, startAppConfigListener, updateAppConfig } from '@/composable
 import type { AppConfig } from '@/composables/useAppConfig'
 import { supportConfig, startSupportConfigListener, updateSupportConfig } from '@/composables/useSupportConfig'
 import type { SupportConfig } from '@/composables/useSupportConfig'
+import { basicJobConfigs, startBasicJobConfigsListener } from '@/composables/useBasicJobConfigs'
+import { storage } from '@/firebase'
+import { ref as storageRef, deleteObject } from 'firebase/storage'
 
 const reports = ref<any[]>([])
 const withdrawals = ref<any[]>([]) 
@@ -39,7 +42,7 @@ const isCheckingAuth = ref(true)
 const withdrawalsError = ref('')
 const router = useRouter()
 
-const activeTab = ref('app_jobs') // 'app_jobs' | 'other_jobs' | 'withdrawals' | 'vip_jobs_config' | 'web_config'
+const activeTab = ref('app_jobs') // 'app_jobs' | 'other_jobs' | 'withdrawals' | 'vip_jobs_config' | 'web_config' | 'support_config' | 'basic_jobs_config'
 const statusFilter = ref('pending')
 
 // ============================================================================
@@ -171,6 +174,41 @@ const saveSupportConfig = async () => {
   }
 }
 
+// ============================================================================
+// BASIC JOB CONFIGS — Cấu hình nội dung bài đăng Threads
+// ============================================================================
+const basicPostContents = ref<string[]>(Array(10).fill(''))
+const isSavingBasicContents = ref(false)
+
+watch(activeTab, (tab) => {
+  if (tab === 'basic_jobs_config') {
+    const cfg = basicJobConfigs.value['post-threads']
+    if (cfg?.postContents?.length) {
+      const padded = [...cfg.postContents, ...Array(10).fill('')].slice(0, 10)
+      basicPostContents.value = padded
+    } else {
+      basicPostContents.value = Array(10).fill('')
+    }
+  }
+}, { immediate: false })
+
+const saveBasicPostContents = async () => {
+  isSavingBasicContents.value = true
+  try {
+    await setDoc(doc(db, 'basic_job_configs', 'post-threads'), {
+      jobId: 'post-threads',
+      postContents: basicPostContents.value,
+      updatedAt: serverTimestamp(),
+    }, { merge: true })
+    await Swal.fire({ icon: 'success', title: 'ĐÃ LƯU!', text: 'Nội dung bài đăng đã được cập nhật.', timer: 1500, showConfirmButton: false })
+  } catch (e: any) {
+    Swal.fire('Lỗi!', String(e), 'error')
+  } finally {
+    isSavingBasicContents.value = false
+  }
+}
+
+
 const statusLabels: Record<string, string> = {
   open:    '✅ Mở',
   paused:  '⏸ Tạm dừng',
@@ -185,6 +223,172 @@ const closeImage = () => { selectedImage.value = null }
 const getImageUrls = (rp: any): string[] => {
   if (rp.proofImages?.length) return rp.proofImages.map((p: any) => p.url)
   return rp.images ?? []
+}
+
+// ============================================================================
+// STORAGE CLEANUP — quét theo lô, mỗi lần tối đa 300 đơn
+// ============================================================================
+const STORAGE_SCAN_BATCH_SIZE = 300
+
+interface StorageCandidate {
+  reportId: string
+  type: 'basic' | 'vip'
+  imagePaths: string[]
+}
+
+interface StorageCleanResult {
+  checkedReports: number
+  pendingSkipped: number
+  basicReportCount: number
+  vipReportCount: number
+  totalImageCount: number
+  hasMore: boolean
+}
+
+const storageCleanupCandidates = ref<StorageCandidate[]>([])
+const storageCleanupResult = ref<StorageCleanResult | null>(null)
+const lastCleanupDoc = ref<any>(null)
+const isCheckingStorageCleanup = ref(false)
+const isDeletingStorage = ref(false)
+const storageCleanupError = ref('')
+const storageCleanupProgress = ref('')
+
+const isOlderThan7Days = (createdAt: any): boolean => {
+  const createdMs: number = createdAt?.toMillis?.() ?? 0
+  return Date.now() - createdMs > 7 * 24 * 60 * 60 * 1000
+}
+
+const resetStorageCleanup = () => {
+  lastCleanupDoc.value = null
+  storageCleanupCandidates.value = []
+  storageCleanupResult.value = null
+  storageCleanupError.value = ''
+  storageCleanupProgress.value = ''
+}
+
+const scanStorageImages = async () => {
+  isCheckingStorageCleanup.value = true
+  storageCleanupCandidates.value = []
+  storageCleanupResult.value = null
+  storageCleanupError.value = ''
+  storageCleanupProgress.value = 'Đang kiểm tra...'
+
+  const candidates: StorageCandidate[] = []
+  let checkedReports = 0
+  let pendingSkipped = 0
+  let basicReportCount = 0
+  let vipReportCount = 0
+  let totalImageCount = 0
+
+  try {
+    const q = lastCleanupDoc.value
+      ? query(collection(db, 'reports'), orderBy(documentId()), startAfter(lastCleanupDoc.value), limit(STORAGE_SCAN_BATCH_SIZE))
+      : query(collection(db, 'reports'), orderBy(documentId()), limit(STORAGE_SCAN_BATCH_SIZE))
+
+    const snap = await Promise.race([
+      getDocs(q),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Firestore query quá 20 giây, vui lòng thử lại.')), 20000)
+      )
+    ])
+
+    for (const docSnap of snap.docs) {
+      checkedReports++
+      const report: any = { id: docSnap.id, ...docSnap.data() }
+
+      if (report.imagesDeleted === true) continue
+
+      const proofImages = Array.isArray(report.proofImages)
+        ? report.proofImages.filter((img: any) => img && img.path)
+        : []
+
+      if (!proofImages.length) continue
+
+      const status = String(report.status || '').toLowerCase()
+      const isPending = status === 'pending' || status === 'waiting' || status === 'submitted' || status.includes('chờ')
+      if (isPending) { pendingSkipped++; continue }
+
+      const isProcessed = status === 'approved' || status === 'rejected' || status === 'collected' || status === 'paid'
+      if (!isProcessed) continue
+
+      if (isAppJob(report.jobName)) {
+        if (isOlderThan7Days(report.createdAt)) {
+          candidates.push({ reportId: report.id, type: 'vip', imagePaths: proofImages.map((img: any) => img.path) })
+          vipReportCount++
+          totalImageCount += proofImages.length
+        }
+      } else {
+        candidates.push({ reportId: report.id, type: 'basic', imagePaths: proofImages.map((img: any) => img.path) })
+        basicReportCount++
+        totalImageCount += proofImages.length
+      }
+    }
+
+    if (!snap.empty) {
+      lastCleanupDoc.value = snap.docs[snap.docs.length - 1]
+    }
+
+    storageCleanupCandidates.value = candidates
+    storageCleanupResult.value = {
+      checkedReports,
+      pendingSkipped,
+      basicReportCount,
+      vipReportCount,
+      totalImageCount,
+      hasMore: snap.size === STORAGE_SCAN_BATCH_SIZE,
+    }
+    storageCleanupProgress.value = `Đã kiểm tra ${checkedReports} đơn trong lô này.`
+  } catch (e: any) {
+    console.error('Scan storage images failed:', e)
+    storageCleanupError.value = e?.message || 'Kiểm tra thất bại.'
+    storageCleanupProgress.value = ''
+  } finally {
+    isCheckingStorageCleanup.value = false
+  }
+}
+
+const confirmDeleteImages = async () => {
+  if (!storageCleanupResult.value || storageCleanupCandidates.value.length === 0) return
+  const { isConfirmed } = await Swal.fire({
+    title: 'Xác nhận xoá ảnh?',
+    text: `Sẽ xoá ${storageCleanupResult.value.totalImageCount} ảnh khỏi Storage. Không thể hoàn tác.`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Xoá ảnh',
+    cancelButtonText: 'Huỷ',
+    confirmButtonColor: '#dc2626',
+  })
+  if (!isConfirmed) return
+
+  isDeletingStorage.value = true
+  let totalDeleted = 0
+  try {
+    for (const candidate of storageCleanupCandidates.value) {
+      let deletedCount = 0
+      for (const path of candidate.imagePaths) {
+        try {
+          await deleteObject(storageRef(storage, path))
+          deletedCount++
+          totalDeleted++
+        } catch (e: any) {
+          if (e.code !== 'storage/object-not-found') console.warn('Storage delete warn:', e)
+        }
+      }
+      await updateDoc(doc(db, 'reports', candidate.reportId), {
+        imagesDeleted: true,
+        imagesDeletedAt: serverTimestamp(),
+        proofImagesDeletedCount: deletedCount,
+      })
+    }
+    await Swal.fire('Xong!', `Đã xoá ${totalDeleted} ảnh khỏi Storage.`, 'success')
+    storageCleanupCandidates.value = []
+    storageCleanupResult.value = null
+    storageCleanupProgress.value = ''
+  } catch (e) {
+    Swal.fire('Lỗi khi xoá', String(e), 'error')
+  } finally {
+    isDeletingStorage.value = false
+  }
 }
 
 const selectedReportId = ref<string | null>(null)
@@ -418,6 +622,12 @@ const selectedOtherJobs = ref<string[]>([])
 
 watch(activeTab, () => {
   selectedOtherJobs.value = []
+  if (activeTab.value === 'storage_clean') {
+    if (unsubReports) { unsubReports(); unsubReports = null }
+    if (unsubWithdrawals) { unsubWithdrawals(); unsubWithdrawals = null }
+    isLoading.value = false
+    return
+  }
   if (!isCheckingAuth.value) loadData(statusFilter.value)
 })
 
@@ -641,6 +851,7 @@ onMounted(() => {
       startVipJobsListener()          // idempotent — nếu listener đã chạy từ App.vue thì return ngay
       startAppConfigListener()        // idempotent — khởi động listener config web
       startSupportConfigListener()    // idempotent — khởi động listener hỗ trợ
+      startBasicJobConfigsListener()  // idempotent — khởi động listener basic job configs
 
     } else {
       router.push('/login')
@@ -1045,6 +1256,12 @@ const handleAdminLogout = async () => {
       <button :class="['flex-1 py-4 rounded-xl tracking-widest transition-all text-xs md:text-sm', activeTab === 'support_config' ? 'bg-sky-600 text-white shadow-[0_0_20px_rgba(14,165,233,0.3)]' : 'bg-[#111726] text-slate-500 hover:bg-[#1a2335]']" @click="activeTab = 'support_config'">
         💬 HỖ TRỢ / THÔNG BÁO
       </button>
+      <button :class="['flex-1 py-4 rounded-xl tracking-widest transition-all text-xs md:text-sm', activeTab === 'basic_jobs_config' ? 'bg-emerald-700 text-white shadow-[0_0_20px_rgba(4,120,87,0.3)]' : 'bg-[#111726] text-slate-500 hover:bg-[#1a2335]']" @click="activeTab = 'basic_jobs_config'">
+        ⚙️ CẤU HÌNH JOB CƠ BẢN
+      </button>
+      <button :class="['flex-1 py-4 rounded-xl tracking-widest transition-all text-xs md:text-sm', activeTab === 'storage_clean' ? 'bg-rose-600 text-white shadow-[0_0_20px_rgba(225,29,72,0.3)]' : 'bg-[#111726] text-slate-500 hover:bg-[#1a2335]']" @click="activeTab = 'storage_clean'">
+        🧹 Dọn ảnh Storage
+      </button>
     </div>
 
     <div class="bg-[#111726] border border-slate-800 rounded-[30px] overflow-hidden shadow-2xl relative">
@@ -1123,7 +1340,8 @@ const handleAdminLogout = async () => {
                         <img class="w-full h-full object-cover" :src="img" />
                       </div>
                     </div>
-                    <div class="text-slate-700 text-[9px]" v-if="!getImageUrls(rp).length && !rp.taskLink">KHÔNG CÓ ẢNH</div>
+                    <div class="text-slate-700 text-[9px]" v-if="!getImageUrls(rp).length && !rp.taskLink && !rp.imagesDeleted">KHÔNG CÓ ẢNH</div>
+                    <div v-if="rp.imagesDeleted" class="text-slate-500 text-[9px] italic bg-slate-800/50 px-2 py-1 rounded text-center normal-case font-sans not-italic">Ảnh bằng chứng đã được dọn để tiết kiệm dung lượng.</div>
                   </div>
                   <!-- EXIF BADGE — array format -->
                   <template v-if="rp.exif && Array.isArray(rp.exif) && rp.exif.length">
@@ -1468,6 +1686,126 @@ const handleAdminLogout = async () => {
           <p class="text-slate-600 text-xs text-center italic">
             Nút "Nhắn tin Fanpage" được cố định trong hệ thống — admin không thể chỉnh link.
           </p>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- TAB: CẤU HÌNH JOB CƠ BẢN (basic_jobs_config)             -->
+        <!-- ============================================================ -->
+        <div v-else-if="activeTab === 'basic_jobs_config'" class="p-6 md:p-8 space-y-8 max-w-2xl mx-auto">
+          <div class="flex items-center gap-3 mb-2">
+            <div class="w-1.5 h-6 bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.6)]"></div>
+            <h3 class="text-base md:text-xl text-emerald-400 tracking-tight">CẤU HÌNH JOB CƠ BẢN — ĐĂNG BÀI THREADS</h3>
+          </div>
+
+          <!-- Section 1: Nội dung bài đăng -->
+          <div class="space-y-4">
+            <div class="flex items-center gap-2">
+              <span class="text-emerald-400 text-sm">🧵</span>
+              <h4 class="text-white font-black text-sm uppercase tracking-widest">Nội dung bài đăng (10 mẫu)</h4>
+            </div>
+            <p class="text-slate-500 text-xs italic normal-case">Mỗi ô là 1 mẫu bài đăng. Ô rỗng sẽ bị bỏ qua khi random. User chỉ thấy 1 nút COPY NGẪU NHIÊN.</p>
+
+            <div class="space-y-3">
+              <div v-for="(_, idx) in basicPostContents" :key="idx" class="space-y-1">
+                <label class="text-[9px] text-slate-500 uppercase tracking-widest font-black">Bài đăng {{ idx + 1 }}</label>
+                <textarea
+                  v-model="basicPostContents[idx]"
+                  rows="2"
+                  :placeholder="`Mẫu bài đăng ${idx + 1}... (để trống để bỏ qua)`"
+                  class="w-full bg-[#090e17] border border-slate-700 text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-emerald-500 transition-colors resize-none font-sans not-italic normal-case placeholder-slate-700"
+                ></textarea>
+              </div>
+            </div>
+
+            <button @click="saveBasicPostContents" :disabled="isSavingBasicContents"
+                    class="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-black py-4 rounded-xl transition-all active:scale-95 tracking-widest text-sm uppercase shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+              {{ isSavingBasicContents ? '⏳ ĐANG LƯU...' : '💾 LƯU NỘI DUNG BÀI ĐĂNG' }}
+            </button>
+          </div>
+
+        </div>
+
+        <!-- TAB: DỌN ẢNH STORAGE -->
+        <div v-if="activeTab === 'storage_clean'" class="p-8 space-y-6">
+          <div>
+            <h3 class="text-rose-400 font-black text-base uppercase tracking-widest mb-2">🧹 Dọn ảnh Storage</h3>
+            <div class="text-slate-500 text-xs space-y-1 normal-case not-italic font-sans">
+              <div>• Mỗi lần chỉ kiểm tra <span class="text-white font-bold">300 đơn</span> — bấm "Kiểm tra lô tiếp theo" để đọc thêm.</div>
+              <div>• Job cơ bản (đã xử lý): xoá ảnh nếu status là approved / rejected / collected / paid.</div>
+              <div>• Job VIP/ngân hàng/chứng khoán (đã xử lý &amp; &gt; 7 ngày): xoá ảnh.</div>
+              <div>• Pending bất kỳ loại: <span class="text-emerald-400 font-bold">KHÔNG xoá</span>.</div>
+              <div>• Firestore document giữ nguyên. Chỉ xoá file ảnh trên Storage.</div>
+            </div>
+          </div>
+
+          <div class="flex gap-3 flex-wrap">
+            <button
+              @click="scanStorageImages"
+              :disabled="isCheckingStorageCleanup || isDeletingStorage"
+              class="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white font-black px-8 py-4 rounded-xl transition-all active:scale-95 tracking-widest text-sm uppercase"
+            >
+              {{ isCheckingStorageCleanup ? '⏳ ĐANG KIỂM TRA...' : (lastCleanupDoc ? '📦 Kiểm tra lô tiếp theo' : '🔍 Kiểm tra 300 đơn đầu tiên') }}
+            </button>
+
+            <button
+              v-if="lastCleanupDoc || storageCleanupResult"
+              @click="resetStorageCleanup"
+              :disabled="isCheckingStorageCleanup || isDeletingStorage"
+              class="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-400 hover:text-white font-black px-6 py-4 rounded-xl transition-all active:scale-95 tracking-widest text-sm uppercase border border-slate-700"
+            >
+              🔄 Quét lại từ đầu
+            </button>
+          </div>
+
+          <div v-if="storageCleanupProgress" class="text-blue-400 text-sm font-sans normal-case not-italic tracking-normal">
+            {{ storageCleanupProgress }}
+          </div>
+
+          <div v-if="storageCleanupError" class="text-red-400 text-sm bg-red-500/10 border border-red-500/30 rounded-xl p-4 normal-case font-sans not-italic">
+            ⚠️ {{ storageCleanupError }}
+          </div>
+
+          <Transition name="fade">
+            <div v-if="storageCleanupResult" class="space-y-6">
+              <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div class="bg-[#0d121f] border border-slate-800 rounded-2xl p-4 text-center">
+                  <div class="text-2xl font-black text-slate-300">{{ storageCleanupResult.checkedReports }}</div>
+                  <div class="text-slate-500 text-[10px] tracking-widest mt-1 uppercase">Đã kiểm tra</div>
+                </div>
+                <div class="bg-[#0d121f] border border-slate-800 rounded-2xl p-4 text-center">
+                  <div class="text-2xl font-black text-blue-400">{{ storageCleanupResult.basicReportCount }}</div>
+                  <div class="text-slate-500 text-[10px] tracking-widest mt-1 uppercase">Job cơ bản</div>
+                </div>
+                <div class="bg-[#0d121f] border border-slate-800 rounded-2xl p-4 text-center">
+                  <div class="text-2xl font-black text-amber-400">{{ storageCleanupResult.vipReportCount }}</div>
+                  <div class="text-slate-500 text-[10px] tracking-widest mt-1 uppercase">VIP &gt; 7 ngày</div>
+                </div>
+                <div class="bg-[#0d121f] border border-slate-800 rounded-2xl p-4 text-center">
+                  <div class="text-2xl font-black text-slate-500">{{ storageCleanupResult.pendingSkipped }}</div>
+                  <div class="text-slate-500 text-[10px] tracking-widest mt-1 uppercase">Pending bỏ qua</div>
+                </div>
+                <div class="bg-[#0d121f] border border-rose-800/50 rounded-2xl p-4 text-center">
+                  <div class="text-2xl font-black text-rose-400">{{ storageCleanupResult.totalImageCount }}</div>
+                  <div class="text-slate-500 text-[10px] tracking-widest mt-1 uppercase">Ảnh sẽ xoá</div>
+                </div>
+              </div>
+
+              <div v-if="storageCleanupResult.totalImageCount === 0" class="text-center text-slate-500 text-sm italic normal-case font-sans py-2">
+                Không có ảnh nào cần xoá trong lô này.
+                <span v-if="storageCleanupResult.hasMore" class="block mt-1 text-blue-400 not-italic font-bold">Bấm "Kiểm tra lô tiếp theo" để tiếp tục.</span>
+                <span v-else class="block mt-1 text-emerald-400 not-italic font-bold">✅ Đã hết collection.</span>
+              </div>
+
+              <button
+                v-if="storageCleanupResult.totalImageCount > 0"
+                @click="confirmDeleteImages"
+                :disabled="isDeletingStorage || isCheckingStorageCleanup"
+                class="w-full bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-black py-4 rounded-xl transition-all active:scale-95 tracking-widest text-sm uppercase shadow-[0_0_20px_rgba(220,38,38,0.4)]"
+              >
+                {{ isDeletingStorage ? '⏳ ĐANG XOÁ ẢNH...' : `🗑️ Xác nhận xoá ảnh lô này (${storageCleanupResult.totalImageCount} ảnh)` }}
+              </button>
+            </div>
+          </Transition>
         </div>
 
         <div class="p-20 text-center text-slate-700 tracking-widest text-xs" v-if="!isLoading && ((activeTab === 'app_jobs' && filteredAppReports.length === 0) || (activeTab === 'other_jobs' && filteredOtherReports.length === 0) || (activeTab === 'withdrawals' && filteredWithdrawals.length === 0))">
