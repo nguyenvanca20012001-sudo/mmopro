@@ -396,26 +396,6 @@ const threadsOldJobDone = computed(() =>
   )
 )
 
-// ============================================================
-// THREADS VIP DAILY — mobile handler
-// ============================================================
-const showThreadsVipModalMobile = ref(false)
-
-const handleThreadsVipClickMobile = () => {
-  if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(50)
-  if (threadsOldJobDone.value) {
-    activePopup.value = ''
-    router.push('/job/threads-daily')
-  } else {
-    showThreadsVipModalMobile.value = true
-  }
-}
-
-const goToPostThreadsMobile = () => {
-  showThreadsVipModalMobile.value = false
-  activePopup.value = ''
-  router.push('/job/post-threads')
-}
 
 // Track hòm đã nhận (đọc từ Firestore)
 const claimedChests = ref<string[]>([])
@@ -1296,58 +1276,6 @@ const getMobileAgeBadgeClass = (age: number): string => {
           <div v-else-if="jobCategory === 'basic'" class="overflow-y-auto flex-1 px-3 py-3">
             <div class="grid grid-cols-2 gap-3">
 
-              <!-- THREADS VIP DAILY CARD (mobile) — popup only, no report -->
-              <button
-                @click="handleThreadsVipClickMobile"
-                class="relative flex flex-col p-4 rounded-[22px] border transition-all duration-200 active:scale-[0.96] overflow-hidden text-left min-h-[164px]"
-                :class="threadsOldJobDone
-                  ? 'bg-gradient-to-br from-purple-50 to-fuchsia-50 border-purple-400 shadow-[0_2px_12px_rgba(168,85,247,0.18)]'
-                  : 'bg-gradient-to-br from-slate-100 to-slate-50 border-slate-300 opacity-60'"
-              >
-                <div class="absolute inset-0 bg-gradient-to-br from-white/55 to-transparent pointer-events-none rounded-[21px]"></div>
-
-                <div class="absolute top-0 right-0 text-[8px] px-2.5 py-1 rounded-bl-[14px] rounded-tr-[20px] font-black italic uppercase text-white z-10"
-                     :class="threadsOldJobDone ? 'bg-gradient-to-r from-purple-600 to-fuchsia-500' : 'bg-slate-400'">
-                  HẰNG NGÀY
-                </div>
-
-                <div class="w-10 h-10 rounded-2xl flex items-center justify-center text-xl mb-2.5 border relative z-10 shrink-0"
-                     :class="threadsOldJobDone ? 'bg-purple-100/90 border-purple-200/60' : 'bg-slate-200/90 border-slate-300/60'">
-                  🧵
-                </div>
-
-                <p class="text-[11px] font-black italic uppercase tracking-tight leading-tight mb-1 flex-1 relative z-10 pr-8"
-                   :class="threadsOldJobDone ? 'text-purple-700' : 'text-slate-500'">
-                  ĐĂNG BÀI THREADS HẰNG NGÀY
-                </p>
-
-                <p class="text-[9px] font-medium leading-snug mb-1 relative z-10"
-                   :class="threadsOldJobDone ? 'text-purple-500' : 'text-slate-400'">
-                  Đăng mỗi ngày • Không giới hạn
-                </p>
-
-                <div class="text-[8px] font-black uppercase mb-1.5 relative z-10"
-                     :class="threadsOldJobDone ? 'text-emerald-600' : 'text-red-400'">
-                  {{ threadsOldJobDone ? '✅ ĐÃ MỞ KHÓA' : '🔒 CẦN LÀM JOB THREADS TRƯỚC' }}
-                </div>
-
-                <div class="flex items-baseline gap-1 mb-2 relative z-10">
-                  <span class="text-base font-black italic tracking-tighter"
-                        :class="threadsOldJobDone ? 'text-purple-600' : 'text-slate-400'">
-                    20K–100K
-                  </span>
-                  <span class="text-[9px] font-black not-italic"
-                        :class="threadsOldJobDone ? 'text-purple-400' : 'text-slate-400'">XU</span>
-                </div>
-
-                <div class="w-full py-2 rounded-xl text-[10px] font-black italic uppercase text-center relative z-10"
-                     :class="threadsOldJobDone
-                       ? 'bg-gradient-to-r from-purple-600 to-fuchsia-500 text-white shadow-[0_2px_8px_rgba(168,85,247,0.28)]'
-                       : 'bg-slate-300 text-slate-500'">
-                  {{ threadsOldJobDone ? 'XEM HƯỚNG DẪN' : 'CHƯA MỞ KHÓA 🔒' }}
-                </div>
-              </button>
-              <!-- END THREADS VIP DAILY CARD (mobile) -->
 
               <template v-for="(j, id) in jobsData" :key="id">
                 <button v-if="!VIP_IDS.includes(id as string)"
@@ -1777,38 +1705,6 @@ const getMobileAgeBadgeClass = (age: number): string => {
     </Transition>
   </Teleport>
 
-  <!-- THREADS VIP DAILY MODAL — z-index cao hơn bottom sheet (z-[3950]) -->
-  <Teleport to="body">
-    <Transition name="fade">
-      <div v-if="showThreadsVipModalMobile"
-           class="fixed inset-0 flex items-center justify-center p-4"
-           style="background:rgba(0,0,0,0.80);backdrop-filter:blur(4px);z-index:99994;"
-           @click.self="showThreadsVipModalMobile = false">
-        <div class="w-full max-w-[360px] bg-[#111726] border border-slate-700/60 rounded-[28px] p-7 text-center space-y-5">
-
-          <!-- Locked: yêu cầu hoàn thành post-threads trước -->
-          <div class="text-5xl">🔒</div>
-          <div>
-            <h3 class="text-white text-xl font-black italic uppercase tracking-tight mb-3">Chưa đủ điều kiện</h3>
-            <p class="text-slate-300 text-sm leading-relaxed">
-              Bạn cần hoàn thành công việc <span class="text-yellow-400 font-black">Đăng bài Threads</span> trước để mở khóa nhiệm vụ Đăng bài Threads hằng ngày.
-            </p>
-          </div>
-          <div class="flex flex-col gap-3">
-            <button @click="showThreadsVipModalMobile = false"
-              class="w-full py-3 rounded-xl bg-slate-700 hover:bg-slate-600 text-white font-black uppercase text-sm tracking-wider active:scale-95 transition-all">
-              Đóng
-            </button>
-            <button @click="goToPostThreadsMobile"
-              class="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-500 text-white font-black uppercase text-sm tracking-wider active:scale-95 transition-all">
-              Làm job Threads 🧵
-            </button>
-          </div>
-
-        </div>
-      </div>
-    </Transition>
-  </Teleport>
 
   <!-- AGE CONFIRMATION MODAL (mobile + desktop) -->
   <Teleport to="body">
