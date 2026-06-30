@@ -4,7 +4,7 @@ import { ref, computed, watch } from 'vue'
 import { db, auth } from '@/firebase'
 import {
   collection, query, where,
-  getDocs, runTransaction, doc, updateDoc, serverTimestamp, increment
+  getDocs, runTransaction, doc, serverTimestamp, increment
 } from 'firebase/firestore'
 import Swal from 'sweetalert2'
 import { normalizeThreadUrl, getDateKey } from '@/utils/threadUtils'
@@ -52,7 +52,6 @@ interface UserGroup {
   pendingCount: number
   paidCount: number
   rejectedCount: number
-  validCount: number   // pending + paid
   totalXu: number
   hasWarning: boolean
 }
@@ -77,6 +76,7 @@ const REJECT_REASON_LABEL: Record<string, string> = {
   view_thap:     'View không đạt',
   trung_bai:     'Trùng bài',
   sai_nick:      'Sai nick Thread',
+  spam:          'Spam / nộp sai',
   khac:          'Khác',
 }
 
@@ -110,6 +110,7 @@ const isLoading      = ref(false)
 const isLoadingMore  = ref(false)
 const isScanAllDone  = ref(false)
 const isBulkPaying   = ref(false)
+const isBulkRejecting = ref(false)
 
 const selectedIds  = ref<string[]>([])
 const expandedUids = ref<string[]>([])
@@ -242,12 +243,12 @@ const groupedByUser = computed((): UserGroup[] => {
   for (const r of filteredReports.value) {
     if (!map[r.uid]) map[r.uid] = {
       uid: r.uid, fullName: r.fullName, phoneRef: r.phoneRef, reports: [],
-      pendingCount: 0, paidCount: 0, rejectedCount: 0, validCount: 0, totalXu: 0, hasWarning: false
+      pendingCount: 0, paidCount: 0, rejectedCount: 0, totalXu: 0, hasWarning: false
     }
     const g = map[r.uid] as UserGroup
     g.reports.push(r)
-    if (r.status === 'pending')  { g.pendingCount++;  g.validCount++ }
-    if (r.status === 'paid')     { g.paidCount++;     g.validCount++; g.totalXu += r.reward || 0 }
+    if (r.status === 'pending')  { g.pendingCount++ }
+    if (r.status === 'paid')     { g.paidCount++;     g.totalXu += r.reward || 0 }
     if (r.status === 'rejected') { g.rejectedCount++ }
     if (getWarnings(r).length > 0) g.hasWarning = true
   }
@@ -386,6 +387,7 @@ async function rejectReport(report: ThreadReport) {
         <option value="view_thap">View không đạt</option>
         <option value="trung_bai">Trùng bài</option>
         <option value="sai_nick">Sai nick Thread</option>
+        <option value="spam">Spam / nộp sai</option>
         <option value="khac">Khác</option>
       </select>
       <p style="color:#94a3b8;font-size:11px;margin-bottom:6px">Ghi chú thêm (tuỳ chọn):</p>
@@ -408,18 +410,28 @@ async function rejectReport(report: ThreadReport) {
   const { reason, note } = result.value as { reason: string; note: string }
   const adminUid = auth.currentUser?.uid || ''
 
+  console.log('[Thread Admin] rejectReport:', { reportId: report.id, beforeStatus: report.status, rejectReason: reason, rejectNote: note })
+
   try {
-    await updateDoc(doc(db, 'daily_thread_reports', report.id), {
-      status: 'rejected',
-      rejectedAt: serverTimestamp(),
-      rejectedBy: adminUid,
-      rejectReason: reason,
-      rejectNote: note,
+    await runTransaction(db, async (tx) => {
+      const ref = doc(db, 'daily_thread_reports', report.id)
+      const snap = await tx.get(ref)
+      if (!snap.exists()) throw new Error('Đơn không tồn tại')
+      if (snap.data().status !== 'pending') throw new Error('Đơn này đã được xử lý trước đó')
+      tx.update(ref, {
+        status: 'rejected',
+        rejectedAt: serverTimestamp(),
+        rejectedBy: adminUid,
+        rejectReason: reason,
+        rejectNote: note,
+      })
     })
     const idx = reports.value.findIndex(r => r.id === report.id)
     if (idx !== -1) reports.value[idx] = { ...reports.value[idx], status: 'rejected', rejectReason: reason, rejectNote: note } as ThreadReport
+    console.log('[Thread Admin] Rejected successfully:', report.id)
     Swal.fire({ title: 'Đã từ chối!', text: `Đã từ chối đơn của ${report.fullName}.`, icon: 'info', background: '#111726', color: '#e2e8f0', confirmButtonColor: '#7c3aed', timer: 2000, showConfirmButton: false })
   } catch (err: any) {
+    console.error('[Thread Admin] Reject failed:', err)
     Swal.fire({ title: 'Lỗi', text: err?.message || 'Có lỗi xảy ra.', icon: 'error', background: '#111726', color: '#e2e8f0', confirmButtonColor: '#7c3aed' })
   }
 }
@@ -472,6 +484,114 @@ async function bulkPay() {
     title: 'Hoàn tất!',
     html: `Đã cộng: <b>${successCount}</b> đơn.${skipCount > 0 ? `<br/>Bỏ qua: <b>${skipCount}</b>` : ''}`,
     icon: 'success', background: '#111726', color: '#e2e8f0', confirmButtonColor: '#7c3aed', timer: 3000, showConfirmButton: false
+  })
+}
+
+// Lõi dùng chung cho mọi luồng "từ chối hàng loạt": chọn tay, theo user-group, theo danh sách đang hiển thị
+async function confirmAndRejectMany(pendingList: ThreadReport[], opts: { title: string; infoHtml: string }) {
+  if (!pendingList.length) return
+
+  const result = await Swal.fire({
+    title: opts.title,
+    html: `<div style="text-align:left">
+      <p style="color:#94a3b8;font-size:12px;margin-bottom:10px">${opts.infoHtml}</p>
+      <p style="color:#94a3b8;font-size:11px;margin-bottom:6px">Lý do từ chối (áp dụng cho tất cả):</p>
+      <select id="swal-bulk-reject-reason" style="width:100%;padding:8px 10px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:8px;margin-bottom:10px;font-size:13px">
+        <option value="link_sai">Link sai</option>
+        <option value="khong_thay_qr">Không thấy QR</option>
+        <option value="view_thap">View không đạt</option>
+        <option value="trung_bai">Trùng bài</option>
+        <option value="sai_nick">Sai nick Thread</option>
+        <option value="spam">Spam / nộp sai</option>
+        <option value="khac">Khác</option>
+      </select>
+      <p style="color:#94a3b8;font-size:11px;margin-bottom:6px">Ghi chú thêm (tuỳ chọn):</p>
+      <textarea id="swal-bulk-reject-note" rows="2" placeholder="Nhập ghi chú nếu cần..." style="width:100%;padding:8px 10px;background:#1e293b;color:#e2e8f0;border:1px solid #334155;border-radius:8px;resize:none;font-size:13px"></textarea>
+    </div>`,
+    showCancelButton: true,
+    confirmButtonText: 'Xác nhận từ chối',
+    cancelButtonText: 'Huỷ',
+    confirmButtonColor: '#dc2626',
+    background: '#111726',
+    color: '#e2e8f0',
+    preConfirm: () => {
+      const reason = (document.getElementById('swal-bulk-reject-reason') as HTMLSelectElement)?.value || 'khac'
+      const note   = (document.getElementById('swal-bulk-reject-note')   as HTMLTextAreaElement)?.value?.trim() || ''
+      return { reason, note }
+    }
+  })
+  if (!result.isConfirmed) return
+  const { reason, note } = result.value as { reason: string; note: string }
+
+  console.log('Bulk reject daily thread reports:', {
+    count: pendingList.length,
+    reportIds: pendingList.map(r => r.id),
+    rejectReason: reason,
+  })
+
+  isBulkRejecting.value = true
+  const adminUid = auth.currentUser?.uid || ''
+  let successCount = 0, skipCount = 0
+
+  for (const report of pendingList) {
+    let wasSkipped = false
+    try {
+      await runTransaction(db, async (tx) => {
+        const ref = doc(db, 'daily_thread_reports', report.id)
+        const snap = await tx.get(ref)
+        wasSkipped = !snap.exists() || snap.data().status !== 'pending'
+        if (wasSkipped) return
+        tx.update(ref, {
+          status: 'rejected',
+          rejectedAt: serverTimestamp(),
+          rejectedBy: adminUid,
+          rejectReason: reason,
+          rejectNote: note,
+        })
+      })
+      if (wasSkipped) {
+        skipCount++
+      } else {
+        successCount++
+        const idx = reports.value.findIndex(r => r.id === report.id)
+        if (idx !== -1) reports.value[idx] = { ...reports.value[idx], status: 'rejected', rejectReason: reason, rejectNote: note } as ThreadReport
+        console.log('[Thread Admin] Rejected successfully:', report.id)
+      }
+    } catch (e) {
+      console.error(`[Thread Admin] bulkReject failed ${report.id}:`, e)
+    }
+  }
+
+  isBulkRejecting.value = false
+  selectedIds.value = []
+  Swal.fire({
+    title: 'Hoàn tất!',
+    html: `Đã từ chối: <b>${successCount}</b> đơn.${skipCount > 0 ? `<br/>Bỏ qua: <b>${skipCount}</b> đơn đã được xử lý trước đó` : ''}`,
+    icon: 'info', background: '#111726', color: '#e2e8f0', confirmButtonColor: '#7c3aed', timer: 3000, showConfirmButton: false
+  })
+}
+
+async function bulkReject() {
+  const pendingList = reports.value.filter(r => selectedIds.value.includes(r.id) && r.status === 'pending')
+  await confirmAndRejectMany(pendingList, {
+    title: `Từ chối ${pendingList.length} đơn?`,
+    infoHtml: `Sẽ từ chối <b>${pendingList.length}</b> đơn đang chọn (chỉ áp dụng đơn còn <b>chờ</b>).`,
+  })
+}
+
+async function rejectAllPendingForGroup(group: UserGroup) {
+  const pendingList = group.reports.filter(r => r.status === 'pending')
+  await confirmAndRejectMany(pendingList, {
+    title: `Từ chối tất cả đơn chờ của ${group.fullName}?`,
+    infoHtml: `Sẽ từ chối <b>${pendingList.length}</b> đơn đang chờ của user này (không cộng xu, không xoá đơn).`,
+  })
+}
+
+async function rejectAllVisiblePending() {
+  const pendingList = filteredReports.value.filter(r => r.status === 'pending')
+  await confirmAndRejectMany(pendingList, {
+    title: 'Từ chối tất cả đơn chờ đang hiển thị?',
+    infoHtml: `Bạn sắp từ chối <b>${pendingList.length}</b> đơn đang chờ. Hành động này không cộng xu và không xoá đơn.`,
   })
 }
 
@@ -622,6 +742,18 @@ const yesterdayKey = computed(() => {
       </div>
     </div>
 
+    <!-- ── Từ chối tất cả đơn chờ đang hiển thị ───────────────── -->
+    <div v-if="filteredReports.filter(r => r.status === 'pending').length > 0"
+      class="flex items-center justify-between gap-3 bg-red-900/10 border border-red-500/20 rounded-xl px-4 py-2.5 flex-wrap">
+      <span class="text-xs text-red-300/80 font-medium">
+        Có <b>{{ filteredReports.filter(r => r.status === 'pending').length }}</b> đơn đang chờ trong danh sách hiển thị.
+      </span>
+      <button @click="rejectAllVisiblePending" :disabled="isBulkRejecting"
+        class="px-4 py-1.5 rounded-lg text-xs font-black transition-all bg-red-600/20 text-red-400 hover:bg-red-600/30 border border-red-500/30 disabled:opacity-50 disabled:cursor-not-allowed">
+        ❌ Từ chối tất cả đơn chờ đang hiển thị
+      </button>
+    </div>
+
     <!-- ── Bulk action bar ────────────────────────────────────── -->
     <div v-if="selectedIds.length > 0"
       class="flex items-center justify-between gap-3 bg-purple-900/30 border border-purple-500/30 rounded-xl px-4 py-2.5 flex-wrap">
@@ -632,6 +764,13 @@ const yesterdayKey = computed(() => {
         <button @click="clearSelection"
           class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 hover:bg-slate-700 transition-all">
           Bỏ chọn
+        </button>
+        <button @click="bulkReject" :disabled="isBulkRejecting || selectedPending.length === 0"
+          class="px-4 py-1.5 rounded-lg text-xs font-black transition-all"
+          :class="isBulkRejecting || selectedPending.length === 0
+            ? 'bg-slate-700/50 text-slate-500 cursor-not-allowed'
+            : 'bg-red-600/20 text-red-400 hover:bg-red-600/30 border border-red-500/30'">
+          {{ isBulkRejecting ? 'Đang xử lý...' : `❌ Từ chối ${selectedPending.length} đơn` }}
         </button>
         <button @click="bulkPay" :disabled="isBulkPaying || selectedPending.length === 0"
           class="px-4 py-1.5 rounded-lg text-xs font-black transition-all"
@@ -658,16 +797,19 @@ const yesterdayKey = computed(() => {
         :class="group.hasWarning ? 'border-orange-500/30' : 'border-slate-800'">
 
         <!-- Group header -->
-        <button @click="toggleExpand(group.uid)"
-          class="w-full flex items-center justify-between gap-3 px-4 py-3 hover:bg-slate-800/40 transition-colors text-left flex-wrap">
+        <div @click="toggleExpand(group.uid)"
+          class="w-full flex items-center justify-between gap-3 px-4 py-3 hover:bg-slate-800/40 transition-colors text-left flex-wrap cursor-pointer">
           <div class="flex items-center gap-3 min-w-0">
             <span class="text-white font-black text-sm uppercase tracking-tight truncate">{{ group.fullName }}</span>
             <span class="text-slate-500 text-[11px] not-italic normal-case font-medium shrink-0">{{ group.phoneRef }}</span>
             <span class="text-slate-600 text-[10px] shrink-0">{{ group.uid.slice(0, 8) }}…</span>
           </div>
           <div class="flex items-center gap-2 flex-wrap shrink-0">
-            <span class="text-[10px] font-semibold text-slate-400">
-              Hợp lệ {{ group.validCount }}/{{ MAX_VALID_PER_DAY }}
+            <span class="text-[10px] font-semibold" :class="group.pendingCount > MAX_VALID_PER_DAY ? 'text-red-400' : 'text-slate-400'">
+              Chờ kiểm tra: {{ group.pendingCount }}/{{ MAX_VALID_PER_DAY }}
+            </span>
+            <span v-if="group.pendingCount > MAX_VALID_PER_DAY" class="text-[10px] font-black bg-red-500/15 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full">
+              ⚠ Vượt giới hạn pending
             </span>
             <span v-if="group.pendingCount > 0" class="text-[10px] font-black bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 px-2 py-0.5 rounded-full">
               Chờ: {{ group.pendingCount }}
@@ -684,9 +826,13 @@ const yesterdayKey = computed(() => {
             <span v-if="group.hasWarning" class="text-[10px] font-black bg-orange-500/15 text-orange-400 border border-orange-500/25 px-2 py-0.5 rounded-full">
               ⚠ Nghi vấn
             </span>
+            <button v-if="group.pendingCount > 0" @click.stop="rejectAllPendingForGroup(group)" :disabled="isBulkRejecting"
+              class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-red-600/20 text-red-400 hover:bg-red-600/30 border border-red-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+              Từ chối tất cả đơn chờ
+            </button>
             <span class="text-slate-500 text-xs">{{ expandedUids.includes(group.uid) ? '▲' : '▼' }}</span>
           </div>
-        </button>
+        </div>
 
         <!-- Group detail -->
         <div v-if="expandedUids.includes(group.uid)" class="border-t border-slate-800">

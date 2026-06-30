@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 // @ts-ignore
 import { db, auth } from '@/firebase'
 import {
@@ -28,6 +28,11 @@ const formError          = ref('')
 // Trạng thái chờ xác nhận link không phải Threads
 const linkWarningPending = ref(false)
 
+// Giới hạn 5 đơn pending/ngày
+const pendingCount   = ref(0)
+const isCheckingLimit = ref(false)
+const isPendingLimitReached = computed(() => pendingCount.value >= 5)
+
 const submitSuccess = ref(false)
 const submittedInfo = ref({ threadNick: '', qrViewCount: 0, reward: 0, sentAt: '' })
 
@@ -42,7 +47,32 @@ onMounted(async () => {
       if (data.site) userSite.value = data.site
     }
   } catch (_) {}
+  await refreshPendingCount()
 })
+
+// true = đã đếm thành công, false = lỗi (phải chặn submit)
+async function refreshPendingCount(): Promise<boolean> {
+  const uid = auth.currentUser?.uid
+  if (!uid) return false
+  const dateKey = getDateKey()
+  isCheckingLimit.value = true
+  try {
+    const snap = await getDocs(query(
+      collection(db, 'daily_thread_reports'),
+      where('uid', '==', uid),
+      where('dateKey', '==', dateKey),
+      where('status', '==', 'pending')
+    ))
+    pendingCount.value = snap.size
+    console.log('Daily thread pending limit check:', { uid, todayDateKey: dateKey, pendingCount: pendingCount.value })
+    return true
+  } catch (err) {
+    console.error('Pending limit check failed:', err)
+    return false
+  } finally {
+    isCheckingLimit.value = false
+  }
+}
 
 function clearError() {
   formError.value = ''
@@ -75,35 +105,33 @@ function isThreadsUrl(url: string): boolean {
 
 // Phần submit thực sự (sau khi validate + xác nhận link xong)
 async function doSubmit() {
+  if (isSubmitting.value) return
+  isSubmitting.value = true
   linkWarningPending.value = false
   formError.value = ''
 
-  const uid = auth.currentUser?.uid
-  if (!uid) {
-    formError.value = 'Bạn chưa đăng nhập. Vui lòng đăng nhập lại.'
-    return
-  }
-
-  const dateKey = getDateKey()
-
   try {
-    const pendingSnap = await getDocs(query(
-      collection(db, 'daily_thread_reports'),
-      where('uid', '==', uid),
-      where('dateKey', '==', dateKey),
-      where('status', '==', 'pending')
-    ))
-    if (pendingSnap.size >= 5) {
+    const uid = auth.currentUser?.uid
+    if (!uid) {
+      formError.value = 'Bạn chưa đăng nhập. Vui lòng đăng nhập lại.'
+      return
+    }
+
+    const ok = await refreshPendingCount()
+    if (!ok) {
+      formError.value = 'Không thể kiểm tra giới hạn đơn chờ. Vui lòng thử lại.'
+      return
+    }
+    if (pendingCount.value >= 5) {
+      console.warn('Blocked submit: pending limit reached', pendingCount.value)
       formError.value = 'Bạn đang có 5 đơn Thread chờ kiểm tra. Vui lòng chờ admin xử lý trước khi gửi thêm.'
       return
     }
-  } catch (_) {}
 
-  const views  = Number(qrViewCount.value)
-  const reward = calcReward(views)
+    const views   = Number(qrViewCount.value)
+    const reward  = calcReward(views)
+    const dateKey = getDateKey()
 
-  isSubmitting.value = true
-  try {
     await addDoc(collection(db, 'daily_thread_reports'), {
       uid,
       fullName: fullName.value.trim().toUpperCase(),
@@ -124,6 +152,8 @@ async function doSubmit() {
       paidAt: null,
       paidBy: null,
     })
+
+    pendingCount.value++
 
     submittedInfo.value = {
       threadNick: threadNick.value.trim(),
@@ -234,6 +264,16 @@ async function handleSubmit() {
     <div v-else class="space-y-4">
       <p class="text-[10px] text-purple-300 tracking-widest font-black italic uppercase">NỘP BẰNG CHỨNG</p>
 
+      <!-- Banner: đã đạt giới hạn 5 đơn pending -->
+      <div
+        v-if="isPendingLimitReached"
+        class="flex items-start gap-2.5 bg-red-500/10 border border-red-500/25 rounded-2xl px-4 py-3">
+        <span class="text-red-400 text-base shrink-0 mt-0.5">⚠</span>
+        <p class="text-red-300/90 text-sm not-italic normal-case font-medium leading-relaxed">
+          Bạn đang có {{ pendingCount }} đơn Thread chờ kiểm tra. Vui lòng chờ admin xử lý trước khi gửi thêm.
+        </p>
+      </div>
+
       <!-- Tài khoản (auto-fill từ username, không nhập tay) -->
       <div class="flex items-center justify-between gap-3 bg-slate-800/40 border border-slate-700/40 rounded-xl px-4 py-2.5">
         <span class="text-[10px] text-slate-500 not-italic normal-case font-semibold uppercase tracking-wider shrink-0">Tài khoản</span>
@@ -318,10 +358,10 @@ async function handleSubmit() {
           </button>
           <button
             @click="doSubmit"
-            :disabled="isSubmitting"
+            :disabled="isSubmitting || isCheckingLimit || isPendingLimitReached"
             class="py-2.5 rounded-xl text-xs font-black italic uppercase tracking-wide transition-all active:scale-95
                    bg-amber-600/80 border border-amber-500/40 text-white hover:bg-amber-600"
-            :class="isSubmitting ? 'opacity-50 cursor-not-allowed' : ''">
+            :class="isSubmitting || isCheckingLimit || isPendingLimitReached ? 'opacity-50 cursor-not-allowed' : ''">
             {{ isSubmitting ? 'Đang gửi...' : 'Vẫn gửi' }}
           </button>
         </div>
@@ -341,9 +381,9 @@ async function handleSubmit() {
       <!-- Submit -->
       <button
         @click="handleSubmit"
-        :disabled="isSubmitting"
+        :disabled="isSubmitting || isCheckingLimit || isPendingLimitReached"
         class="w-full py-4 rounded-2xl text-sm tracking-widest font-black italic uppercase transition-all active:scale-95"
-        :class="isSubmitting
+        :class="isSubmitting || isCheckingLimit || isPendingLimitReached
           ? 'bg-slate-700/50 text-slate-500 cursor-not-allowed'
           : 'bg-gradient-to-r from-purple-600 to-fuchsia-500 text-white shadow-[0_0_20px_rgba(168,85,247,0.35)]'"
       >

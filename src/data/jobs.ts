@@ -22,8 +22,8 @@ export const jobsData: Record<string, any> = {
     steps: [
       {
         id: 1,
-        title: "BƯỚC 1: SAO CHÉP NỘI DUNG BÀI ĐĂNG VÀ TẢI ẢNH",
-        content: "Bấm COPY NGẪU NHIÊN để nhận 1 mẫu bài đăng. Bấm TẢI ẢNH để lưu ảnh kèm theo về máy, đăng lên Threads cùng nội dung:",
+        title: "BƯỚC 1: SAO CHÉP NỘI DUNG BÀI ĐĂNG",
+        content: "Bấm COPY NGẪU NHIÊN để nhận 1 mẫu bài đăng.",
         randomTemplates: [
           "Góc khuất học sinh THPT, thức đêm đăng bài thread , đánh giá google map , seeding =))) ít nhưng vẫn cố a",
           "dm đời cuối cùng t cũng kiếm đc job online nghỉ hè rồi , chi tiết phần bình luận",
@@ -35,7 +35,12 @@ export const jobsData: Record<string, any> = {
           "không cần vốn không cần kinh nghiệm , chỉ cần điện thoại là làm được , thread + map + seeding",
           "job sinh viên mùa hè : đăng bài thread , seeding fb , review map , nhận tiền momo hằng ngày",
           "thức đêm làm thêm job online , thread + google map + seeding , mệt mà vui vì có tiền"
-        ],
+        ]
+      },
+      {
+        id: 2,
+        title: "BƯỚC 2: TẢI ẢNH BÀI ĐĂNG",
+        content: "Bấm TẢI ẢNH để lưu ảnh kèm theo về máy, dùng ảnh này đăng lên Threads cùng nội dung vừa copy ở Bước 1.",
         randomDownloadLinks: [
           "/images/thread-post-1.jpg",
           "/images/thread-post-2.jpg",
@@ -51,16 +56,16 @@ export const jobsData: Record<string, any> = {
         buttonText: "📥 TẢI ẢNH BÀI ĐĂNG"
       },
       {
-        id: 2,
-        title: "BƯỚC 2: TẢI ẢNH QR ZALO, ĐĂNG BÀI VÀ GHIM BÌNH LUẬN",
+        id: 3,
+        title: "BƯỚC 3: ĐĂNG BÀI VÀ GHIM MÃ QR DƯỚI BÌNH LUẬN",
         contentHtml: `<span class="text-yellow-400 font-black not-italic">Dưới phần bình luận: kêu gọi mọi người tham gia nhóm</span>, <span class="text-red-400 font-black not-italic">ví dụ: vào nhóm lụm lúa nè mọi người....Rồi ghim mã QR 📌</span>`,
         img: "images/qr-zalo-nhom10.jpg",
         downloadLink: "images/qr-zalo-nhom10.jpg",
         buttonText: "📥 TẢI MÃ QR ZALO VỀ MÁY"
       },
       {
-        id: 3,
-        title: "BƯỚC 3: CHỤP ẢNH BẰNG CHỨNG XÁC NHẬN",
+        id: 4,
+        title: "BƯỚC 4: CHỤP ẢNH BẰNG CHỨNG XÁC NHẬN",
         content: "Chụp lại màn hình bài viết Threads của bạn. (Lưu ý: Bức ảnh phải hiển thị rõ NỘI DUNG BÀI ĐĂNG và CẢ PHẦN BÌNH LUẬN CÓ CHỨA ẢNH QR ZALO). Tải ảnh đó lên mục Gửi Bằng Chứng để Admin duyệt Xu."
       }
     ]
