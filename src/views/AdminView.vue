@@ -14,6 +14,8 @@ import type { SupportConfig } from '@/composables/useSupportConfig'
 import { basicJobConfigs, startBasicJobConfigsListener } from '@/composables/useBasicJobConfigs'
 import { storage } from '@/firebase'
 import { ref as storageRef, deleteObject } from 'firebase/storage'
+// @ts-ignore
+import AdminDailyThreads from '@/components/AdminDailyThreads.vue'
 
 const reports = ref<any[]>([])
 const withdrawals = ref<any[]>([]) 
@@ -556,11 +558,15 @@ const deleteNote = async (id: string) => {
 // 3. TÍNH NĂNG TÌM KIẾM THEO USERNAME / SĐT
 // ============================================================================
 const searchQuery = ref('')
+const searchThreadResults = ref<any[]>([])
+const isThreadSearchMode = ref(false)
 
 const handleSearch = async () => {
   const text = searchQuery.value.trim();
 
   if (!text) {
+    searchThreadResults.value = []
+    isThreadSearchMode.value = false
     loadData(statusFilter.value);
     return;
   }
@@ -608,11 +614,43 @@ const handleSearch = async () => {
     } else {
       withdrawals.value = [];
     }
+
+    // Tìm kiếm trong daily_thread_reports (300 đơn gần nhất, filter client-side)
+    const qThreads = query(
+      collection(db, "daily_thread_reports"),
+      orderBy("createdAt", "desc"),
+      limit(300)
+    )
+    const snapThreads = await getDocs(qThreads)
+    let threadData: any[] = snapThreads.docs.map(d => ({ id: d.id, ...d.data() }))
+    threadData = threadData.filter(r =>
+      (r.fullName && r.fullName.toLowerCase().includes(lowerText)) ||
+      (r.phoneRef && r.phoneRef.includes(text)) ||
+      (r.uid && r.uid.toLowerCase().includes(lowerText)) ||
+      (r.threadNick && r.threadNick.toLowerCase().includes(lowerText)) ||
+      (r.threadNickLower && r.threadNickLower.includes(lowerText)) ||
+      (r.postUrl && r.postUrl.toLowerCase().includes(lowerText)) ||
+      (r.postUrlNormalized && r.postUrlNormalized.toLowerCase().includes(lowerText))
+    )
+    searchThreadResults.value = threadData
+    isThreadSearchMode.value = threadData.length > 0
+
+    // Auto-switch sang tab Thread nếu chỉ tìm thấy đơn Thread (không có reports/withdrawals)
+    if (threadData.length > 0 && data.length === 0 && withdrawals.value.length === 0) {
+      activeTab.value = 'daily_threads'
+    }
   } catch (error: any) {
     alert("LỖI TÌM KIẾM: " + error.message);
   } finally {
     isLoading.value = false;
   }
+}
+
+function clearThreadSearch() {
+  searchQuery.value = ''
+  searchThreadResults.value = []
+  isThreadSearchMode.value = false
+  loadData(statusFilter.value)
 }
 
 // ============================================================================
@@ -766,8 +804,10 @@ const loadData = (newStatus: string) => {
 }
 
 watch(statusFilter, (newVal) => {
-  if (!isCheckingAuth.value) { 
-    searchQuery.value = ''; 
+  if (!isCheckingAuth.value) {
+    searchQuery.value = '';
+    searchThreadResults.value = []
+    isThreadSearchMode.value = false
     loadData(newVal);
   }
 })
@@ -1244,6 +1284,9 @@ const handleAdminLogout = async () => {
       <button :class="['flex-1 py-4 rounded-xl tracking-widest transition-all text-xs md:text-sm', activeTab === 'other_jobs' ? 'bg-blue-600 text-white shadow-[0_0_20px_rgba(37,99,235,0.3)]' : 'bg-[#111726] text-slate-500 hover:bg-[#1a2335]']" @click="activeTab = 'other_jobs'">
         CÁC JOB KHÁC ({{ filteredOtherReports.length }})
       </button>
+      <button :class="['flex-1 py-4 rounded-xl tracking-widest transition-all text-xs md:text-sm', activeTab === 'daily_threads' ? 'bg-purple-600 text-white shadow-[0_0_20px_rgba(124,58,237,0.3)]' : 'bg-[#111726] text-slate-500 hover:bg-[#1a2335]']" @click="activeTab = 'daily_threads'">
+        🧵 Thread hằng ngày
+      </button>
       <button :class="['flex-1 py-4 rounded-xl tracking-widest transition-all text-xs md:text-sm', activeTab === 'withdrawals' ? 'bg-emerald-600 text-white shadow-[0_0_20px_rgba(16,185,129,0.3)]' : 'bg-[#111726] text-slate-500 hover:bg-[#1a2335]']" @click="activeTab = 'withdrawals'">
         QUẢN LÝ RÚT TIỀN ({{ filteredWithdrawals.length }})
       </button>
@@ -1261,6 +1304,16 @@ const handleAdminLogout = async () => {
       </button>
       <button :class="['flex-1 py-4 rounded-xl tracking-widest transition-all text-xs md:text-sm', activeTab === 'storage_clean' ? 'bg-rose-600 text-white shadow-[0_0_20px_rgba(225,29,72,0.3)]' : 'bg-[#111726] text-slate-500 hover:bg-[#1a2335]']" @click="activeTab = 'storage_clean'">
         🧹 Dọn ảnh Storage
+      </button>
+    </div>
+
+    <!-- Chip: kết quả Thread khi đang xem tab khác -->
+    <div v-if="isThreadSearchMode && activeTab !== 'daily_threads'"
+         class="mb-4 flex items-center gap-3 bg-purple-900/20 border border-purple-500/30 rounded-xl px-4 py-2 text-xs">
+      <span class="text-purple-300">🧵 Tìm thấy <b class="text-white">{{ searchThreadResults.length }}</b> đơn Thread hằng ngày</span>
+      <button class="ml-auto bg-purple-600 hover:bg-purple-500 text-white px-3 py-1 rounded-lg transition-all active:scale-95"
+              @click="activeTab = 'daily_threads'">
+        Xem đơn Thread →
       </button>
     </div>
 
@@ -1806,6 +1859,15 @@ const handleAdminLogout = async () => {
               </button>
             </div>
           </Transition>
+        </div>
+
+        <!-- Tab: Thread hằng ngày -->
+        <div v-if="activeTab === 'daily_threads'" class="p-4 md:p-6">
+          <AdminDailyThreads
+            :globalSearchResults="searchThreadResults"
+            :isGlobalSearch="isThreadSearchMode"
+            @clearSearch="clearThreadSearch"
+          />
         </div>
 
         <div class="p-20 text-center text-slate-700 tracking-widest text-xs" v-if="!isLoading && ((activeTab === 'app_jobs' && filteredAppReports.length === 0) || (activeTab === 'other_jobs' && filteredOtherReports.length === 0) || (activeTab === 'withdrawals' && filteredWithdrawals.length === 0))">

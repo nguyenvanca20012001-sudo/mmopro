@@ -31,6 +31,7 @@ const routes = [
   { path: '/submit-report', name: 'submit-report', component: SubmitReportView },
   { path: '/withdraw', name: 'withdraw', component: WithdrawView },
   { path: '/job/threads-daily', name: 'threads-daily', component: ThreadsDailyView },
+  { path: '/job/daily_threads', name: 'daily-threads-job', component: ThreadsDailyView },
   { path: '/job/:id', name: 'job-detail', component: JobDetailView },
   { path: '/admin', name: 'admin', component: AdminView },
   { path: '/profile', name: 'profile', component: ProfileView },

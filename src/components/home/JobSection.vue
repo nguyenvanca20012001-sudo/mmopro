@@ -28,6 +28,14 @@ const handleJobClick = (id: string) => {
   emit('receiveJob', id);
 };
 
+const handleCardClick = (id: string) => {
+  if (id === 'daily_threads') {
+    handleThreadsVipClick();
+  } else {
+    handleJobClick(id);
+  }
+};
+
 const formatReward = (val: any) => {
   if (!val) return '0';
   return String(val).replace(/\D/g, '');
@@ -63,7 +71,8 @@ const getJobIcon = (id: string) => {
     'review-cinema':  { t: '⭐', c: 'text-white' },
     'checkin-cinema': { t: '📸', c: 'text-white' },
     'survey-cinema':  { t: '📋', c: 'text-white' },
-    'post-threads': { t: '🧵', c: 'text-white' },
+    'post-threads':   { t: '🧵', c: 'text-white' },
+    'daily_threads':  { t: '📅', c: 'text-white' },
     'join-zalo': { t: 'ZALO', c: 'text-white' },
     'app-chung-khoan': { t: '📈', c: 'text-white' },
     'app-chung-khoan-2': { t: '📈', c: 'text-white' },
@@ -85,6 +94,7 @@ const getSocialProof = (id: string) => {
     'checkin-cinema':    '654',
     'survey-cinema':     '2.103',
     'post-threads':      '812',
+    'daily_threads':     '456',
     'join-zalo':         '1.432',
     'app-chung-khoan':   '312',
     'app-chung-khoan-2': '287',
@@ -110,7 +120,8 @@ const getShortDesc = (id: string) => {
     'review-cinema':  'Đánh giá 5 sao rạp phim trên Google Maps',
     'checkin-cinema': 'Check-in tại rạp, đăng Facebook/Instagram',
     'survey-cinema':  'Trả lời 5 câu hỏi, xu vào ví ngay lập tức',
-    'post-threads': 'Đăng bài tuyển CTV lên Threads nhận thưởng',
+    'post-threads':  'Đăng bài tuyển CTV lên Threads nhận thưởng',
+    'daily_threads': 'Đăng bài mỗi ngày, nhập link nhận xu',
     'join-zalo': 'Vào nhóm cộng đồng nhận thông báo',
     'app-chung-khoan': 'Đăng ký tài khoản Kafi X',
     'app-chung-khoan-2': 'Đăng ký tài khoản DNSE',
@@ -299,7 +310,7 @@ const goToPostThreadsJob = () => {
 
             <template v-for="(j, id) in jobsData" :key="id">
               <div v-if="!isVip(id as string)"
-                @click="handleJobClick(id as string)"
+                @click="handleCardClick(id as string)"
                 class="relative p-5 md:p-7 rounded-[28px] border-[2px] transition-all duration-500 flex flex-col group cursor-pointer active:scale-95 hover:-translate-y-1 shadow-2xl overflow-hidden"
                 :class="[
                   id === 'follow-cgv'     ? 'bg-gradient-to-br from-blue-900/40 to-blue-800/20 border-blue-500/60 shadow-[0_4px_20px_rgba(37,99,235,0.2)]'
@@ -308,6 +319,7 @@ const goToPostThreadsJob = () => {
                   : id === 'survey-cinema'  ? 'bg-gradient-to-br from-violet-900/40 to-violet-800/20 border-violet-500/60 shadow-[0_4px_20px_rgba(124,58,237,0.2)]'
                   : id === 'google-map'   ? 'bg-gradient-to-br from-blue-900/40 to-cyan-900/20 border-blue-500/60 shadow-[0_4px_20px_rgba(59,130,246,0.2)]'
                   : id === 'join-zalo'    ? 'bg-gradient-to-br from-sky-900/40 to-blue-900/20 border-sky-500/60 shadow-[0_4px_20px_rgba(14,165,233,0.2)]'
+                  : id === 'daily_threads' ? 'bg-gradient-to-br from-purple-900/40 to-purple-800/20 border-purple-500/60 shadow-[0_4px_20px_rgba(124,58,237,0.2)]'
                   : 'bg-slate-800/60 border-slate-600/60'
                 ]">
                 <div class="absolute inset-0 bg-gradient-to-t from-transparent to-white/5 pointer-events-none rounded-[26px]"></div>
@@ -319,11 +331,22 @@ const goToPostThreadsJob = () => {
                        id === 'review-cinema' ? 'bg-sky-600 text-white' :
                        id === 'checkin-cinema'? 'bg-indigo-600 text-white' :
                        id === 'survey-cinema' ? 'bg-violet-600 text-white' :
-                       id === 'google-map'    ? 'bg-blue-600 text-white' :
+                       id === 'google-map'      ? 'bg-blue-600 text-white' :
+                       id === 'daily_threads'  ? 'bg-purple-600 text-white' :
                        'bg-sky-600 text-white'
                      ]">
                   {{ j.badge || 'CƠ BẢN' }}
                 </div>
+
+                <!-- LOCK OVERLAY — chỉ áp dụng cho daily_threads khi chưa hoàn thành post-threads -->
+                <template v-if="id === 'daily_threads' && !threadsVipUnlocked">
+                  <div class="absolute inset-0 bg-black/55 z-20 rounded-[26px] pointer-events-none"></div>
+                  <div class="absolute inset-0 flex items-center justify-center z-30 px-4 pointer-events-none">
+                    <span class="bg-black/80 border border-amber-500/40 text-amber-300 text-[8px] md:text-[9px] font-black uppercase tracking-wide px-3 py-2 rounded-xl text-center leading-tight">
+                      🔒 Cần hoàn thành Đăng bài Threads trước
+                    </span>
+                  </div>
+                </template>
 
                 <div class="flex justify-between items-start mb-4 relative z-10">
                   <div class="w-12 h-12 md:w-16 md:h-16 rounded-2xl flex items-center justify-center shadow-lg border-[1.5px] border-white/20 transition-transform group-hover:scale-110"
@@ -333,7 +356,8 @@ const goToPostThreadsJob = () => {
                          id === 'checkin-cinema'? 'bg-indigo-600/30 text-indigo-300' :
                          id === 'survey-cinema' ? 'bg-violet-600/30 text-violet-300' :
                          id === 'google-map'    ? 'bg-blue-600/30 text-blue-300' :
-                         id === 'join-zalo'     ? 'bg-sky-600/30 text-sky-300' :
+                         id === 'join-zalo'      ? 'bg-sky-600/30 text-sky-300' :
+                         id === 'daily_threads'  ? 'bg-purple-600/30 text-purple-300' :
                          'bg-slate-700/60'
                        ]">
                     <template v-if="getJobIcon(id as string).content === '📈'">
@@ -368,8 +392,10 @@ const goToPostThreadsJob = () => {
                 <div class="flex flex-col mt-auto relative z-10">
                   <p class="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Thưởng ngay:</p>
                   <div class="flex items-center gap-1.5">
-                    <p class="font-black text-xl md:text-3xl tracking-tighter italic leading-none" :class="j.color">
-                      {{ formatReward(j.reward).toLocaleString() }}
+                    <p class="font-black tracking-tighter italic leading-none"
+                       :class="[j.color, id === 'daily_threads' ? 'text-base md:text-xl' : 'text-xl md:text-3xl']">
+                      <template v-if="id === 'daily_threads'">20K - 100K</template>
+                      <template v-else>{{ formatReward(j.reward).toLocaleString() }}</template>
                     </p>
                     <div class="flex flex-col items-start translate-y-[-2px]">
                       <svg class="w-4 h-4 md:w-5 md:h-5 drop-shadow-[0_0_5px_rgba(234,179,8,0.5)]" viewBox="0 0 24 24">
@@ -385,9 +411,10 @@ const goToPostThreadsJob = () => {
                   <span>👥</span>
                   <span>{{ getSocialProof(id as string) }} người đã nhận</span>
                 </div>
-                <button @click.stop="handleJobClick(id as string)"
+                <button @click.stop="handleCardClick(id as string)"
                   class="w-full py-3 md:py-4 rounded-xl text-[10px] md:text-[11px] font-black italic uppercase transition-all shadow-md relative z-10"
                   :class="[
+                    (id === 'daily_threads' && !threadsVipUnlocked) ? 'bg-slate-700 text-slate-400 cursor-not-allowed' :
                     id === 'follow-cgv'    ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white' :
                     id === 'review-cinema' ? 'bg-gradient-to-r from-sky-600 to-sky-400 text-white' :
                     id === 'checkin-cinema'? 'bg-gradient-to-r from-indigo-600 to-indigo-500 text-white' :
@@ -396,7 +423,7 @@ const goToPostThreadsJob = () => {
                     id === 'join-zalo'     ? 'bg-gradient-to-r from-sky-600 to-blue-500 text-white' :
                     'bg-blue-600 text-white'
                   ]">
-                  BẮT ĐẦU ⚡
+                  {{ (id === 'daily_threads' && !threadsVipUnlocked) ? 'ĐANG KHOÁ 🔒' : 'BẮT ĐẦU ⚡' }}
                 </button>
               </div>
             </template>
@@ -519,7 +546,7 @@ const goToPostThreadsJob = () => {
         <div class="text-center mb-6">
           <div class="text-5xl mb-4">🔒</div>
           <h3 class="text-white text-xl font-black italic uppercase tracking-tight mb-3">Chưa đủ điều kiện</h3>
-          <p class="text-slate-300 text-sm leading-relaxed">Bạn cần hoàn thành công việc <span class="text-yellow-400 font-black">Đăng bài Threads</span> trước để mở khóa nhiệm vụ Đăng bài Threads hằng ngày.</p>
+          <p class="text-slate-300 text-sm leading-relaxed">Bạn cần hoàn thành công việc <span class="text-yellow-400 font-black">Đăng bài Threads</span> trước khi mở khoá nhiệm vụ hằng ngày.</p>
         </div>
         <div class="flex flex-col gap-3">
           <button @click="showThreadsVipModal = false"

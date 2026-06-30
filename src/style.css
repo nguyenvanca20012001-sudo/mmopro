@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+/* ── Thread modal: lock scroll + ẩn bottom nav ─────────────── */
+body.thread-modal-open {
+  overflow: hidden !important;
+}
+body.thread-modal-open .cosmic-nav {
+  display: none !important;
+}
+/* ─────────────────────────────────────────────────────────── */
+
 @layer base {
   :root {
     /* Thiết lập biến phông chữ Inter */

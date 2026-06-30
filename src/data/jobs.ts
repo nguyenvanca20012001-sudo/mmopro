@@ -5,6 +5,67 @@ export const jobsData: Record<string, any> = {
   // NHÓM JOB SEEDING & MARKETING TƯƠNG TÁC
   // ==============================================
 
+  'daily_threads': {
+    title: "ĐĂNG BÀI THREAD HẰNG NGÀY",
+    reward: "30.000 xu",
+    color: "text-purple-300",
+    badge: "HẰNG NGÀY",
+    steps: []
+  },
+
+  'post-threads': {
+    title: "ĐĂNG BÀI THREADS",
+    reward: "30.000 xu",
+    color: "text-slate-300",
+    badge: "TREND 📈",
+    notice: "⚠️ Yêu cầu đăng 2 bài thread / post với nội dung khác nhau",
+    steps: [
+      {
+        id: 1,
+        title: "BƯỚC 1: SAO CHÉP NỘI DUNG BÀI ĐĂNG VÀ TẢI ẢNH",
+        content: "Bấm COPY NGẪU NHIÊN để nhận 1 mẫu bài đăng. Bấm TẢI ẢNH để lưu ảnh kèm theo về máy, đăng lên Threads cùng nội dung:",
+        randomTemplates: [
+          "Góc khuất học sinh THPT, thức đêm đăng bài thread , đánh giá google map , seeding =))) ít nhưng vẫn cố a",
+          "dm đời cuối cùng t cũng kiếm đc job online nghỉ hè rồi , chi tiết phần bình luận",
+          "flex ngày hôm nay  : nhận lương từ đăng bài thread , đánh giá google Map , seeding",
+          "cần 10 bạn seeding , đăng bài thread , seeding , nếu sợ đảo lửa sẽ bank trước lương",
+          "hôm nay rảnh đăng bài thread kiếm thêm vài chục k , ai cần việc bình luận hỏi thêm",
+          "nghỉ hè mà ngồi nhà đăng thread làm google map cũng ra tiền , không phải scam nha mn",
+          "t vừa rút 200k từ job đăng bài thread + map , ai muốn làm cùng nhắn t",
+          "không cần vốn không cần kinh nghiệm , chỉ cần điện thoại là làm được , thread + map + seeding",
+          "job sinh viên mùa hè : đăng bài thread , seeding fb , review map , nhận tiền momo hằng ngày",
+          "thức đêm làm thêm job online , thread + google map + seeding , mệt mà vui vì có tiền"
+        ],
+        randomDownloadLinks: [
+          "/images/thread-post-1.jpg",
+          "/images/thread-post-2.jpg",
+          "/images/thread-post-3.jpg",
+          "/images/thread-post-4.jpg",
+          "/images/thread-post-5.jpg",
+          "/images/thread-post-6.jpg",
+          "/images/thread-post-7.jpg",
+          "/images/thread-post-8.jpg",
+          "/images/thread-post-9.jpg",
+          "/images/thread-post-10.jpg"
+        ],
+        buttonText: "📥 TẢI ẢNH BÀI ĐĂNG"
+      },
+      {
+        id: 2,
+        title: "BƯỚC 2: TẢI ẢNH QR ZALO, ĐĂNG BÀI VÀ GHIM BÌNH LUẬN",
+        contentHtml: `<span class="text-yellow-400 font-black not-italic">Dưới phần bình luận: kêu gọi mọi người tham gia nhóm</span>, <span class="text-red-400 font-black not-italic">ví dụ: vào nhóm lụm lúa nè mọi người....Rồi ghim mã QR 📌</span>`,
+        img: "images/qr-zalo-nhom10.jpg",
+        downloadLink: "images/qr-zalo-nhom10.jpg",
+        buttonText: "📥 TẢI MÃ QR ZALO VỀ MÁY"
+      },
+      {
+        id: 3,
+        title: "BƯỚC 3: CHỤP ẢNH BẰNG CHỨNG XÁC NHẬN",
+        content: "Chụp lại màn hình bài viết Threads của bạn. (Lưu ý: Bức ảnh phải hiển thị rõ NỘI DUNG BÀI ĐĂNG và CẢ PHẦN BÌNH LUẬN CÓ CHỨA ẢNH QR ZALO). Tải ảnh đó lên mục Gửi Bằng Chứng để Admin duyệt Xu."
+      }
+    ]
+  },
+
   'view-tiktok': {
     title: "CÀY VIEW TIKTOK",
     reward: "30.000 xu",
@@ -63,59 +124,6 @@ export const jobsData: Record<string, any> = {
         id: 4,
         title: "BƯỚC 4: GỬI BÁO CÁO",
         content: "Tải ảnh vừa chụp lên hệ thống để xác nhận hoàn thành nhiệm vụ và nhận xu."
-      }
-    ]
-  },
-
-  'post-threads': {
-    title: "ĐĂNG BÀI THREADS",
-    reward: "30.000 xu",
-    color: "text-slate-300",
-    badge: "TREND 📈",
-    notice: "⚠️ Yêu cầu đăng 2 bài thread / post với nội dung khác nhau",
-    steps: [
-      {
-        id: 1,
-        title: "BƯỚC 1: SAO CHÉP NỘI DUNG BÀI ĐĂNG VÀ TẢI ẢNH",
-        content: "Bấm COPY NGẪU NHIÊN để nhận 1 mẫu bài đăng. Bấm TẢI ẢNH để lưu ảnh kèm theo về máy, đăng lên Threads cùng nội dung:",
-        randomTemplates: [
-          "Góc khuất học sinh THPT, thức đêm đăng bài thread , đánh giá google map , seeding =))) ít nhưng vẫn cố a",
-          "dm đời cuối cùng t cũng kiếm đc job online nghỉ hè rồi , chi tiết phần bình luận",
-          "flex ngày hôm nay  : nhận lương từ đăng bài thread , đánh giá google Map , seeding",
-          "cần 10 bạn seeding , đăng bài thread , seeding , nếu sợ đảo lửa sẽ bank trước lương",
-          "hôm nay rảnh đăng bài thread kiếm thêm vài chục k , ai cần việc bình luận hỏi thêm",
-          "nghỉ hè mà ngồi nhà đăng thread làm google map cũng ra tiền , không phải scam nha mn",
-          "t vừa rút 200k từ job đăng bài thread + map , ai muốn làm cùng nhắn t",
-          "không cần vốn không cần kinh nghiệm , chỉ cần điện thoại là làm được , thread + map + seeding",
-          "job sinh viên mùa hè : đăng bài thread , seeding fb , review map , nhận tiền momo hằng ngày",
-          "thức đêm làm thêm job online , thread + google map + seeding , mệt mà vui vì có tiền"
-        ],
-        randomDownloadLinks: [
-          "/images/thread-post-1.jpg",
-          "/images/thread-post-2.jpg",
-          "/images/thread-post-3.jpg",
-          "/images/thread-post-4.jpg",
-          "/images/thread-post-5.jpg",
-          "/images/thread-post-6.jpg",
-          "/images/thread-post-7.jpg",
-          "/images/thread-post-8.jpg",
-          "/images/thread-post-9.jpg",
-          "/images/thread-post-10.jpg"
-        ],
-        buttonText: "📥 TẢI ẢNH BÀI ĐĂNG"
-      },
-      {
-        id: 2,
-        title: "BƯỚC 2: TẢI ẢNH QR ZALO, ĐĂNG BÀI VÀ GHIM BÌNH LUẬN",
-        contentHtml: `<span class="text-yellow-400 font-black not-italic">Dưới phần bình luận: kêu gọi mọi người tham gia nhóm</span>, <span class="text-red-400 font-black not-italic">ví dụ: vào nhóm lụm lúa nè mọi người....Rồi ghim mã QR 📌</span>`,
-        img: "images/qr-zalo-nhom10.jpg",
-        downloadLink: "images/qr-zalo-nhom10.jpg",
-        buttonText: "📥 TẢI MÃ QR ZALO VỀ MÁY"
-      },
-      {
-        id: 3,
-        title: "BƯỚC 3: CHỤP ẢNH BẰNG CHỨNG XÁC NHẬN",
-        content: "Chụp lại màn hình bài viết Threads của bạn. (Lưu ý: Bức ảnh phải hiển thị rõ NỘI DUNG BÀI ĐĂNG và CẢ PHẦN BÌNH LUẬN CÓ CHỨA ẢNH QR ZALO). Tải ảnh đó lên mục Gửi Bằng Chứng để Admin duyệt Xu."
       }
     ]
   },
@@ -186,16 +194,10 @@ export const jobsData: Record<string, any> = {
     steps: [
       {
         id: 1,
-        title: "THAM GIA NHÓM ZALO MMO PRO - nhóm 5,6,7 ",
-        content: "MỌI NGƯỜI ƯU TIÊN THAM GIA NHÓM SỐ 5,6,7 NHÁ .",
+        title: "THAM GIA NHÓM ZALO MMO PRO - GROUP 8",
+        content: "CỘNG ĐỒNG MMO PRO GROUP 1- GROUP 7 ĐÃ FULL , THAM GIA GROUP 8 NHÁ  .",
         extraLinks: [
-          { text: "THAM GIA NHÓM 1 ➔", url: "https://zalo.me/g/zbvsdm567" },
-          { text: "THAM GIA NHÓM 2 ➔", url: "https://zalo.me/g/hndtoou23pcp9qhm7dfp" },
-          { text: "THAM GIA NHÓM 3 ➔", url: "https://zalo.me/g/lenpfa1wvl7xvrwiihw2" },
-          { text: "THAM GIA NHÓM 4 ➔", url: "https://zalo.me/g/ycooilv3vlgg6v1qgt1x" },
-          { text: "THAM GIA NHÓM 5 ➔", url: "https://zalo.me/g/cbfjgrygtu5lspswsec2" },
-          { text: "THAM GIA NHÓM 6 ➔", url: "https://zalo.me/g/zphocdbaiwzvp6k4bufq" },
-          { text: "THAM GIA NHÓM 7 ➔", url: "https://zalo.me/g/cajkbdiz9tc3rfrxwzui" }
+          { text: "THAM GIA NHÓM 8 ➔", url: "https://zalo.me/g/mjkl4v1oxkkqbqljbvwa" }
         ]
       },
       {

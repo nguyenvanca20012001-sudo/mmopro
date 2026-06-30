@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, watch, nextTick } from 'vue'
+import { ref, onMounted, computed, watch, nextTick, provide } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { auth, db } from '@/firebase' 
 import { onAuthStateChanged, signOut } from "firebase/auth" 
@@ -21,6 +21,11 @@ import { appConfig, startAppConfigListener } from '@/composables/useAppConfig'
 import { setCurrentUserProfile, clearCurrentUserProfile } from '@/composables/useCurrentUser'
 import { supportConfig, startSupportConfigListener, SUPPORT_FANPAGE_URL } from '@/composables/useSupportConfig'
 import { startBasicJobConfigsListener } from '@/composables/useBasicJobConfigs'
+// @ts-ignore
+import DailyThreadPaidPopup from '@/components/DailyThreadPaidPopup.vue'
+// @ts-ignore
+import DailyThreadRejectedPopup from '@/components/DailyThreadRejectedPopup.vue'
+import { useDailyThreadNotifications, startDailyThreadListener, stopDailyThreadListener } from '@/composables/useDailyThreadNotifications'
 
 // --- JOB BROWSER (dùng trong CÔNG VIỆC bottom sheet) ---
 const jobIconMap: Record<string, string> = {
@@ -31,6 +36,7 @@ const jobIconMap: Record<string, string> = {
   'app-chung-khoan-4': '📈', 'msb-bank': '🏦', 'vpbank': '🏦', 'liobank': '🏦',
 }
 const { vipJobConfigs, vipJobsLoading, vipJobsLoaded } = useVipJobs()
+const { currentPaid: dtCurrentPaid, currentRejected: dtCurrentRejected, dismissPaid: dtDismissPaid, dismissRejected: dtDismissRejected } = useDailyThreadNotifications()
 
 // --- Age confirmation modal (mobile bottom sheet) ---
 const showAgeConfirmModal = ref(false)
@@ -389,12 +395,29 @@ const vipProgress = computed(() => {
   return { count, tier, nextTier, progress, tierIdx }
 })
 
-const threadsOldJobDone = computed(() =>
-  myReports.value.some((r: any) =>
+const matchedOldThreadReports = computed(() =>
+  myReports.value.filter((r: any) =>
     (r.jobId === 'post-threads' || (r.jobName && String(r.jobName).toUpperCase().includes('ĐĂNG BÀI THREADS'))) &&
     (r.status === 'approved' || r.status === 'collected')
   )
 )
+const threadsOldJobDone = computed(() => matchedOldThreadReports.value.length > 0)
+
+// DEBUG TẠM THỜI — kiểm tra điều kiện mở khóa daily_threads (xóa sau khi xác nhận đúng)
+watch([threadsOldJobDone, isDataLoading], () => {
+  if (isDataLoading.value) return
+  console.log('Daily threads unlock check:', {
+    uid: auth.currentUser?.uid,
+    hasCompletedOldThreadsJob: threadsOldJobDone.value,
+    matchedOldThreadReports: matchedOldThreadReports.value
+  })
+})
+
+// Chia sẻ trạng thái khóa/mở khóa daily_threads cho các route con (vd: ThreadsDailyView) qua provide/inject
+provide('dailyThreadsUnlock', {
+  hasCompletedOldThreadsJob: threadsOldJobDone,
+  isChecking: isDataLoading
+})
 
 
 // Track hòm đã nhận (đọc từ Firestore)
@@ -510,6 +533,9 @@ const initFirebaseSync = (user: any) => {
     if (import.meta.env.DEV) console.log('[Firestore Listener] user-withdrawals docs:', snapshot.size)
     myWithdrawals.value = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
   })
+
+  // Listener real-time cho thông báo Thread hằng ngày (paid/rejected)
+  startDailyThreadListener(user.uid)
 }
 
 onMounted(() => {
@@ -530,6 +556,7 @@ onMounted(() => {
     } else {
       isLoggedIn.value = false; isDataLoading.value = false; username.value = 'Member'; userBalance.value = 0;
       myReports.value = []; myWithdrawals.value = []; clearCurrentUserProfile(); localStorage.clear()
+      stopDailyThreadListener()
     }
   })
 })
@@ -644,6 +671,30 @@ const handleReceiveJob = (jobId: string) => {
     router.push(`/job/${jobId}`)
   }
 }
+
+// Click vào job cơ bản trong bottom sheet mobile — có chặn riêng cho daily_threads (khóa)
+const showDailyThreadLockedModal = ref(false)
+
+const handleBasicJobClick = (jobId: string) => {
+  if (jobId === 'daily_threads') {
+    if (isDataLoading.value) return
+    if (!threadsOldJobDone.value) {
+      showDailyThreadLockedModal.value = true
+      return
+    }
+  }
+  handleReceiveJob(jobId)
+}
+
+const goToOldThreadsJobFromLock = () => {
+  showDailyThreadLockedModal.value = false
+  activePopup.value = ''
+  router.push('/job/post-threads')
+}
+
+watch(showDailyThreadLockedModal, (val) => {
+  document.body.style.overflow = val ? 'hidden' : ''
+})
 
 const confirmAgeAndNavigate = () => {
   showAgeConfirmModal.value = false
@@ -966,6 +1017,26 @@ const getMobileAgeBadgeClass = (age: number): string => {
       </div>
     </Transition>
 
+    <!-- ===== DAILY THREAD PAID POPUP ===== -->
+    <Transition name="fade">
+      <DailyThreadPaidPopup
+        v-if="dtCurrentPaid && !unreadRejectedReport && !unreadMessageReport && !unreadApprovedReport && !showWelcomePopup"
+        :report="dtCurrentPaid"
+        @dismiss="dtDismissPaid"
+        @view-history="() => { dtDismissPaid(dtCurrentPaid!.id); router.push('/job/threads-daily') }"
+      />
+    </Transition>
+
+    <!-- ===== DAILY THREAD REJECTED POPUP ===== -->
+    <Transition name="fade">
+      <DailyThreadRejectedPopup
+        v-if="dtCurrentRejected && !dtCurrentPaid && !unreadRejectedReport && !unreadMessageReport && !unreadApprovedReport && !showWelcomePopup"
+        :report="dtCurrentRejected"
+        @dismiss="dtDismissRejected"
+        @resubmit="() => { dtDismissRejected(dtCurrentRejected!.id); router.push('/job/threads-daily') }"
+      />
+    </Transition>
+
     <div :class="['fixed lg:sticky top-0 left-0 h-screen z-[1500] transition-all duration-500 bg-[#0d121f] border-r border-slate-800/60 overflow-hidden flex-shrink-0', isMenuOpen ? 'w-72 translate-x-0' : 'w-0 -translate-x-full']">
       <Transition name="sidebar-slide">
         <Sidebar
@@ -1279,12 +1350,13 @@ const getMobileAgeBadgeClass = (age: number): string => {
 
               <template v-for="(j, id) in jobsData" :key="id">
                 <button v-if="!VIP_IDS.includes(id as string)"
-                  @click="handleReceiveJob(id as string)"
+                  @click="handleBasicJobClick(id as string)"
                   class="relative flex flex-col p-4 rounded-[22px] border border-blue-200/70
                          bg-gradient-to-br from-slate-50 to-blue-50/80
                          shadow-[0_2px_12px_rgba(37,99,235,0.09)]
                          transition-all duration-200 active:scale-[0.96] overflow-hidden text-left
-                         min-h-[164px]">
+                         min-h-[164px]"
+                  :class="(id === 'daily_threads' && (isDataLoading || !threadsOldJobDone)) ? 'cursor-not-allowed' : ''">
 
                   <!-- Shine overlay -->
                   <div class="absolute inset-0 bg-gradient-to-br from-white/55 to-transparent pointer-events-none rounded-[21px]"></div>
@@ -1296,6 +1368,16 @@ const getMobileAgeBadgeClass = (age: number): string => {
                               bg-gradient-to-r from-blue-600 to-sky-500">
                     {{ j.badge || 'CƠ BẢN' }}
                   </div>
+
+                  <!-- LOCK OVERLAY — chỉ daily_threads khi chưa hoàn thành post-threads -->
+                  <template v-if="id === 'daily_threads' && !isDataLoading && !threadsOldJobDone">
+                    <div class="absolute inset-0 bg-black/55 z-20 rounded-[21px] pointer-events-none"></div>
+                    <div class="absolute inset-0 flex items-center justify-center z-30 px-3 pointer-events-none">
+                      <span class="bg-black/80 border border-amber-400/40 text-amber-300 text-[7px] font-black uppercase tracking-wide px-2 py-1.5 rounded-lg text-center leading-tight">
+                        🔒 Cần hoàn thành Đăng bài Threads trước
+                      </span>
+                    </div>
+                  </template>
 
                   <!-- Icon -->
                   <div class="w-10 h-10 rounded-2xl flex items-center justify-center text-xl mb-2.5
@@ -1310,17 +1392,23 @@ const getMobileAgeBadgeClass = (age: number): string => {
 
                   <!-- Reward -->
                   <div class="flex items-baseline gap-1 mt-2 mb-2.5 relative z-10">
-                    <span class="text-xl font-black italic tracking-tighter text-blue-600">
-                      +{{ String(j.reward).replace(/\D/g,'') }}
+                    <span class="font-black italic tracking-tighter text-blue-600"
+                      :class="id === 'daily_threads' ? 'text-[13px]' : 'text-xl'">
+                      <template v-if="id === 'daily_threads'">20K-100K</template>
+                      <template v-else>+{{ String(j.reward).replace(/\D/g,'') }}</template>
                     </span>
                     <span class="text-[9px] font-black text-blue-400 not-italic">XU</span>
                   </div>
 
                   <!-- CTA button -->
-                  <div class="w-full py-2 rounded-xl text-white text-[10px] font-black italic uppercase text-center relative z-10
-                              bg-gradient-to-r from-blue-600 to-blue-500
-                              shadow-[0_2px_8px_rgba(37,99,235,0.28)]">
-                    BẮT ĐẦU ⚡
+                  <div class="w-full py-2 rounded-xl text-white text-[10px] font-black italic uppercase text-center relative z-10"
+                    :class="(id === 'daily_threads' && (isDataLoading || !threadsOldJobDone))
+                      ? 'bg-slate-500'
+                      : 'bg-gradient-to-r from-blue-600 to-blue-500 shadow-[0_2px_8px_rgba(37,99,235,0.28)]'">
+                    <template v-if="id === 'daily_threads'">
+                      {{ isDataLoading ? 'ĐANG KIỂM TRA...' : (threadsOldJobDone ? 'BẮT ĐẦU ⚡' : 'ĐANG KHÓA 🔒') }}
+                    </template>
+                    <template v-else>BẮT ĐẦU ⚡</template>
                   </div>
                 </button>
               </template>
@@ -1679,6 +1767,36 @@ const getMobileAgeBadgeClass = (age: number): string => {
               Đóng
             </button>
           </div>
+        </div>
+      </div>
+    </Transition>
+  </Teleport>
+
+  <!-- DAILY THREADS LOCKED MODAL — z-[100003], luôn nổi trên cùng (bottom sheet, bottom nav, popup khác) -->
+  <Teleport to="body">
+    <Transition name="fade">
+      <div v-if="showDailyThreadLockedModal"
+           class="fixed inset-0 z-[100003] flex items-center justify-center p-4"
+           style="background: rgba(0,0,0,0.72);"
+           @click.self="showDailyThreadLockedModal = false">
+        <div class="relative bg-[#111726] border border-purple-500/40 rounded-[28px] p-7 max-w-sm w-full shadow-2xl">
+          <button @click="showDailyThreadLockedModal = false"
+                  class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-300 active:scale-90 transition-transform">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <div class="text-center mb-6 mt-2">
+            <div class="text-5xl mb-4">🔒</div>
+            <h3 class="text-white text-lg font-black italic uppercase tracking-tight mb-3 leading-tight">Nhiệm vụ hằng ngày đang khóa</h3>
+            <p class="text-slate-300 text-sm leading-relaxed not-italic normal-case font-medium">
+              Bạn cần hoàn thành công việc <span class="text-yellow-400 font-black">Đăng bài Threads</span> trước khi mở khóa nhiệm vụ này.
+            </p>
+          </div>
+          <button @click="goToOldThreadsJobFromLock"
+                  class="w-full py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-500 text-white font-black uppercase text-sm tracking-wider active:scale-95 transition-all">
+            Làm Đăng bài Threads trước
+          </button>
         </div>
       </div>
     </Transition>
