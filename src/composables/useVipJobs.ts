@@ -20,8 +20,9 @@ export const proofSelectableJobs = computed<ProofJob[]>(() => {
   const items: ProofJob[] = []
 
   // Regular jobs — always open, from jobs.ts
+  // daily_threads có form nộp bằng chứng riêng (DailyThreadProofModal → daily_thread_reports), không qua dropdown này
   for (const id of Object.keys(jobsData)) {
-    if (VIP_JOB_IDS.includes(id)) continue
+    if (VIP_JOB_IDS.includes(id) || id === 'daily_threads') continue
     const j = jobsData[id] as any
     items.push({ id, title: j.title as string, reward: j.reward as string })
   }
