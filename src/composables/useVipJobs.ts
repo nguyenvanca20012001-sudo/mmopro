@@ -4,7 +4,7 @@ import { db } from '@/firebase'
 import { jobsData } from '@/data/jobs'
 
 // Canonical VIP job IDs — single source of truth cho toàn app
-export const VIP_JOB_IDS = ['liobank', 'app-chung-khoan', 'app-chung-khoan-2', 'app-chung-khoan-3', 'app-chung-khoan-4', 'msb-bank', 'vpbank', 'mbbank', 'lpbank-plus']
+export const VIP_JOB_IDS = ['liobank', 'app-chung-khoan', 'app-chung-khoan-2', 'app-chung-khoan-3', 'app-chung-khoan-4', 'msb-bank', 'vpbank', 'mbbank', 'lpbank-plus', 'referral-hub']
 
 export type ProofJob = { id: string; title: string; reward: string }
 
@@ -42,7 +42,7 @@ export const proofSelectableJobs = computed<ProofJob[]>(() => {
         order: (config.order as number) ?? 999,
       }
     })
-    .filter(j => j.status === 'open')
+    .filter(j => j.status === 'open' && j.id !== 'referral-hub')
     .sort((a, b) => a.order - b.order)
 
   for (const j of vipItems) items.push({ id: j.id, title: j.title, reward: j.reward })
@@ -51,6 +51,12 @@ export const proofSelectableJobs = computed<ProofJob[]>(() => {
 
 export function useVipJobs() {
   return { vipJobConfigs, vipJobsLoading, vipJobsLoaded }
+}
+
+// referral-hub luôn hiển thị đầu danh sách VIP, bất kể order admin cấu hình trong Firestore
+export function getVipJobOrder(id: string, config: any): number {
+  if (id === 'referral-hub') return -1
+  return config?.order ?? 999
 }
 
 export function getJobStatus(jobId: string): 'open' | 'paused' | 'hidden' | 'soldout' {

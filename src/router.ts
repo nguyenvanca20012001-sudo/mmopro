@@ -18,6 +18,10 @@ import JobDetailView from '@/views/JobDetailView.vue'
 // @ts-ignore
 import ThreadsDailyView from '@/views/ThreadsDailyView.vue'
 // @ts-ignore
+import ReferralAbbankView from '@/views/ReferralAbbankView.vue'
+// @ts-ignore
+import ReferralLpbankView from '@/views/ReferralLpbankView.vue'
+// @ts-ignore
 import AdminView from '@/views/AdminView.vue'
 // @ts-ignore
 import ProfileView from '@/views/Profile.vue'
@@ -32,6 +36,8 @@ const routes = [
   { path: '/withdraw', name: 'withdraw', component: WithdrawView },
   { path: '/job/threads-daily', name: 'threads-daily', component: ThreadsDailyView },
   { path: '/job/daily_threads', name: 'daily-threads-job', component: ThreadsDailyView },
+  { path: '/job/referral-abbank', name: 'referral-abbank', component: ReferralAbbankView },
+  { path: '/job/referral-lpbank', name: 'referral-lpbank', component: ReferralLpbankView },
   { path: '/job/:id', name: 'job-detail', component: JobDetailView },
   { path: '/admin', name: 'admin', component: AdminView },
   { path: '/profile', name: 'profile', component: ProfileView },

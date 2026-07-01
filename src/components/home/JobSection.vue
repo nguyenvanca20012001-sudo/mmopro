@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { jobsData } from '@/data/jobs';
-import { VIP_JOB_IDS } from '@/composables/useVipJobs';
+import { VIP_JOB_IDS, getVipJobOrder } from '@/composables/useVipJobs';
 import Logo from '@/components/Logo.vue';
 
 const props = withDefaults(defineProps<{
@@ -11,10 +11,14 @@ const props = withDefaults(defineProps<{
   vipJobConfigs?: Record<string, any>;
   vipJobsLoaded?: boolean;
   threadsOldJobDone?: boolean;
+  referralUnlocked?: boolean;
+  referralChecking?: boolean;
 }>(), {
   vipJobConfigs: () => ({}),
   vipJobsLoaded: false,
   threadsOldJobDone: false,
+  referralUnlocked: false,
+  referralChecking: true,
 });
 
 const emit = defineEmits(['receiveJob', 'contactSupport', 'routerPush']);
@@ -57,7 +61,7 @@ const mergedVipJobs = computed(() => {
         badge: config.badge || staticJob.badge,
         color: config.color || staticJob.color,
         status: config.status || 'open',
-        order: config.order ?? 999,
+        order: getVipJobOrder(id, config),
         ageRequirement: (config.ageRequirement ?? staticJob.ageRequirement ?? undefined) as number | undefined,
       }
     })
@@ -82,6 +86,7 @@ const getJobIcon = (id: string) => {
     'app-chung-khoan-4': { t: '📈', c: 'text-white' },
     'liobank': { t: 'LIO', c: 'text-white' },
     'mbbank': { t: 'ABB', c: 'text-white' },
+    'referral-hub': { t: '👥', c: 'text-white' },
   };
   const res = config[id] || { t: 'JOB', c: 'text-slate-400' };
   return { type: 'text', content: res.t, colorClass: res.c };
@@ -104,6 +109,7 @@ const getSocialProof = (id: string) => {
     'app-chung-khoan-4': '163',
     'liobank':           '120',
     'mbbank':            '145',
+    'referral-hub':      '210',
   };
   return seeds[id] || '500';
 };
@@ -129,7 +135,8 @@ const getShortDesc = (id: string) => {
     'vpbank': 'Mở tài khoản số đẹp VPBank',
     'app-chung-khoan-4': 'Đăng ký tài khoản chứng khoán',
     'msb-bank': 'Nhận quà tặng khi mở thẻ MSB',
-    'liobank':  'Mở tài khoản LioBank thẻ 2 in 1'
+    'liobank':  'Mở tài khoản LioBank thẻ 2 in 1',
+    'referral-hub': 'Mời bạn bè đăng ký app nhận thưởng'
   };
   return desc[id] || 'Làm nhiệm vụ ngay';
 }
@@ -147,6 +154,7 @@ const getAgeBadgeClass = (age: number): string => {
 const router = useRouter()
 const showThreadsVipModal = ref(false)
 const threadsVipUnlocked = computed(() => !!props.threadsOldJobDone)
+const referralLocked = computed(() => !props.referralChecking && !props.referralUnlocked)
 
 const handleThreadsVipClick = () => {
   if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(50)
@@ -469,6 +477,16 @@ const goToPostThreadsJob = () => {
               <span class="bg-black/75 text-red-400 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl">❌ HẾT LƯỢT</span>
             </div>
 
+            <!-- LOCK OVERLAY — chỉ áp dụng cho referral-hub khi chưa hoàn thành APP ABBANK/LPBANK -->
+            <template v-if="job.id === 'referral-hub' && referralLocked">
+              <div class="absolute inset-0 bg-black/55 z-20 rounded-[28px] pointer-events-none"></div>
+              <div class="absolute inset-0 flex items-center justify-center z-30 px-4 pointer-events-none">
+                <span class="bg-black/80 border border-amber-500/40 text-amber-300 text-[8px] md:text-[9px] font-black uppercase tracking-wide px-3 py-2 rounded-xl text-center leading-tight">
+                  🔒 Cần hoàn thành APP ABBANK hoặc LPBANK trước
+                </span>
+              </div>
+            </template>
+
             <!-- BADGE VIP -->
             <div class="absolute -top-0 -right-0 z-20 flex items-center gap-1 text-[9px] md:text-[10px] tracking-widest px-3 py-1.5 rounded-bl-2xl rounded-tr-[26px] font-black italic uppercase border-b border-l border-amber-300/40 shadow-lg bg-gradient-to-r from-amber-500 to-yellow-400 text-amber-900">
               VIP 💎
@@ -524,8 +542,11 @@ const goToPostThreadsJob = () => {
               <span>Đang mở đăng ký — {{ getSocialProof(job.id) }} người đã nhận</span>
             </div>
             <button @click.stop="handleJobClick(job.id)"
-              class="vip-btn w-full py-3.5 md:py-4 rounded-xl text-[11px] md:text-[13px] font-black italic uppercase transition-all relative z-10 border border-amber-400/60 bg-gradient-to-r from-amber-500 to-yellow-500 text-amber-900 shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:shadow-[0_0_35px_rgba(245,158,11,0.5)] hover:from-amber-400 hover:to-yellow-400 active:scale-95">
-              NHẬN NGAY 💰
+              class="vip-btn w-full py-3.5 md:py-4 rounded-xl text-[11px] md:text-[13px] font-black italic uppercase transition-all relative z-10 border active:scale-95"
+              :class="(job.id === 'referral-hub' && (referralChecking || referralLocked))
+                ? 'border-slate-600 bg-slate-700 text-slate-400 cursor-not-allowed'
+                : 'border-amber-400/60 bg-gradient-to-r from-amber-500 to-yellow-500 text-amber-900 shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:shadow-[0_0_35px_rgba(245,158,11,0.5)] hover:from-amber-400 hover:to-yellow-400'">
+              {{ job.id === 'referral-hub' ? (referralChecking ? 'ĐANG KIỂM TRA...' : (referralLocked ? 'ĐANG KHÓA 🔒' : 'NHẬN NGAY 💰')) : 'NHẬN NGAY 💰' }}
             </button>
           </div>
         </div>

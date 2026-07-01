@@ -16,7 +16,7 @@ import ProfileCard from '@/components/home/ProfileCard.vue'
 import Logo from '@/components/Logo.vue'
 import { jobsData } from '@/data/jobs'
 import Swal from 'sweetalert2'
-import { useVipJobs, startVipJobsListener, VIP_JOB_IDS as VIP_IDS } from '@/composables/useVipJobs'
+import { useVipJobs, startVipJobsListener, VIP_JOB_IDS as VIP_IDS, getVipJobOrder } from '@/composables/useVipJobs'
 import { appConfig, startAppConfigListener } from '@/composables/useAppConfig'
 import { setCurrentUserProfile, clearCurrentUserProfile } from '@/composables/useCurrentUser'
 import { supportConfig, startSupportConfigListener, SUPPORT_FANPAGE_URL } from '@/composables/useSupportConfig'
@@ -94,6 +94,8 @@ const isDataLoading = ref(true)
 const windowWidth = ref(0) 
 const showWelcomePopup = ref(false)
 const showBankModal = ref(false)
+const showReferralModal = ref(false)
+const showReferralLockedNotice = ref(false)
 const activePopup = ref<'nop-bai' | 'cong-viec' | 'lich-su' | ''>('')
 const jobCategory = ref<'basic' | 'vip' | ''>('')
 
@@ -419,6 +421,43 @@ provide('dailyThreadsUnlock', {
   isChecking: isDataLoading
 })
 
+// GIỚI THIỆU BẠN BÈ — mở khóa khi đã hoàn thành (duyệt) APP LPBANK PLUS hoặc APP ABBANK
+const matchedLpbankReports = computed(() =>
+  myReports.value.filter((r: any) =>
+    (r.jobId === 'lpbank-plus' || (r.jobName && String(r.jobName).toUpperCase().includes('LPBANK'))) &&
+    (r.status === 'approved' || r.status === 'collected')
+  )
+)
+const hasCompletedLpbank = computed(() => matchedLpbankReports.value.length > 0)
+
+const matchedAbbankReports = computed(() =>
+  myReports.value.filter((r: any) =>
+    (r.jobId === 'mbbank' || (r.jobName && String(r.jobName).toUpperCase().includes('ABBANK'))) &&
+    (r.status === 'approved' || r.status === 'collected')
+  )
+)
+const hasCompletedAbbank = computed(() => matchedAbbankReports.value.length > 0)
+
+const canAccessReferralJob = computed(() => hasCompletedLpbank.value || hasCompletedAbbank.value)
+
+// DEBUG TẠM THỜI — kiểm tra điều kiện mở khóa Giới thiệu bạn bè (xóa sau khi xác nhận đúng)
+watch([canAccessReferralJob, isDataLoading], () => {
+  if (isDataLoading.value) return
+  console.log('Referral unlock check:', {
+    uid: auth.currentUser?.uid,
+    hasCompletedLpbank: hasCompletedLpbank.value,
+    hasCompletedAbbank: hasCompletedAbbank.value,
+    canAccessReferralJob: canAccessReferralJob.value,
+    matchedReports: [...matchedLpbankReports.value, ...matchedAbbankReports.value]
+  })
+})
+
+// Chia sẻ trạng thái khóa/mở khóa Giới thiệu bạn bè cho route con (ReferralAbbankView/ReferralLpbankView) qua provide/inject
+provide('referralUnlock', {
+  canAccessReferralJob,
+  isChecking: isDataLoading
+})
+
 
 // Track hòm đã nhận (đọc từ Firestore)
 const claimedChests = ref<string[]>([])
@@ -661,6 +700,13 @@ const handleReceiveJob = (jobId: string) => {
     router.push('/survey-cinema')
   } else if (jobId === 'APP NGÂN HÀNG' || jobId === 'app-ngan-hang') {
     showBankModal.value = true
+  } else if (jobId === 'referral-hub') {
+    if (isDataLoading.value) return
+    if (!canAccessReferralJob.value) {
+      showReferralLockedNotice.value = true
+      return
+    }
+    showReferralModal.value = true
   } else if (effectiveWarning) {
     activePopup.value = ''
     ageConfirmJobId.value = jobId
@@ -769,7 +815,7 @@ const mergedVipJobsMobile = computed(() => {
         reward: config.reward || staticJob.reward,
         badge: config.badge || staticJob.badge,
         status: config.status || 'open',
-        order: config.order ?? 999,
+        order: getVipJobOrder(id, config),
         ageRequirement: (config.ageRequirement ?? (staticJob as any).ageRequirement ?? undefined) as number | undefined,
       }
     })
@@ -1116,6 +1162,8 @@ const getMobileAgeBadgeClass = (age: number): string => {
              :vipJobConfigs="vipJobConfigs"
              :vipJobsLoaded="vipJobsLoaded"
              :threadsOldJobDone="threadsOldJobDone"
+             :referralUnlocked="canAccessReferralJob"
+             :referralChecking="isDataLoading"
              @receiveJob="handleReceiveJob"
              @routerPush="handleNav"
              @contactSupport="contactSupport"
@@ -1247,6 +1295,98 @@ const getMobileAgeBadgeClass = (age: number): string => {
             <span class="text-blue-500 font-black font-sans italic">➜</span>
           </div>
           <button @click="showBankModal = false" class="w-full py-4 mt-4 bg-blue-50 text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest lg:hidden">ĐÓNG LẠI</button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="showReferralModal" class="fixed inset-0 z-[5000] flex items-end lg:items-center justify-center">
+      <div @click="showReferralModal = false" class="absolute inset-0 bg-black/90 backdrop-blur-md transition-opacity"></div>
+
+      <div class="relative w-full lg:max-w-md bg-[#111726] border-t lg:border border-amber-500/30 rounded-t-[40px] lg:rounded-[35px] p-8 md:p-10 shadow-[0_-20px_60px_rgba(245,158,11,0.15)] animate-in slide-in-from-bottom duration-300 lg:zoom-in lg:slide-in-from-bottom-0 overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-b from-amber-500/5 to-transparent pointer-events-none rounded-t-[40px] lg:rounded-[35px]"></div>
+
+        <div class="w-12 h-1.5 bg-amber-500/30 rounded-full mx-auto mb-6 lg:hidden relative z-10"></div>
+
+        <div class="flex items-start justify-between mb-4 relative z-10">
+          <h3 class="text-lg md:text-xl text-white border-l-4 border-amber-500 pl-4 font-black uppercase italic tracking-tighter leading-tight">Chọn công việc<br/>giới thiệu bạn bè</h3>
+          <button @click="showReferralModal = false"
+            class="w-8 h-8 shrink-0 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-slate-400 hover:text-white hover:bg-amber-500/20 transition-all active:scale-90">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="pl-4 mb-6 relative z-10 flex flex-col items-start gap-2.5">
+          <span class="inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 text-[10px] md:text-[11px] px-3 py-1.5 rounded-full border border-emerald-500/20 font-black not-italic normal-case tracking-normal">
+            ♾️ Giới thiệu bạn bè không giới hạn
+          </span>
+          <p class="text-slate-400 text-xs font-medium not-italic normal-case tracking-normal leading-relaxed">
+            Chọn app bên dưới để xem hướng dẫn và gửi bằng chứng.
+          </p>
+        </div>
+
+        <div class="space-y-4 pb-10 lg:pb-0 relative z-10">
+          <div v-for="opt in [
+                 { id: 'referral-lpbank', name: 'APP LPBANK', reward: '100.000', badge: 'HOT 🔥', desc: 'Dễ làm — thưởng cao', featured: true },
+                 { id: 'referral-abbank', name: 'APP ABBANK', reward: '85.000', badge: '', desc: 'Giới thiệu bạn bè đăng ký ABBANK nhận thưởng', featured: false }
+               ]"
+               :key="opt.id"
+               @click="() => { showReferralModal = false; router.push(`/job/${opt.id}`) }"
+               class="rounded-2xl cursor-pointer transition-all active:scale-95 p-5"
+               :class="opt.featured
+                 ? 'bg-gradient-to-br from-amber-900/40 to-yellow-800/20 border-[2px] border-amber-500/60 shadow-[0_0_20px_rgba(245,158,11,0.25)]'
+                 : 'bg-slate-800/50 border border-slate-700/60 hover:border-amber-500/30'">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-11 h-11 rounded-xl flex items-center justify-center text-base border shrink-0"
+                   :class="opt.featured ? 'bg-amber-600/30 border-amber-400/30 text-amber-300' : 'bg-slate-700/60 border-slate-600/50 text-slate-300'">🏦</div>
+              <div class="flex flex-col gap-1 flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="font-black uppercase italic tracking-tighter text-sm" :class="opt.featured ? 'text-amber-300' : 'text-white'">{{ opt.name }}</span>
+                  <span v-if="opt.badge" class="bg-gradient-to-r from-red-500 to-orange-500 text-white text-[9px] font-black uppercase italic tracking-wide px-2 py-0.5 rounded-md shrink-0">{{ opt.badge }}</span>
+                </div>
+                <p class="text-slate-400 text-[10px] font-medium not-italic normal-case leading-snug">{{ opt.desc }}</p>
+              </div>
+            </div>
+            <div class="flex items-center justify-between gap-3">
+              <p class="text-lg font-black italic tracking-tighter leading-none"
+                 :class="opt.featured ? 'text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-yellow-500' : 'text-amber-400/80'">
+                {{ opt.reward }} <span class="text-[10px] not-italic">XU</span>
+              </p>
+              <span class="text-[10px] font-black uppercase italic tracking-wide px-4 py-2.5 rounded-xl shrink-0"
+                    :class="opt.featured
+                      ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-amber-900 shadow-[0_0_20px_rgba(245,158,11,0.3)]'
+                      : 'bg-amber-500/10 border border-amber-500/30 text-amber-300'">
+                Xem hướng dẫn
+              </span>
+            </div>
+          </div>
+          <button @click="showReferralModal = false" class="w-full py-4 mt-4 bg-slate-800 hover:bg-slate-700 text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-widest lg:hidden transition-colors">ĐÓNG LẠI</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- THÔNG BÁO KHÓA GIỚI THIỆU BẠN BÈ -->
+    <div v-if="showReferralLockedNotice" class="fixed inset-0 z-[5000] flex items-end lg:items-center justify-center">
+      <div @click="showReferralLockedNotice = false" class="absolute inset-0 bg-black/90 backdrop-blur-md transition-opacity"></div>
+
+      <div class="relative w-full lg:max-w-md bg-white border-t lg:border border-blue-100 rounded-t-[40px] lg:rounded-[35px] p-8 md:p-10 shadow-[0_-20px_60px_rgba(37,99,235,0.15)] animate-in slide-in-from-bottom duration-300 lg:zoom-in lg:slide-in-from-bottom-0 text-center">
+        <div class="w-12 h-1.5 bg-blue-100 rounded-full mx-auto mb-6 lg:hidden"></div>
+        <div class="text-5xl mb-4">🔒</div>
+        <h3 class="text-xl text-slate-800 font-black uppercase italic tracking-tighter mb-3">Chưa đủ điều kiện</h3>
+        <p class="text-slate-500 text-xs font-medium not-italic normal-case tracking-normal mb-8 leading-relaxed">
+          Bạn cần hoàn thành Job VIP APP ABBANK hoặc LPBANK trước khi mở khóa công việc Giới thiệu bạn bè.
+        </p>
+        <div class="space-y-3 font-bold uppercase italic font-black">
+          <button @click="() => { showReferralLockedNotice = false; router.push('/job/mbbank') }"
+            class="w-full py-4 rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-500 text-amber-900 text-[11px] tracking-widest active:scale-95 transition-all shadow-lg">
+            Làm APP ABBANK
+          </button>
+          <button @click="() => { showReferralLockedNotice = false; router.push('/job/lpbank-plus') }"
+            class="w-full py-4 rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-500 text-amber-900 text-[11px] tracking-widest active:scale-95 transition-all shadow-lg">
+            Làm APP LPBANK PLUS
+          </button>
+          <button @click="showReferralLockedNotice = false" class="w-full py-4 mt-1 bg-blue-50 text-slate-400 rounded-2xl text-[10px] tracking-widest">ĐÓNG LẠI</button>
         </div>
       </div>
     </div>
@@ -1440,6 +1580,16 @@ const getMobileAgeBadgeClass = (age: number): string => {
                   <span class="bg-black/70 text-red-400 text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg">❌ HẾT LƯỢT</span>
                 </div>
 
+                <!-- LOCK OVERLAY — chỉ áp dụng cho referral-hub khi chưa hoàn thành APP ABBANK/LPBANK -->
+                <template v-if="job.id === 'referral-hub' && !isDataLoading && !canAccessReferralJob">
+                  <div class="absolute inset-0 bg-black/55 z-20 rounded-[18px] pointer-events-none"></div>
+                  <div class="absolute inset-0 flex items-center justify-center z-30 px-3 pointer-events-none">
+                    <span class="bg-black/80 border border-amber-400/40 text-amber-300 text-[7px] font-black uppercase tracking-wide px-2 py-1.5 rounded-lg text-center leading-tight">
+                      🔒 Cần hoàn thành APP ABBANK hoặc LPBANK trước
+                    </span>
+                  </div>
+                </template>
+
                 <!-- Badge top-right -->
                 <div class="absolute top-0 right-0 text-[8px] px-2 py-1 rounded-bl-xl rounded-tr-[18px] font-black italic uppercase border-b border-l border-amber-300/40 text-amber-900 z-10 bg-gradient-to-r from-amber-500 to-yellow-400">
                   {{ job.badge || 'VIP' }}
@@ -1472,8 +1622,14 @@ const getMobileAgeBadgeClass = (age: number): string => {
                 </div>
 
                 <!-- CTA button -->
-                <div class="w-full py-2 rounded-xl text-amber-900 text-[10px] font-black italic uppercase text-center relative z-10 bg-gradient-to-r from-amber-500 to-yellow-500">
-                  ĐĂNG KÝ 👑
+                <div class="w-full py-2 rounded-xl text-[10px] font-black italic uppercase text-center relative z-10"
+                  :class="(job.id === 'referral-hub' && (isDataLoading || !canAccessReferralJob))
+                    ? 'bg-slate-600 text-slate-300'
+                    : 'text-amber-900 bg-gradient-to-r from-amber-500 to-yellow-500'">
+                  <template v-if="job.id === 'referral-hub'">
+                    {{ isDataLoading ? 'ĐANG KIỂM TRA...' : (canAccessReferralJob ? 'ĐĂNG KÝ 👑' : 'ĐANG KHÓA 🔒') }}
+                  </template>
+                  <template v-else>ĐĂNG KÝ 👑</template>
                 </div>
               </button>
             </div>

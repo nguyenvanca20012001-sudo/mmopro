@@ -543,4 +543,12 @@ export const jobsData: Record<string, any> = {
       },
     ]
   },
+
+  'referral-hub': {
+    title: "GIỚI THIỆU BẠN BÈ",
+    reward: "100.000 xu",
+    color: "text-amber-400",
+    badge: "VIP 💎",
+    steps: []
+  },
 };

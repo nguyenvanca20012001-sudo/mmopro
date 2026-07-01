@@ -1911,6 +1911,12 @@ const handleAdminLogout = async () => {
                     <span class="text-yellow-400 font-bold" v-else-if="rp.birthYear">{{ rp.birthYear }}</span>
                     <span class="text-slate-600 italic" v-else>Đơn cũ chưa nhập</span>
                   </div>
+                  <div v-if="rp.type === 'friend_referral'" class="mt-2 pt-2 border-t border-slate-700/50">
+                    <span class="text-[9px] text-fuchsia-400 tracking-widest block mb-0.5">GIỚI THIỆU BẠN BÈ ({{ rp.bankType === 'abbank' ? 'ABBANK' : 'LPBANK' }}):</span>
+                    <div class="text-slate-300 text-xs font-black truncate max-w-[200px]">Bạn bè: {{ rp.friendName || 'N/A' }}</div>
+                    <div class="text-slate-500 text-[10px] mt-0.5 font-sans not-italic tracking-normal">SĐT bạn bè: {{ rp.friendPhone || 'Không có' }}</div>
+                    <div v-if="rp.referralCode" class="text-slate-500 text-[10px] mt-0.5 font-sans not-italic tracking-normal">Mã giới thiệu: {{ rp.referralCode }}</div>
+                  </div>
                 </div>
               </td>
               <td class="p-6">
