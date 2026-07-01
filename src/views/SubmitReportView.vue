@@ -46,6 +46,7 @@ const closeImage = () => { selectedImage.value = null }
 const jobOptions = proofSelectableJobs
 
 const jobSamples: Record<string, string[]> = {
+  'post-threads': ['images/anh-thread3.jpg'],
   'mbbank': ['images/anh-abbank1.jpg', 'images/anh-abbank2.jpg', 'images/anh-abbank3.jpg'],
   'app-chung-khoan-4': ['images/anh-maybank2.jpg', 'images/anh-maybank3.jpg', 'images/anh-maybank4.jpg'],
   'vpbank': ['images/anh-vpbank2.jpg', 'images/anh-vpbank3.jpg', 'images/anh-vpbank6.jpg'],
