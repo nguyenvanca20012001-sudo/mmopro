@@ -1092,13 +1092,104 @@ const deleteNote = async (id: string) => {
 const searchQuery = ref('')
 const searchThreadResults = ref<any[]>([])
 const isThreadSearchMode = ref(false)
+const lastSearchedKeywordLower = ref('')
+
+function parseSearchInput(rawText: string) {
+  const trimmed = rawText.trim()
+  const idPrefixMatch = /^id:\s*(.*)$/i.exec(trimmed)
+  const idPrefixValue = (idPrefixMatch?.[1] || '').trim()
+  const isIdMode = !!idPrefixMatch && idPrefixValue.length > 0
+  const effectiveText = isIdMode ? idPrefixValue : trimmed
+  const keywordLower = effectiveText.toLowerCase()
+  const normalizedPhoneKeyword = normalizePhone(effectiveText)
+  const isPhoneSearch = !isIdMode && normalizedPhoneKeyword.length >= 6
+  return { trimmed, effectiveText, keywordLower, normalizedPhoneKeyword, isPhoneSearch, isIdMode }
+}
+
+// Điểm liên quan username/fullName/uid + jobName/jobId/friendName/bankType
+function getSearchScore(report: any, keyword: string): number {
+  const keywordLower = keyword.trim().toLowerCase()
+  const usernameLower = String(report.username || report.fullName || "").toLowerCase()
+  const uidLower = String(report.uid || "").toLowerCase()
+  const fullNameLower = String(report.fullName || "").toLowerCase()
+  const friendNameLower = String(report.friendName || "").toLowerCase()
+  const jobNameLower = String(report.jobName || "").toLowerCase()
+  const jobIdLower = String(report.jobId || "").toLowerCase()
+  const bankTypeLower = String(report.bankType || "").toLowerCase()
+
+  if (usernameLower === keywordLower) return 100
+  if (uidLower === keywordLower) return 95
+  if (usernameLower.startsWith(keywordLower)) return 80
+  if (fullNameLower === keywordLower) return 75
+  if (friendNameLower === keywordLower) return 70
+  if (fullNameLower.startsWith(keywordLower)) return 60
+  if (friendNameLower.startsWith(keywordLower)) return 55
+  if (usernameLower.includes(keywordLower)) return 40
+  if (fullNameLower.includes(keywordLower)) return 30
+  if (friendNameLower.includes(keywordLower)) return 28
+  if (uidLower.includes(keywordLower)) return 20
+  if (jobNameLower.includes(keywordLower) || jobIdLower.includes(keywordLower)) return 15
+  if (bankTypeLower.includes(keywordLower)) return 12
+  return 0
+}
+
+// Chế độ "id:" — CHỈ so username/uid, không lẫn fullName/jobName
+function getIdModeScore(entity: { uid?: string; username?: string }, keyword: string): number {
+  const keywordLower = keyword.trim().toLowerCase()
+  const usernameLower = String(entity.username || "").toLowerCase()
+  const uidLower = String(entity.uid || "").toLowerCase()
+  if (usernameLower === keywordLower) return 100
+  if (uidLower === keywordLower) return 95
+  if (usernameLower.startsWith(keywordLower)) return 80
+  if (uidLower.startsWith(keywordLower)) return 70
+  if (usernameLower.includes(keywordLower)) return 40
+  if (uidLower.includes(keywordLower)) return 20
+  return 0
+}
+
+// Bọc lại đúng các phép so khớp SĐT hiện có thành điểm số thay vì boolean
+function getPhoneMatchScore(report: any, normalizedPhoneKeyword: string): number {
+  if (!normalizedPhoneKeyword) return 0
+  const phoneRefN = normalizePhone(report.phoneRef)
+  const friendPhoneN = normalizePhone(report.friendPhone)
+  const friendPhoneNormN = normalizePhone(report.friendPhoneNormalized)
+  if (phoneRefN === normalizedPhoneKeyword) return 100
+  if (friendPhoneNormN === normalizedPhoneKeyword) return 100
+  if (friendPhoneN === normalizedPhoneKeyword) return 90
+  if (phoneRefN.includes(normalizedPhoneKeyword)) return 40
+  if (friendPhoneNormN.includes(normalizedPhoneKeyword)) return 40
+  if (friendPhoneN.includes(normalizedPhoneKeyword)) return 30
+  return 0
+}
+
+// Điểm cho daily_thread_reports — cùng tầng bậc, khác field
+function getThreadSearchScore(threadReport: any, keyword: string): number {
+  const keywordLower = keyword.trim().toLowerCase()
+  const nickLower = String(threadReport.threadNickLower || threadReport.threadNick || "").toLowerCase()
+  const uidLower = String(threadReport.uid || "").toLowerCase()
+  const fullNameLower = String(threadReport.fullName || "").toLowerCase()
+  const postUrlLower = String(threadReport.postUrlNormalized || threadReport.postUrl || "").toLowerCase()
+  if (nickLower === keywordLower) return 100
+  if (uidLower === keywordLower) return 95
+  if (nickLower.startsWith(keywordLower)) return 80
+  if (fullNameLower === keywordLower) return 75
+  if (fullNameLower.startsWith(keywordLower)) return 60
+  if (nickLower.includes(keywordLower)) return 40
+  if (fullNameLower.includes(keywordLower)) return 30
+  if (uidLower.includes(keywordLower)) return 20
+  if (postUrlLower.includes(keywordLower)) return 15
+  return 0
+}
 
 const handleSearch = async () => {
-  const text = searchQuery.value.trim();
+  const rawText = searchQuery.value
+  const { trimmed: text, effectiveText, keywordLower, normalizedPhoneKeyword, isPhoneSearch, isIdMode } =
+    parseSearchInput(rawText)
 
   if (!text) {
     searchThreadResults.value = []
     isThreadSearchMode.value = false
+    lastSearchedKeywordLower.value = ''
     loadData(statusFilter.value);
     return;
   }
@@ -1107,100 +1198,119 @@ const handleSearch = async () => {
   if (unsubReports) unsubReports();
   if (unsubWithdrawals) unsubWithdrawals();
 
-  let matchedUids: string[] = [];
-  const lowerText = text.toLowerCase();
-
-  for (const uid in usersMap.value) {
-    const user = usersMap.value[uid];
-    const uname = user.username ? String(user.username).toLowerCase() : '';
-    const fname = user.fullName ? String(user.fullName).toLowerCase() : '';
-    if (uname.includes(lowerText) || fname.includes(lowerText)) {
-      matchedUids.push(uid);
-    }
-  }
-
-  const limitedUids = matchedUids.slice(0, 10);
-  const qReports = limitedUids.length > 0
-    ? query(collection(db, "reports"), where("uid", "in", limitedUids), limit(50))
-    : query(collection(db, "reports"), where("phoneRef", "==", text), limit(50));
+  let limitedUids: string[] = [];
+  let data: any[] = [];
 
   try {
-    const snapshot = await getDocs(qReports);
-    let data: any[] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    // BƯỚC 1: Nếu không phải phone search, bổ sung 1-2 truy vấn exact-match nhỏ
+    // thẳng vào `users` để đảm bảo user khớp tuyệt đối luôn được tìm thấy dù họ
+    // không có report nào trong status filter hiện tại (usersMap chỉ là cache lười).
+    if (!isPhoneSearch) {
+      try {
+        const exactCandidates = new Set([effectiveText, keywordLower].filter(Boolean))
+        for (const candidateValue of exactCandidates) {
+          const qExactUser = query(collection(db, "users"), where("username", "==", candidateValue), limit(5))
+          const snapExactUser = await getDocs(qExactUser)
+          snapExactUser.docs.forEach(d => { usersMap.value[d.id] = d.data() })
+        }
+      } catch (exactUserErr) {
+        if (import.meta.env.DEV) console.warn("[Search] exact username lookup failed:", exactUserErr)
+      }
 
-    // Tìm thêm đơn "Giới thiệu bạn bè" (ABBANK/LPBANK) theo tên/SĐT của bạn bè được giới thiệu,
-    // vì các đơn này không match qua uid/phoneRef của người nộp ở trên.
-    const normalizedKeyword = normalizePhone(text);
+      const scoreCandidate = (uid: string, user: any) =>
+        isIdMode
+          ? getIdModeScore({ uid, username: user?.username }, keywordLower)
+          : getSearchScore({ uid, username: user?.username, fullName: user?.fullName }, keywordLower)
+
+      limitedUids = Object.entries(usersMap.value)
+        .map(([uid, user]) => ({ uid, score: scoreCandidate(uid, user) }))
+        .filter(c => c.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 10)
+        .map(c => c.uid)
+    }
+
+    // BƯỚC 2: Query reports chính.
+    if (isPhoneSearch) {
+      const qReports = query(collection(db, "reports"), where("phoneRef", "==", text), limit(50));
+      const snapshot = await getDocs(qReports);
+      data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    } else if (limitedUids.length > 0) {
+      const qReports = query(collection(db, "reports"), where("uid", "in", limitedUids), limit(50));
+      const snapshot = await getDocs(qReports);
+      data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+
+    // BƯỚC 3: Gộp thêm ứng viên từ các nguồn quét bổ sung (KHÔNG lọc ở đây —
+    // lọc/score/sort tập trung một chỗ duy nhất ở BƯỚC 4).
     try {
-      const referralMatches: any[] = [];
+      const existingIds = new Set(data.map(r => r.id));
+      const pushUnique = (docs: any[]) => {
+        for (const r of docs) {
+          if (!existingIds.has(r.id)) { data.push(r); existingIds.add(r.id); }
+        }
+      };
 
-      if (normalizedKeyword.length >= 6) {
+      // 3a. SĐT bạn bè referral — exact match, giữ NGUYÊN hành vi gốc.
+      if (isPhoneSearch && normalizedPhoneKeyword.length >= 6) {
         const qFriendPhoneExact = query(
           collection(db, "reports"),
-          where("friendPhoneNormalized", "==", normalizedKeyword),
+          where("friendPhoneNormalized", "==", normalizedPhoneKeyword),
           limit(50)
         );
         const snapFriendExact = await getDocs(qFriendPhoneExact);
-        snapFriendExact.docs.forEach(d => referralMatches.push({ id: d.id, ...d.data() }));
+        pushUnique(snapFriendExact.docs.map(d => ({ id: d.id, ...d.data() })));
       }
 
+      // 3b. Quét 500 đơn "Giới thiệu bạn bè" gần nhất — GIỮ NGUYÊN phạm vi/kích thước
+      // truy vấn gốc (không được làm loãng độ sâu recall của SĐT bạn bè referral).
       const qReferralRecent = query(
         collection(db, "reports"),
         where("jobId", "in", ["referral_abbank", "referral_lpbank"]),
         limit(500)
       );
       const snapReferralRecent = await getDocs(qReferralRecent);
-      snapReferralRecent.docs.forEach(d => {
-        const report: any = { id: d.id, ...d.data() };
+      pushUnique(snapReferralRecent.docs.map(d => ({ id: d.id, ...d.data() })));
 
-        console.log("Admin search referral fields:", {
-          keyword: text,
-          normalizedKeyword,
-          reportId: report.id,
-          jobId: report.jobId,
-          friendName: report.friendName,
-          friendPhone: report.friendPhone,
-          friendPhoneNormalized: report.friendPhoneNormalized
-        });
-
-        const searchableText = [
-          report.fullName, report.username, report.phoneRef, report.uid,
-          report.jobName, report.jobId, report.friendName, report.friendPhone,
-          report.friendPhoneNormalized, report.bankType, report.type
-        ].filter(Boolean).join(" ").toLowerCase();
-
-        const textMatch = searchableText.includes(lowerText);
-        const phoneMatch = normalizedKeyword.length > 0 && (
-          normalizePhone(report.phoneRef).includes(normalizedKeyword) ||
-          normalizePhone(report.friendPhone).includes(normalizedKeyword) ||
-          String(report.friendPhoneNormalized || "").includes(normalizedKeyword)
-        );
-
-        if (textMatch || phoneMatch) referralMatches.push(report);
-      });
-
-      const existingIds = new Set(data.map(r => r.id));
-      for (const r of referralMatches) {
-        if (!existingIds.has(r.id)) {
-          data.push(r);
-          existingIds.add(r.id);
-        }
+      // 3c. Quét 300 đơn gần nhất (mọi loại job) để bắt jobName/jobId cho report thường.
+      // Không chạy khi isPhoneSearch (phone search không cần và không có regression
+      // vì bản gốc chưa từng hỗ trợ SĐT substring cho report thường).
+      if (!isPhoneSearch) {
+        const qRecentScan = query(collection(db, "reports"), orderBy("createdAt", "desc"), limit(300));
+        const snapRecentScan = await getDocs(qRecentScan);
+        pushUnique(snapRecentScan.docs.map(d => ({ id: d.id, ...d.data() })));
       }
-    } catch (referralErr) {
-      console.error("Lỗi tìm kiếm đơn giới thiệu bạn bè:", referralErr);
+    } catch (scanErr) {
+      console.error("Lỗi quét bổ sung report:", scanErr);
     }
 
-    const getTime = (t: any) => t?.toDate ? t.toDate().getTime() : new Date(t || 0).getTime();
-    data.sort((a, b) => getTime(b.createdAt) - getTime(a.createdAt));
-    reports.value = data;
+    // BƯỚC 4: Gắn username đã resolve, tính điểm liên quan MỘT LẦN DUY NHẤT cho
+    // toàn bộ candidate đã gộp, lọc score>0, sort desc + tie-break createdAt.
+    data.forEach(r => { r.username = r.username || usersMap.value[r.uid]?.username || ""; });
 
-    let uidsToSearchWith = limitedUids;
+    const scoreReport = (r: any) =>
+      isPhoneSearch
+        ? getPhoneMatchScore(r, normalizedPhoneKeyword)
+        : isIdMode
+          ? getIdModeScore({ uid: r.uid, username: r.username }, keywordLower)
+          : getSearchScore(r, keywordLower);
+
+    data.forEach(r => { r.searchScore = scoreReport(r); });
+    data = data.filter(r => r.searchScore > 0);
+
+    const getTime = (t: any) => t?.toDate ? t.toDate().getTime() : new Date(t || 0).getTime();
+    data.sort((a, b) => (b.searchScore - a.searchScore) || (getTime(b.createdAt) - getTime(a.createdAt)));
+    reports.value = data;
+    lastSearchedKeywordLower.value = keywordLower;
+
+    // BƯỚC 5: withdrawals cùng bộ uid — giữ NGUYÊN logic fallback gốc.
+    let uidsToSearchWith = isPhoneSearch ? [] : limitedUids;
     if (uidsToSearchWith.length === 0 && data.length > 0) {
       uidsToSearchWith = [data[0].uid];
     }
 
     if (uidsToSearchWith.length > 0) {
-      const validUids = uidsToSearchWith.slice(0, 10);
+      const validUids = [...new Set(uidsToSearchWith)].slice(0, 10);
       const qWith = query(collection(db, "withdrawals"), where("uid", "in", validUids));
       const snapWith = await getDocs(qWith);
       let wData = snapWith.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -1210,7 +1320,7 @@ const handleSearch = async () => {
       withdrawals.value = [];
     }
 
-    // Tìm kiếm trong daily_thread_reports (300 đơn gần nhất, filter client-side)
+    // BƯỚC 6: daily_thread_reports (300 đơn gần nhất) — filter + rank client-side.
     const qThreads = query(
       collection(db, "daily_thread_reports"),
       orderBy("createdAt", "desc"),
@@ -1218,21 +1328,42 @@ const handleSearch = async () => {
     )
     const snapThreads = await getDocs(qThreads)
     let threadData: any[] = snapThreads.docs.map(d => ({ id: d.id, ...d.data() }))
-    threadData = threadData.filter(r =>
-      (r.fullName && r.fullName.toLowerCase().includes(lowerText)) ||
-      (r.phoneRef && r.phoneRef.includes(text)) ||
-      (r.uid && r.uid.toLowerCase().includes(lowerText)) ||
-      (r.threadNick && r.threadNick.toLowerCase().includes(lowerText)) ||
-      (r.threadNickLower && r.threadNickLower.includes(lowerText)) ||
-      (r.postUrl && r.postUrl.toLowerCase().includes(lowerText)) ||
-      (r.postUrlNormalized && r.postUrlNormalized.toLowerCase().includes(lowerText))
-    )
+
+    threadData = threadData
+      .map(r => {
+        let score = 0;
+        if (isPhoneSearch) {
+          const phoneRefN = normalizePhone(r.phoneRef);
+          if (phoneRefN === normalizedPhoneKeyword) score = 100;
+          else if (r.phoneRef && String(r.phoneRef).includes(text)) score = 40; // giữ hành vi cũ (raw includes)
+        } else if (isIdMode) {
+          score = getIdModeScore({ uid: r.uid, username: r.threadNickLower || r.threadNick }, keywordLower);
+        } else {
+          score = getThreadSearchScore(r, keywordLower);
+        }
+        return { ...r, searchScore: score };
+      })
+      .filter(r => r.searchScore > 0)
+      .sort((a, b) => (b.searchScore - a.searchScore) || (getTime(b.createdAt) - getTime(a.createdAt)));
+
     searchThreadResults.value = threadData
     isThreadSearchMode.value = threadData.length > 0
 
     // Auto-switch sang tab Thread nếu chỉ tìm thấy đơn Thread (không có reports/withdrawals)
     if (threadData.length > 0 && data.length === 0 && withdrawals.value.length === 0) {
       activeTab.value = 'daily_threads'
+    }
+
+    // Log debug tổng hợp — chỉ DEV.
+    if (import.meta.env.DEV) {
+      console.log("Admin search:", {
+        keyword: text,
+        keywordLower,
+        normalizedPhoneKeyword,
+        isPhoneSearch,
+        isIdMode,
+        results: data.map(r => ({ id: r.id, username: r.username, fullName: r.fullName, phoneRef: r.phoneRef, score: r.searchScore }))
+      });
     }
   } catch (error: any) {
     alert("LỖI TÌM KIẾM: " + error.message);
@@ -1859,7 +1990,7 @@ const handleAdminLogout = async () => {
       
       <div class="flex flex-wrap items-center gap-3">
         <div class="flex items-center gap-1 bg-[#111726] p-1.5 rounded-xl border border-slate-800 focus-within:border-blue-500 transition-colors">
-          <input class="bg-[#0d121f] text-white text-[10px] py-2 px-3 rounded-lg border border-slate-700 outline-none w-[170px] md:w-[200px] placeholder:text-slate-600 font-sans not-italic normal-case" v-model="searchQuery" @keyup.enter="handleSearch" type="text" placeholder="🔎 Tìm Username hoặc SĐT..." />
+          <input class="bg-[#0d121f] text-white text-[10px] py-2 px-3 rounded-lg border border-slate-700 outline-none w-[170px] md:w-[200px] placeholder:text-slate-600 font-sans not-italic normal-case" v-model="searchQuery" @keyup.enter="handleSearch" type="text" placeholder="🔎 Username/SĐT... VD: id:min" />
           <button class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-lg text-[10px] font-black transition-colors" @click="handleSearch">TÌM</button>
           <button class="bg-slate-700 hover:bg-slate-600 text-white px-2 py-2 rounded-lg text-[10px] font-black transition-colors" v-if="searchQuery" @click="searchQuery = ''; handleSearch()">✕</button>
         </div>
@@ -2035,7 +2166,10 @@ const handleAdminLogout = async () => {
                 <div class="mb-2 pb-2 border-b border-slate-700/50 flex justify-between items-start">
                   <div>
                     <span class="text-[9px] text-emerald-400 tracking-widest block mb-0.5">TÀI KHOẢN GỐC:</span>
-                    <div class="text-white text-sm md:text-base font-black truncate max-w-[200px]">{{ usersMap[rp.uid]?.username || usersMap[rp.uid]?.fullName || 'CHƯA CẬP NHẬT' }}</div>
+                    <div class="text-white text-sm md:text-base font-black truncate max-w-[200px] flex items-center gap-1.5">
+                      {{ usersMap[rp.uid]?.username || usersMap[rp.uid]?.fullName || 'CHƯA CẬP NHẬT' }}
+                      <span v-if="lastSearchedKeywordLower && String(usersMap[rp.uid]?.username || '').toLowerCase() === lastSearchedKeywordLower" class="text-[8px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-full tracking-wide shrink-0">✓ KHỚP CHÍNH XÁC</span>
+                    </div>
                     <div class="text-slate-400 text-[10px] mt-0.5 font-sans not-italic tracking-normal">Ví hiện tại: <span class="text-yellow-400 font-black">{{ usersMap[rp.uid]?.balance }} XU</span></div>
                     <div class="text-slate-400 text-[10px] mt-0.5 font-sans not-italic tracking-normal">
                       Ngày sinh: 
@@ -2147,7 +2281,10 @@ const handleAdminLogout = async () => {
           <tbody class="divide-y divide-slate-800/50">
             <tr class="hover:bg-white/[0.02] transition-colors group" v-for="wd in filteredWithdrawals" :key="wd.id">
               <td class="p-6">
-                <div class="text-white text-sm md:text-base font-black">{{ usersMap[wd.uid]?.username || 'CHƯA CẬP NHẬT' }}</div>
+                <div class="text-white text-sm md:text-base font-black flex items-center gap-1.5">
+                  {{ usersMap[wd.uid]?.username || 'CHƯA CẬP NHẬT' }}
+                  <span v-if="lastSearchedKeywordLower && String(usersMap[wd.uid]?.username || '').toLowerCase() === lastSearchedKeywordLower" class="text-[8px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-full tracking-wide shrink-0">✓ KHỚP CHÍNH XÁC</span>
+                </div>
                 
                 <div class="text-slate-400 text-[10px] mt-0.5 font-sans not-italic tracking-normal">
                   Ngày sinh: 

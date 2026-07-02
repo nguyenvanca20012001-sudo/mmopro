@@ -112,7 +112,7 @@ const isScanAllDone  = ref(false)
 const isBulkPaying   = ref(false)
 const isBulkRejecting = ref(false)
 
-const selectedIds  = ref<string[]>([])
+const selectedDailyThreadReportIds = ref<string[]>([])
 const expandedUids = ref<string[]>([])
 
 interface DupDetail { type: 'url' | 'nick'; key: string }
@@ -259,7 +259,9 @@ const totalPending   = computed(() => reports.value.filter(r => r.status === 'pe
 const totalPaid      = computed(() => reports.value.filter(r => r.status === 'paid').length)
 const totalRejected  = computed(() => reports.value.filter(r => r.status === 'rejected').length)
 const totalXuPending = computed(() => reports.value.filter(r => r.status === 'pending').reduce((s, r) => s + (r.reward || 0), 0))
-const selectedPending = computed(() => selectedIds.value.filter(id => reports.value.find(r => r.id === id)?.status === 'pending'))
+const selectedPending = computed(() => selectedDailyThreadReportIds.value.filter(id => reports.value.find(r => r.id === id)?.status === 'pending'))
+const visiblePendingReports = computed(() => filteredReports.value.filter(r => r.status === 'pending'))
+const isProcessingBulk = computed(() => isBulkPaying.value || isBulkRejecting.value)
 
 // ─── Load data ────────────────────────────────────────────────────────────────
 
@@ -277,7 +279,7 @@ async function loadReports() {
   lastDoc.value       = null
   hasMore.value       = false
   isScanAllDone.value = false
-  selectedIds.value   = []
+  selectedDailyThreadReportIds.value   = []
   activeDupDetail.value = null
 
   const c: any[] = []
@@ -307,7 +309,7 @@ async function loadMore() { /* không dùng — xem scanAllForDay */ }
 
 async function scanAllForDay() {
   isLoading.value = true
-  selectedIds.value = []
+  selectedDailyThreadReportIds.value = []
   activeDupDetail.value = null
   console.log('[Thread Admin] scanAllForDay:', { dateKey: selectedDate.value })
   try {
@@ -329,7 +331,18 @@ async function scanAllForDay() {
 
 watch([selectedDate, statusFilter], loadReports, { immediate: true })
 
+// Đổi warning-filter/search cũng làm thay đổi danh sách đang hiển thị — clear selected
+// để tránh xử lý nhầm đơn không còn hiển thị (date/status đã tự clear qua loadReports ở trên).
+watch([warningFilter, searchText], () => {
+  selectedDailyThreadReportIds.value = []
+})
+
 // ─── Actions ─────────────────────────────────────────────────────────────────
+
+function removeFromSelection(id: string) {
+  const i = selectedDailyThreadReportIds.value.indexOf(id)
+  if (i !== -1) selectedDailyThreadReportIds.value.splice(i, 1)
+}
 
 async function payReport(report: ThreadReport) {
   if (report.status !== 'pending') return
@@ -367,6 +380,7 @@ async function payReport(report: ThreadReport) {
     })
     const idx = reports.value.findIndex(r => r.id === report.id)
     if (idx !== -1) reports.value[idx] = { ...reports.value[idx], status: 'paid', reward: xuAmount } as ThreadReport
+    removeFromSelection(report.id)
     Swal.fire({ title: 'Đã cộng xu!', text: `Đã cộng ${xuAmount.toLocaleString('vi-VN')} xu cho ${report.fullName}.`, icon: 'success', background: '#111726', color: '#e2e8f0', confirmButtonColor: '#7c3aed', timer: 2000, showConfirmButton: false })
   } catch (err: any) {
     Swal.fire({ title: 'Lỗi', text: err?.message || 'Có lỗi xảy ra.', icon: 'error', background: '#111726', color: '#e2e8f0', confirmButtonColor: '#7c3aed' })
@@ -428,6 +442,7 @@ async function rejectReport(report: ThreadReport) {
     })
     const idx = reports.value.findIndex(r => r.id === report.id)
     if (idx !== -1) reports.value[idx] = { ...reports.value[idx], status: 'rejected', rejectReason: reason, rejectNote: note } as ThreadReport
+    removeFromSelection(report.id)
     console.log('[Thread Admin] Rejected successfully:', report.id)
     Swal.fire({ title: 'Đã từ chối!', text: `Đã từ chối đơn của ${report.fullName}.`, icon: 'info', background: '#111726', color: '#e2e8f0', confirmButtonColor: '#7c3aed', timer: 2000, showConfirmButton: false })
   } catch (err: any) {
@@ -436,13 +451,60 @@ async function rejectReport(report: ThreadReport) {
   }
 }
 
+// Popup progress không cho đóng/tương tác trong lúc xử lý hàng loạt — dùng chung cho bulkPay/bulkReject.
+async function runBulkWithProgress(
+  title: string,
+  list: ThreadReport[],
+  processOne: (report: ThreadReport) => Promise<'success' | 'skip' | 'error'>
+): Promise<{ success: number; skip: number; error: number }> {
+  let success = 0, skip = 0, error = 0
+  const total = list.length
+
+  const renderHtml = (current: number) => `
+    <div style="text-align:left;font-size:13px;line-height:1.9">
+      <p style="color:#e2e8f0">Đang xử lý ${current}/${total} đơn...</p>
+      <p>Thành công: <b style="color:#34d399">${success}</b></p>
+      <p>Bỏ qua: <b style="color:#fbbf24">${skip}</b></p>
+      <p>Lỗi: <b style="color:#f87171">${error}</b></p>
+    </div>`
+
+  Swal.fire({
+    title,
+    html: renderHtml(0),
+    allowOutsideClick: false,
+    allowEscapeKey: false,
+    showConfirmButton: false,
+    background: '#111726',
+    color: '#e2e8f0',
+  })
+
+  for (let i = 0; i < list.length; i++) {
+    const report = list[i] as ThreadReport
+    let outcome: 'success' | 'skip' | 'error'
+    try {
+      outcome = await processOne(report)
+    } catch (e) {
+      console.error(`[Thread Admin] bulk process failed ${report.id}:`, e)
+      outcome = 'error'
+    }
+    if (outcome === 'success') success++
+    else if (outcome === 'skip') skip++
+    else error++
+    Swal.update({ html: renderHtml(i + 1) })
+  }
+
+  Swal.close()
+  return { success, skip, error }
+}
+
 async function bulkPay() {
-  const pendingList = reports.value.filter(r => selectedIds.value.includes(r.id) && r.status === 'pending')
+  if (isProcessingBulk.value) return
+  const pendingList = reports.value.filter(r => selectedDailyThreadReportIds.value.includes(r.id) && r.status === 'pending')
   if (!pendingList.length) return
 
   const totalXu = pendingList.reduce((s, r) => s + (r.reward || 0), 0)
   const { isConfirmed } = await Swal.fire({
-    title: `Cộng xu ${pendingList.length} đơn?`,
+    title: `Bạn sắp cộng xu cho ${pendingList.length} đơn đã chọn. Tiếp tục?`,
     html: `Tổng xu sẽ cộng: <b>${totalXu.toLocaleString('vi-VN')} xu</b><br/><span style="font-size:12px;color:#94a3b8">Hệ thống tự kiểm tra chống cộng trùng.</span>`,
     icon: 'warning',
     showCancelButton: true,
@@ -456,39 +518,35 @@ async function bulkPay() {
 
   isBulkPaying.value = true
   const adminUid = auth.currentUser?.uid || ''
-  let successCount = 0, skipCount = 0
 
-  for (const report of pendingList) {
+  const { success, skip, error } = await runBulkWithProgress('Đang cộng xu...', pendingList, async (report) => {
     let wasSkipped = false
-    try {
-      await runTransaction(db, async (tx) => {
-        const ref = doc(db, 'daily_thread_reports', report.id)
-        const snap = await tx.get(ref)
-        wasSkipped = !snap.exists() || snap.data().status !== 'pending'
-        if (wasSkipped) return
-        tx.update(doc(db, 'users', report.uid), { balance: increment(report.reward || 0) })
-        tx.update(ref, { status: 'paid', paidAt: serverTimestamp(), paidBy: adminUid })
-      })
-      if (wasSkipped) { skipCount++ }
-      else {
-        successCount++
-        const idx = reports.value.findIndex(r => r.id === report.id)
-        if (idx !== -1) reports.value[idx] = { ...reports.value[idx], status: 'paid' } as ThreadReport
-      }
-    } catch (e) { console.error(`bulkPay ${report.id}:`, e) }
-  }
+    await runTransaction(db, async (tx) => {
+      const ref = doc(db, 'daily_thread_reports', report.id)
+      const snap = await tx.get(ref)
+      wasSkipped = !snap.exists() || snap.data().status !== 'pending'
+      if (wasSkipped) return
+      tx.update(doc(db, 'users', report.uid), { balance: increment(report.reward || 0) })
+      tx.update(ref, { status: 'paid', paidAt: serverTimestamp(), paidBy: adminUid })
+    })
+    if (wasSkipped) return 'skip'
+    const idx = reports.value.findIndex(r => r.id === report.id)
+    if (idx !== -1) reports.value[idx] = { ...reports.value[idx], status: 'paid' } as ThreadReport
+    return 'success'
+  })
 
   isBulkPaying.value = false
-  selectedIds.value = []
+  selectedDailyThreadReportIds.value = []
   Swal.fire({
     title: 'Hoàn tất!',
-    html: `Đã cộng: <b>${successCount}</b> đơn.${skipCount > 0 ? `<br/>Bỏ qua: <b>${skipCount}</b>` : ''}`,
-    icon: 'success', background: '#111726', color: '#e2e8f0', confirmButtonColor: '#7c3aed', timer: 3000, showConfirmButton: false
+    html: `Thành công: <b style="color:#34d399">${success}</b><br/>Bỏ qua: <b style="color:#fbbf24">${skip}</b>${error > 0 ? `<br/>Lỗi: <b style="color:#f87171">${error}</b>` : ''}`,
+    icon: error > 0 ? 'warning' : 'success', background: '#111726', color: '#e2e8f0', confirmButtonColor: '#7c3aed', timer: error > 0 ? undefined : 3000, showConfirmButton: error > 0
   })
 }
 
-// Lõi dùng chung cho mọi luồng "từ chối hàng loạt": chọn tay, theo user-group, theo danh sách đang hiển thị
+// Lõi dùng chung cho luồng "từ chối hàng loạt" (chọn tay qua checkbox)
 async function confirmAndRejectMany(pendingList: ThreadReport[], opts: { title: string; infoHtml: string }) {
+  if (isProcessingBulk.value) return
   if (!pendingList.length) return
 
   const result = await Swal.fire({
@@ -531,67 +589,42 @@ async function confirmAndRejectMany(pendingList: ThreadReport[], opts: { title: 
 
   isBulkRejecting.value = true
   const adminUid = auth.currentUser?.uid || ''
-  let successCount = 0, skipCount = 0
 
-  for (const report of pendingList) {
+  const { success, skip, error } = await runBulkWithProgress('Đang từ chối...', pendingList, async (report) => {
     let wasSkipped = false
-    try {
-      await runTransaction(db, async (tx) => {
-        const ref = doc(db, 'daily_thread_reports', report.id)
-        const snap = await tx.get(ref)
-        wasSkipped = !snap.exists() || snap.data().status !== 'pending'
-        if (wasSkipped) return
-        tx.update(ref, {
-          status: 'rejected',
-          rejectedAt: serverTimestamp(),
-          rejectedBy: adminUid,
-          rejectReason: reason,
-          rejectNote: note,
-        })
+    await runTransaction(db, async (tx) => {
+      const ref = doc(db, 'daily_thread_reports', report.id)
+      const snap = await tx.get(ref)
+      wasSkipped = !snap.exists() || snap.data().status !== 'pending'
+      if (wasSkipped) return
+      tx.update(ref, {
+        status: 'rejected',
+        rejectedAt: serverTimestamp(),
+        rejectedBy: adminUid,
+        rejectReason: reason,
+        rejectNote: note,
       })
-      if (wasSkipped) {
-        skipCount++
-      } else {
-        successCount++
-        const idx = reports.value.findIndex(r => r.id === report.id)
-        if (idx !== -1) reports.value[idx] = { ...reports.value[idx], status: 'rejected', rejectReason: reason, rejectNote: note } as ThreadReport
-        console.log('[Thread Admin] Rejected successfully:', report.id)
-      }
-    } catch (e) {
-      console.error(`[Thread Admin] bulkReject failed ${report.id}:`, e)
-    }
-  }
+    })
+    if (wasSkipped) return 'skip'
+    const idx = reports.value.findIndex(r => r.id === report.id)
+    if (idx !== -1) reports.value[idx] = { ...reports.value[idx], status: 'rejected', rejectReason: reason, rejectNote: note } as ThreadReport
+    return 'success'
+  })
 
   isBulkRejecting.value = false
-  selectedIds.value = []
+  selectedDailyThreadReportIds.value = []
   Swal.fire({
     title: 'Hoàn tất!',
-    html: `Đã từ chối: <b>${successCount}</b> đơn.${skipCount > 0 ? `<br/>Bỏ qua: <b>${skipCount}</b> đơn đã được xử lý trước đó` : ''}`,
-    icon: 'info', background: '#111726', color: '#e2e8f0', confirmButtonColor: '#7c3aed', timer: 3000, showConfirmButton: false
+    html: `Thành công: <b style="color:#34d399">${success}</b><br/>Bỏ qua: <b style="color:#fbbf24">${skip}</b>${error > 0 ? `<br/>Lỗi: <b style="color:#f87171">${error}</b>` : ''}`,
+    icon: error > 0 ? 'warning' : 'info', background: '#111726', color: '#e2e8f0', confirmButtonColor: '#7c3aed', timer: error > 0 ? undefined : 3000, showConfirmButton: error > 0
   })
 }
 
 async function bulkReject() {
-  const pendingList = reports.value.filter(r => selectedIds.value.includes(r.id) && r.status === 'pending')
+  const pendingList = reports.value.filter(r => selectedDailyThreadReportIds.value.includes(r.id) && r.status === 'pending')
   await confirmAndRejectMany(pendingList, {
     title: `Từ chối ${pendingList.length} đơn?`,
     infoHtml: `Sẽ từ chối <b>${pendingList.length}</b> đơn đang chọn (chỉ áp dụng đơn còn <b>chờ</b>).`,
-  })
-}
-
-async function rejectAllPendingForGroup(group: UserGroup) {
-  const pendingList = group.reports.filter(r => r.status === 'pending')
-  await confirmAndRejectMany(pendingList, {
-    title: `Từ chối tất cả đơn chờ của ${group.fullName}?`,
-    infoHtml: `Sẽ từ chối <b>${pendingList.length}</b> đơn đang chờ của user này (không cộng xu, không xoá đơn).`,
-  })
-}
-
-async function rejectAllVisiblePending() {
-  const pendingList = filteredReports.value.filter(r => r.status === 'pending')
-  await confirmAndRejectMany(pendingList, {
-    title: 'Từ chối tất cả đơn chờ đang hiển thị?',
-    infoHtml: `Bạn sắp từ chối <b>${pendingList.length}</b> đơn đang chờ. Hành động này không cộng xu và không xoá đơn.`,
   })
 }
 
@@ -603,26 +636,34 @@ function toggleExpand(uid: string) {
   else expandedUids.value.push(uid)
 }
 
+// Debug tạm thời — xem YÊU CẦU 9: kiểm tra state selected khi tick có đổi đúng không.
+function logSelected() {
+  console.log('Selected daily thread reports:', Array.from(selectedDailyThreadReportIds.value))
+}
+
 function toggleSelect(id: string) {
-  const i = selectedIds.value.indexOf(id)
-  if (i !== -1) selectedIds.value.splice(i, 1)
-  else selectedIds.value.push(id)
+  const i = selectedDailyThreadReportIds.value.indexOf(id)
+  if (i !== -1) selectedDailyThreadReportIds.value.splice(i, 1)
+  else selectedDailyThreadReportIds.value.push(id)
+  logSelected()
 }
 
 function selectAllPending() {
   const ids = filteredReports.value.filter(r => r.status === 'pending').map(r => r.id)
-  selectedIds.value = [...new Set([...selectedIds.value, ...ids])]
+  selectedDailyThreadReportIds.value = [...new Set([...selectedDailyThreadReportIds.value, ...ids])]
+  logSelected()
 }
 
-function clearSelection() { selectedIds.value = [] }
+function clearSelection() { selectedDailyThreadReportIds.value = []; logSelected() }
 
 function setDateToday()     { selectedDate.value = getDateKey() }
 function setDateYesterday() { const d = new Date(); d.setDate(d.getDate() - 1); selectedDate.value = getDateKey(d) }
 
 function toggleGroupSelect(groupReports: ThreadReport[], checked: boolean) {
   const allPending = groupReports.filter(r => r.status === 'pending').map(r => r.id)
-  if (checked) selectedIds.value = [...new Set([...selectedIds.value, ...allPending])]
-  else selectedIds.value = selectedIds.value.filter((id: string) => !allPending.includes(id))
+  if (checked) selectedDailyThreadReportIds.value = [...new Set([...selectedDailyThreadReportIds.value, ...allPending])]
+  else selectedDailyThreadReportIds.value = selectedDailyThreadReportIds.value.filter((id: string) => !allPending.includes(id))
+  logSelected()
 }
 
 function openDupDetail(type: 'url' | 'nick', key: string) {
@@ -742,42 +783,43 @@ const yesterdayKey = computed(() => {
       </div>
     </div>
 
-    <!-- ── Từ chối tất cả đơn chờ đang hiển thị ───────────────── -->
-    <div v-if="filteredReports.filter(r => r.status === 'pending').length > 0"
-      class="flex items-center justify-between gap-3 bg-red-900/10 border border-red-500/20 rounded-xl px-4 py-2.5 flex-wrap">
-      <span class="text-xs text-red-300/80 font-medium">
-        Có <b>{{ filteredReports.filter(r => r.status === 'pending').length }}</b> đơn đang chờ trong danh sách hiển thị.
+    <!-- ── Chọn tất cả đơn chờ đang hiển thị ──────────────────── -->
+    <div v-if="visiblePendingReports.length > 0"
+      class="flex items-center gap-3 bg-slate-800/40 border border-slate-700/40 rounded-xl px-4 py-2.5">
+      <input type="checkbox"
+        class="w-5 h-5 rounded border-2 border-slate-400 bg-slate-900 appearance-none checked:bg-purple-600 checked:border-purple-500 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+        :disabled="isProcessingBulk"
+        :checked="visiblePendingReports.every(r => selectedDailyThreadReportIds.includes(r.id))"
+        @change="(e) => (e.target as HTMLInputElement).checked ? selectAllPending() : clearSelection()" />
+      <span class="text-xs text-slate-400 font-semibold">
+        Chọn tất cả đơn chờ đang hiển thị ({{ visiblePendingReports.length }})
       </span>
-      <button @click="rejectAllVisiblePending" :disabled="isBulkRejecting"
-        class="px-4 py-1.5 rounded-lg text-xs font-black transition-all bg-red-600/20 text-red-400 hover:bg-red-600/30 border border-red-500/30 disabled:opacity-50 disabled:cursor-not-allowed">
-        ❌ Từ chối tất cả đơn chờ đang hiển thị
-      </button>
     </div>
 
     <!-- ── Bulk action bar ────────────────────────────────────── -->
-    <div v-if="selectedIds.length > 0"
+    <div v-if="selectedDailyThreadReportIds.length > 0"
       class="flex items-center justify-between gap-3 bg-purple-900/30 border border-purple-500/30 rounded-xl px-4 py-2.5 flex-wrap">
       <span class="text-sm text-purple-200 font-semibold">
-        Đã chọn <b>{{ selectedPending.length }}</b> đơn pending
+        Đã chọn: <b>{{ selectedPending.length }}</b> đơn
       </span>
       <div class="flex gap-2">
-        <button @click="clearSelection"
-          class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 hover:bg-slate-700 transition-all">
+        <button @click="clearSelection" :disabled="isProcessingBulk"
+          class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 text-slate-400 hover:bg-slate-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
           Bỏ chọn
         </button>
-        <button @click="bulkReject" :disabled="isBulkRejecting || selectedPending.length === 0"
+        <button @click="bulkPay" :disabled="isProcessingBulk || selectedPending.length === 0"
           class="px-4 py-1.5 rounded-lg text-xs font-black transition-all"
-          :class="isBulkRejecting || selectedPending.length === 0
-            ? 'bg-slate-700/50 text-slate-500 cursor-not-allowed'
-            : 'bg-red-600/20 text-red-400 hover:bg-red-600/30 border border-red-500/30'">
-          {{ isBulkRejecting ? 'Đang xử lý...' : `❌ Từ chối ${selectedPending.length} đơn` }}
-        </button>
-        <button @click="bulkPay" :disabled="isBulkPaying || selectedPending.length === 0"
-          class="px-4 py-1.5 rounded-lg text-xs font-black transition-all"
-          :class="isBulkPaying || selectedPending.length === 0
+          :class="isProcessingBulk || selectedPending.length === 0
             ? 'bg-slate-700/50 text-slate-500 cursor-not-allowed'
             : 'bg-gradient-to-r from-purple-600 to-fuchsia-500 text-white hover:opacity-90'">
-          {{ isBulkPaying ? 'Đang xử lý...' : `💰 Cộng xu ${selectedPending.length} đơn` }}
+          {{ isBulkPaying ? 'Đang xử lý...' : `✅ Cộng xu đơn đã chọn (${selectedPending.length})` }}
+        </button>
+        <button @click="bulkReject" :disabled="isProcessingBulk || selectedPending.length === 0"
+          class="px-4 py-1.5 rounded-lg text-xs font-black transition-all"
+          :class="isProcessingBulk || selectedPending.length === 0
+            ? 'bg-slate-700/50 text-slate-500 cursor-not-allowed'
+            : 'bg-red-600/20 text-red-400 hover:bg-red-600/30 border border-red-500/30'">
+          {{ isBulkRejecting ? 'Đang xử lý...' : `❌ Từ chối đơn đã chọn (${selectedPending.length})` }}
         </button>
       </div>
     </div>
@@ -826,10 +868,6 @@ const yesterdayKey = computed(() => {
             <span v-if="group.hasWarning" class="text-[10px] font-black bg-orange-500/15 text-orange-400 border border-orange-500/25 px-2 py-0.5 rounded-full">
               ⚠ Nghi vấn
             </span>
-            <button v-if="group.pendingCount > 0" @click.stop="rejectAllPendingForGroup(group)" :disabled="isBulkRejecting"
-              class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-red-600/20 text-red-400 hover:bg-red-600/30 border border-red-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-              Từ chối tất cả đơn chờ
-            </button>
             <span class="text-slate-500 text-xs">{{ expandedUids.includes(group.uid) ? '▲' : '▼' }}</span>
           </div>
         </div>
@@ -843,8 +881,10 @@ const yesterdayKey = computed(() => {
               <thead>
                 <tr class="border-b border-slate-800">
                   <th class="px-3 py-2 text-left w-8">
-                    <input type="checkbox" class="accent-purple-500"
-                      :checked="group.reports.filter(r => r.status === 'pending').length > 0 && group.reports.filter(r => r.status === 'pending').every(r => selectedIds.includes(r.id))"
+                    <input type="checkbox"
+                      class="w-5 h-5 rounded border-2 border-slate-400 bg-slate-900 appearance-none checked:bg-purple-600 checked:border-purple-500 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      :disabled="isProcessingBulk"
+                      :checked="group.reports.filter(r => r.status === 'pending').length > 0 && group.reports.filter(r => r.status === 'pending').every(r => selectedDailyThreadReportIds.includes(r.id))"
                       @change="(e) => toggleGroupSelect(group.reports, (e.target as HTMLInputElement).checked)" />
                   </th>
                   <th class="px-3 py-2 text-left text-[10px] text-slate-500 uppercase tracking-wide font-semibold">Nick Thread</th>
@@ -861,8 +901,10 @@ const yesterdayKey = computed(() => {
                   class="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors"
                   :class="r.status !== 'pending' ? 'opacity-70' : ''">
                   <td class="px-3 py-2">
-                    <input v-if="r.status === 'pending'" type="checkbox" class="accent-purple-500"
-                      :checked="selectedIds.includes(r.id)" @change="toggleSelect(r.id)" />
+                    <input v-if="r.status === 'pending'" type="checkbox"
+                      class="w-5 h-5 rounded border-2 border-slate-400 bg-slate-900 appearance-none checked:bg-purple-600 checked:border-purple-500 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                      :disabled="isProcessingBulk"
+                      :checked="selectedDailyThreadReportIds.includes(r.id)" @change="toggleSelect(r.id)" />
                   </td>
                   <td class="px-3 py-2 text-purple-300 font-semibold not-italic normal-case">{{ r.threadNick }}</td>
                   <td class="px-3 py-2 text-right font-black text-white">{{ r.qrViewCount.toLocaleString('vi-VN') }}</td>
@@ -896,12 +938,12 @@ const yesterdayKey = computed(() => {
                   </td>
                   <td class="px-3 py-2 text-right">
                     <div v-if="r.status === 'pending'" class="flex gap-1 justify-end">
-                      <button @click="payReport(r)"
-                        class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-purple-600/80 text-white hover:bg-purple-600 active:scale-95 transition-all">
+                      <button @click="payReport(r)" :disabled="isProcessingBulk"
+                        class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-purple-600/80 text-white hover:bg-purple-600 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
                         Cộng xu
                       </button>
-                      <button @click="rejectReport(r)"
-                        class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-red-600/20 text-red-400 hover:bg-red-600/30 active:scale-95 transition-all border border-red-500/20">
+                      <button @click="rejectReport(r)" :disabled="isProcessingBulk"
+                        class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-red-600/20 text-red-400 hover:bg-red-600/30 active:scale-95 transition-all border border-red-500/20 disabled:opacity-40 disabled:cursor-not-allowed">
                         Từ chối
                       </button>
                     </div>
@@ -918,8 +960,10 @@ const yesterdayKey = computed(() => {
             <div v-for="r in group.reports" :key="r.id" class="px-4 py-3 space-y-2"
               :class="r.status !== 'pending' ? 'opacity-70' : ''">
               <div class="flex items-center gap-2">
-                <input v-if="r.status === 'pending'" type="checkbox" class="accent-purple-500 shrink-0"
-                  :checked="selectedIds.includes(r.id)" @change="toggleSelect(r.id)" />
+                <input v-if="r.status === 'pending'" type="checkbox"
+                  class="w-5 h-5 rounded border-2 border-slate-400 bg-slate-900 appearance-none checked:bg-purple-600 checked:border-purple-500 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+                  :disabled="isProcessingBulk"
+                  :checked="selectedDailyThreadReportIds.includes(r.id)" @change="toggleSelect(r.id)" />
                 <span class="text-purple-300 font-semibold text-sm not-italic normal-case flex-1 truncate">{{ r.threadNick }}</span>
                 <span class="text-[10px] font-black px-2 py-0.5 rounded-full border shrink-0"
                   :class="r.status === 'paid'     ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
@@ -944,12 +988,12 @@ const yesterdayKey = computed(() => {
                 </span>
               </div>
               <div v-if="r.status === 'pending'" class="flex gap-2 justify-end">
-                <button @click="rejectReport(r)"
-                  class="px-3 py-1.5 rounded-lg text-[10px] font-black bg-red-600/20 text-red-400 hover:bg-red-600/30 border border-red-500/20 transition-all">
+                <button @click="rejectReport(r)" :disabled="isProcessingBulk"
+                  class="px-3 py-1.5 rounded-lg text-[10px] font-black bg-red-600/20 text-red-400 hover:bg-red-600/30 border border-red-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
                   Từ chối
                 </button>
-                <button @click="payReport(r)"
-                  class="px-4 py-1.5 rounded-lg text-[10px] font-black bg-gradient-to-r from-purple-600 to-fuchsia-500 text-white active:scale-95 transition-all">
+                <button @click="payReport(r)" :disabled="isProcessingBulk"
+                  class="px-4 py-1.5 rounded-lg text-[10px] font-black bg-gradient-to-r from-purple-600 to-fuchsia-500 text-white active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
                   💰 Cộng xu
                 </button>
               </div>
@@ -962,16 +1006,6 @@ const yesterdayKey = computed(() => {
 
     <!-- ── FLAT VIEW ──────────────────────────────────────────── -->
     <div v-else class="bg-[#111726] border border-slate-800 rounded-2xl overflow-hidden">
-
-      <div class="flex items-center gap-3 px-4 py-2 border-b border-slate-800 bg-slate-800/20">
-        <input type="checkbox" class="accent-purple-500"
-          :checked="filteredReports.filter(r => r.status === 'pending').length > 0 &&
-            filteredReports.filter(r => r.status === 'pending').every(r => selectedIds.includes(r.id))"
-          @change="(e) => (e.target as HTMLInputElement).checked ? selectAllPending() : clearSelection()" />
-        <span class="text-[10px] text-slate-500 uppercase tracking-wide font-semibold">
-          Chọn tất cả pending ({{ filteredReports.filter(r => r.status === 'pending').length }})
-        </span>
-      </div>
 
       <!-- Desktop table -->
       <div class="hidden md:block overflow-x-auto">
@@ -994,8 +1028,10 @@ const yesterdayKey = computed(() => {
               class="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors"
               :class="r.status !== 'pending' ? 'opacity-70' : ''">
               <td class="px-3 py-2">
-                <input v-if="r.status === 'pending'" type="checkbox" class="accent-purple-500"
-                  :checked="selectedIds.includes(r.id)" @change="toggleSelect(r.id)" />
+                <input v-if="r.status === 'pending'" type="checkbox"
+                  class="w-5 h-5 rounded border-2 border-slate-400 bg-slate-900 appearance-none checked:bg-purple-600 checked:border-purple-500 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                  :disabled="isProcessingBulk"
+                  :checked="selectedDailyThreadReportIds.includes(r.id)" @change="toggleSelect(r.id)" />
               </td>
               <td class="px-3 py-2">
                 <p class="text-white font-semibold uppercase text-[11px] leading-tight">{{ r.fullName }}</p>
@@ -1033,12 +1069,12 @@ const yesterdayKey = computed(() => {
               </td>
               <td class="px-3 py-2 text-right">
                 <div v-if="r.status === 'pending'" class="flex gap-1 justify-end">
-                  <button @click="payReport(r)"
-                    class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-purple-600/80 text-white hover:bg-purple-600 active:scale-95 transition-all">
+                  <button @click="payReport(r)" :disabled="isProcessingBulk"
+                    class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-purple-600/80 text-white hover:bg-purple-600 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
                     Cộng xu
                   </button>
-                  <button @click="rejectReport(r)"
-                    class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-red-600/20 text-red-400 hover:bg-red-600/30 border border-red-500/20 transition-all">
+                  <button @click="rejectReport(r)" :disabled="isProcessingBulk"
+                    class="px-2.5 py-1 rounded-lg text-[10px] font-black bg-red-600/20 text-red-400 hover:bg-red-600/30 border border-red-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
                     Từ chối
                   </button>
                 </div>
@@ -1055,8 +1091,10 @@ const yesterdayKey = computed(() => {
         <div v-for="r in filteredReports" :key="r.id" class="px-4 py-3 space-y-2"
           :class="r.status !== 'pending' ? 'opacity-70' : ''">
           <div class="flex items-start gap-2">
-            <input v-if="r.status === 'pending'" type="checkbox" class="accent-purple-500 mt-0.5 shrink-0"
-              :checked="selectedIds.includes(r.id)" @change="toggleSelect(r.id)" />
+            <input v-if="r.status === 'pending'" type="checkbox"
+              class="w-5 h-5 rounded border-2 border-slate-400 bg-slate-900 appearance-none checked:bg-purple-600 checked:border-purple-500 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-colors mt-0.5 shrink-0"
+              :disabled="isProcessingBulk"
+              :checked="selectedDailyThreadReportIds.includes(r.id)" @change="toggleSelect(r.id)" />
             <div class="flex-1 min-w-0">
               <p class="text-white font-black text-sm uppercase tracking-tight truncate">{{ r.fullName }}</p>
               <p class="text-slate-400 text-[11px] not-italic normal-case">{{ r.phoneRef }}</p>
@@ -1085,12 +1123,12 @@ const yesterdayKey = computed(() => {
             </span>
           </div>
           <div v-if="r.status === 'pending'" class="flex gap-2 justify-end">
-            <button @click="rejectReport(r)"
-              class="px-3 py-1.5 rounded-lg text-[10px] font-black bg-red-600/20 text-red-400 hover:bg-red-600/30 border border-red-500/20 transition-all">
+            <button @click="rejectReport(r)" :disabled="isProcessingBulk"
+              class="px-3 py-1.5 rounded-lg text-[10px] font-black bg-red-600/20 text-red-400 hover:bg-red-600/30 border border-red-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
               Từ chối
             </button>
-            <button @click="payReport(r)"
-              class="px-4 py-1.5 rounded-lg text-[10px] font-black bg-gradient-to-r from-purple-600 to-fuchsia-500 text-white active:scale-95 transition-all">
+            <button @click="payReport(r)" :disabled="isProcessingBulk"
+              class="px-4 py-1.5 rounded-lg text-[10px] font-black bg-gradient-to-r from-purple-600 to-fuchsia-500 text-white active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed">
               💰 Cộng xu
             </button>
           </div>
