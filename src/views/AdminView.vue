@@ -14,6 +14,7 @@ import type { SupportConfig } from '@/composables/useSupportConfig'
 import { basicJobConfigs, startBasicJobConfigsListener } from '@/composables/useBasicJobConfigs'
 import { storage } from '@/firebase'
 import { ref as storageRef, deleteObject } from 'firebase/storage'
+import { normalizePhone } from '@/utils/phoneUtils'
 // @ts-ignore
 import AdminDailyThreads from '@/components/AdminDailyThreads.vue'
 
@@ -1125,7 +1126,70 @@ const handleSearch = async () => {
 
   try {
     const snapshot = await getDocs(qReports);
-    let data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    let data: any[] = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    // Tìm thêm đơn "Giới thiệu bạn bè" (ABBANK/LPBANK) theo tên/SĐT của bạn bè được giới thiệu,
+    // vì các đơn này không match qua uid/phoneRef của người nộp ở trên.
+    const normalizedKeyword = normalizePhone(text);
+    try {
+      const referralMatches: any[] = [];
+
+      if (normalizedKeyword.length >= 6) {
+        const qFriendPhoneExact = query(
+          collection(db, "reports"),
+          where("friendPhoneNormalized", "==", normalizedKeyword),
+          limit(50)
+        );
+        const snapFriendExact = await getDocs(qFriendPhoneExact);
+        snapFriendExact.docs.forEach(d => referralMatches.push({ id: d.id, ...d.data() }));
+      }
+
+      const qReferralRecent = query(
+        collection(db, "reports"),
+        where("jobId", "in", ["referral_abbank", "referral_lpbank"]),
+        limit(500)
+      );
+      const snapReferralRecent = await getDocs(qReferralRecent);
+      snapReferralRecent.docs.forEach(d => {
+        const report: any = { id: d.id, ...d.data() };
+
+        console.log("Admin search referral fields:", {
+          keyword: text,
+          normalizedKeyword,
+          reportId: report.id,
+          jobId: report.jobId,
+          friendName: report.friendName,
+          friendPhone: report.friendPhone,
+          friendPhoneNormalized: report.friendPhoneNormalized
+        });
+
+        const searchableText = [
+          report.fullName, report.username, report.phoneRef, report.uid,
+          report.jobName, report.jobId, report.friendName, report.friendPhone,
+          report.friendPhoneNormalized, report.bankType, report.type
+        ].filter(Boolean).join(" ").toLowerCase();
+
+        const textMatch = searchableText.includes(lowerText);
+        const phoneMatch = normalizedKeyword.length > 0 && (
+          normalizePhone(report.phoneRef).includes(normalizedKeyword) ||
+          normalizePhone(report.friendPhone).includes(normalizedKeyword) ||
+          String(report.friendPhoneNormalized || "").includes(normalizedKeyword)
+        );
+
+        if (textMatch || phoneMatch) referralMatches.push(report);
+      });
+
+      const existingIds = new Set(data.map(r => r.id));
+      for (const r of referralMatches) {
+        if (!existingIds.has(r.id)) {
+          data.push(r);
+          existingIds.add(r.id);
+        }
+      }
+    } catch (referralErr) {
+      console.error("Lỗi tìm kiếm đơn giới thiệu bạn bè:", referralErr);
+    }
+
     const getTime = (t: any) => t?.toDate ? t.toDate().getTime() : new Date(t || 0).getTime();
     data.sort((a, b) => getTime(b.createdAt) - getTime(a.createdAt));
     reports.value = data;

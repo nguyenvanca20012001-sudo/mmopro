@@ -4,6 +4,7 @@ import { ref, computed, onMounted } from 'vue'
 import { db, auth, storage } from '@/firebase'
 import { doc, getDoc, collection, setDoc, serverTimestamp } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
+import { normalizePhone } from '@/utils/phoneUtils'
 
 const baseUrl = import.meta.env.BASE_URL
 
@@ -243,6 +244,7 @@ async function handleSubmit() {
       status: 'pending',
       friendName: friendName.value.trim(),
       friendPhone: friendPhone.value.trim(),
+      friendPhoneNormalized: normalizePhone(friendPhone.value.trim()),
       bankType: 'lpbank',
       category: 'vip',
       type: 'friend_referral',

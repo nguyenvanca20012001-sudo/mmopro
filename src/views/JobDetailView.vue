@@ -205,7 +205,8 @@ const handleRandomDownload = (links: string[]) => {
           </span>
         </div>
 
-        <div class="mt-6 max-w-xl mx-auto bg-[#1a0f14] border border-red-500/50 rounded-2xl overflow-hidden shadow-[0_0_24px_rgba(239,68,68,0.18)]">
+        <div v-if="!['lpbank-plus', 'mbbank'].includes(route.params.id as string)"
+             class="mt-6 max-w-xl mx-auto bg-[#1a0f14] border border-red-500/50 rounded-2xl overflow-hidden shadow-[0_0_24px_rgba(239,68,68,0.18)]">
           <div class="bg-red-500/20 border-b border-red-500/30 px-4 py-2.5 flex items-center gap-2">
             <span class="text-red-400 text-base">⚠️</span>
             <span class="text-red-400 text-[11px] md:text-xs font-black uppercase tracking-[2px]">Điều kiện bắt buộc</span>
@@ -229,6 +230,19 @@ const handleRandomDownload = (links: string[]) => {
               </li>
             </ul>
           </div>
+        </div>
+      </div>
+
+      <div v-if="VIP_JOB_IDS.includes(route.params.id as string)"
+           class="max-w-xl mx-auto bg-gradient-to-r from-red-950/90 to-orange-950/70 border-2 border-orange-500/60 rounded-2xl px-4 md:px-5 py-3.5 md:py-4 flex items-start gap-3 shadow-[0_0_24px_rgba(249,115,22,0.25)]">
+        <span class="text-2xl md:text-3xl shrink-0 leading-none drop-shadow-[0_0_10px_rgba(249,115,22,0.7)]">⚠️</span>
+        <div class="text-left">
+          <h4 class="text-orange-400 font-black uppercase text-[13px] md:text-sm tracking-wider mb-1 drop-shadow-md">
+            Lưu ý quan trọng
+          </h4>
+          <p class="text-orange-50 text-[11px] md:text-[13px] font-semibold leading-relaxed normal-case">
+            1 điện thoại chỉ được đăng ký 1 tài khoản cho mỗi APP. Không được đăng xuất ra rồi đăng ký tài khoản khác trên cùng điện thoại. Nếu vi phạm, đơn có thể bị từ chối.
+          </p>
         </div>
       </div>
 
