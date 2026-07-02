@@ -3,7 +3,7 @@ import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { auth, db } from '@/firebase' 
 import { onAuthStateChanged, signOut } from "firebase/auth" 
-import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, getDoc, documentId, increment, limit, startAfter, where, getDocs, addDoc, serverTimestamp, Timestamp, setDoc } from "firebase/firestore"
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, getDoc, documentId, increment, limit, startAfter, where, getDocs, addDoc, serverTimestamp, Timestamp, setDoc, runTransaction } from "firebase/firestore"
 import Swal from 'sweetalert2'
 import { jobsData } from '@/data/jobs'
 import { useVipJobs, startVipJobsListener, VIP_JOB_IDS } from '@/composables/useVipJobs'
@@ -1216,11 +1216,67 @@ const toggleAllOtherJobs = (event: Event) => {
   }
 }
 
+const isBulkProcessing = ref(false)
+const bulkProgress = ref({ total: 0, current: 0, success: 0, skipped: 0, error: 0 })
+
+// Duyệt 1 đơn trong transaction: đọc lại status mới nhất từ Firestore ngay trước khi ghi,
+// nên nếu đơn đã được duyệt/hủy bởi thao tác khác (admin khác, hoặc click trùng) thì bỏ qua,
+// tránh cộng XU 2 lần cho cùng 1 report.
+const approveOneReportTx = async (reportId: string) => {
+  const reportRef = doc(db, "reports", reportId)
+  return await runTransaction(db, async (transaction) => {
+    const reportSnap = await transaction.get(reportRef)
+    if (!reportSnap.exists()) {
+      return { outcome: 'error' as const, reason: 'not-found' }
+    }
+
+    const report: any = { id: reportId, ...reportSnap.data() }
+    if (report.status !== 'pending') {
+      return { outcome: 'skipped' as const, status: report.status }
+    }
+
+    const cleanRewardString = String(report.reward || '0').replace(/\D/g, '')
+    const rewardValue = Number(cleanRewardString) || 0
+
+    const userRef = doc(db, "users", report.uid)
+    const userSnap = await transaction.get(userRef)
+
+    const userExists = userSnap.exists()
+    if (userExists) {
+      transaction.update(userRef, { balance: increment(rewardValue) })
+    }
+    transaction.update(reportRef, {
+      status: 'approved',
+      approvedAt: serverTimestamp()
+    })
+
+    return { outcome: 'success' as const, report, userExists, rewardValue }
+  })
+}
+
+const renderBulkProgressHtml = () => {
+  const p = bulkProgress.value
+  return `
+    <div style="text-align:left;font-size:13px;line-height:1.9">
+      <div>Đang duyệt đơn <b>${p.current}/${p.total}</b></div>
+      <div style="color:#10b981">Thành công: ${p.success}</div>
+      <div style="color:#f59e0b">Bỏ qua: ${p.skipped}</div>
+      <div style="color:#ef4444">Lỗi: ${p.error}</div>
+    </div>
+  `
+}
+
 const bulkApproveOtherJobs = async () => {
-  if (selectedOtherJobs.value.length === 0) return
-  
+  if (isBulkProcessing.value) return
+  // Chốt danh sách id đã chọn ngay tại thời điểm bấm nút, không dùng selectedOtherJobs.value
+  // trực tiếp trong lúc xử lý vì nó không được đụng tới nữa cho tới khi xong (UI bị khoá),
+  // nhưng vẫn tách riêng để đảm bảo count hiển thị trong popup luôn đúng số ban đầu.
+  const selectedIds = [...selectedOtherJobs.value]
+  const totalSelected = selectedIds.length
+  if (totalSelected === 0) return
+
   const { isConfirmed } = await Swal.fire({
-    title: `DUYỆT ${selectedOtherJobs.value.length} ĐƠN?`,
+    title: `DUYỆT ${totalSelected} ĐƠN?`,
     text: "Bạn có chắc chắn muốn duyệt và cộng tiền cho tất cả các đơn đã chọn?",
     icon: 'warning',
     showCancelButton: true,
@@ -1229,42 +1285,68 @@ const bulkApproveOtherJobs = async () => {
     confirmButtonText: 'DUYỆT LUÔN 🚀'
   });
 
-  if (isConfirmed) {
-    try {
-      Swal.fire({
-        title: 'ĐANG XỬ LÝ...',
-        text: 'Vui lòng không đóng trang lúc này!',
-        allowOutsideClick: false,
-        didOpen: () => { Swal.showLoading() }
-      })
+  if (!isConfirmed) return
 
-      for (const reportId of selectedOtherJobs.value) {
-        const report = reports.value.find(r => r.id === reportId)
-        if (!report || report.status !== 'pending') continue
+  isBulkProcessing.value = true
+  bulkProgress.value = { total: totalSelected, current: 0, success: 0, skipped: 0, error: 0 }
+  const errors: Array<{ reportId: string; error: any }> = []
 
-        const cleanRewardString = String(report.reward || '0').replace(/\D/g, '')
-        const rewardValue = Number(cleanRewardString) || 0
+  Swal.fire({
+    title: 'ĐANG XỬ LÝ...',
+    html: renderBulkProgressHtml(),
+    allowOutsideClick: false,
+    allowEscapeKey: false,
+    showConfirmButton: false,
+    didOpen: () => { Swal.showLoading() }
+  })
 
-        try {
-          await updateDoc(doc(db, "users", report.uid), { balance: increment(rewardValue) });
-        } catch (balanceErr: any) {
-          if (balanceErr?.code !== 'not-found') throw balanceErr;
+  // Xử lý theo chunk 4 đơn chạy song song/lần (không ồ ạt 40-50 transaction cùng lúc,
+  // cũng không tuần tự từng đơn một quá chậm). Progress popup chỉ update 1 lần sau mỗi
+  // chunk, không update theo từng đơn để tránh render lại quá dày.
+  const BULK_CONCURRENCY = 4
+  for (let i = 0; i < selectedIds.length; i += BULK_CONCURRENCY) {
+    const chunk = selectedIds.slice(i, i + BULK_CONCURRENCY)
+    await Promise.all(chunk.map(async (reportId) => {
+      try {
+        const outcome = await approveOneReportTx(reportId)
+        if (outcome.outcome === 'success') {
+          bulkProgress.value.success++
+          updateLocalStatsOnApprove(outcome.report)
+        } else if (outcome.outcome === 'skipped') {
+          bulkProgress.value.skipped++
+        } else {
+          bulkProgress.value.error++
+          errors.push({ reportId, error: outcome.reason })
+          console.error('Bulk approve report failed:', reportId, outcome.reason)
         }
-        await updateDoc(doc(db, "reports", report.id), {
-          status: 'approved',
-          approvedAt: serverTimestamp()
-        })
-        
-        updateLocalStatsOnApprove(report);
+      } catch (err) {
+        bulkProgress.value.error++
+        errors.push({ reportId, error: err })
+        console.error('Bulk approve report failed:', reportId, err)
       }
-
-      selectedOtherJobs.value = []
-      Swal.fire('THÀNH CÔNG!', 'Đã quét sạch các đơn được chọn!', 'success')
-      
-    } catch (error) {
-      Swal.fire('LỖI!', 'Có lỗi xảy ra: ' + error, 'error')
-    }
+      bulkProgress.value.current++
+    }))
+    Swal.update({ html: renderBulkProgressHtml() })
   }
+
+  isBulkProcessing.value = false
+
+  await Swal.fire({
+    icon: bulkProgress.value.error > 0 ? 'warning' : 'success',
+    title: 'ĐÃ XỬ LÝ XONG',
+    html: `
+      <div style="text-align:left;font-size:13px;line-height:1.9">
+        <div style="color:#10b981">Thành công: ${bulkProgress.value.success} đơn</div>
+        <div style="color:#f59e0b">Bỏ qua: ${bulkProgress.value.skipped} đơn (đã được xử lý trước đó / không còn ở trạng thái chờ)</div>
+        <div style="color:#ef4444">Lỗi: ${bulkProgress.value.error} đơn</div>
+      </div>
+    `,
+    confirmButtonText: 'ĐÓNG',
+    confirmButtonColor: '#3b82f6'
+  })
+
+  // Chỉ clear selected + để onSnapshot tự cập nhật list sau khi admin đã đóng popup kết quả.
+  selectedOtherJobs.value = []
 }
 
 // ============================================================================
@@ -1544,31 +1626,30 @@ const approveReport = async (report: any) => {
   if (!confirm(`XÁC NHẬN DUYỆT ĐƠN NÀY?\n\n+ Tiền cộng: ${rewardValue.toLocaleString()} XU\n+ Ví cũ đang có: ${currentBalance.toLocaleString()} XU\n👉 TỔNG TIỀN MỚI: ${(currentBalance + rewardValue).toLocaleString()} XU`)) return;
 
   try {
-    let balanceUpdated = true;
-    try {
-      await updateDoc(doc(db, "users", report.uid), { balance: increment(rewardValue) });
-    } catch (balanceErr: any) {
-      if (balanceErr?.code === 'not-found') {
-        balanceUpdated = false;
-      } else {
-        throw balanceErr;
-      }
+    // Dùng chung transaction với bulk approve: đọc lại status mới nhất ngay trước khi ghi
+    // (chống duyệt trùng nếu bấm 2 lần / admin khác duyệt cùng lúc), và không cần đọc lại
+    // user doc riêng sau khi ghi — cập nhật usersMap tại chỗ từ kết quả transaction.
+    const outcome = await approveOneReportTx(report.id)
+
+    if (outcome.outcome === 'skipped') {
+      alert("ĐƠN NÀY ĐÃ ĐƯỢC XỬ LÝ TRƯỚC ĐÓ, KHÔNG THỂ DUYỆT LẠI.");
+      return
     }
-    await updateDoc(doc(db, "reports", report.id), {
-      status: 'approved',
-      approvedAt: serverTimestamp()
-    });
-    if (balanceUpdated) {
+    if (outcome.outcome === 'error') {
+      alert("LỖI KHI DUYỆT: không tìm thấy đơn.");
+      return
+    }
+
+    if (outcome.userExists && usersMap.value[report.uid]) {
+      usersMap.value[report.uid] = {
+        ...usersMap.value[report.uid],
+        balance: (usersMap.value[report.uid].balance || 0) + outcome.rewardValue
+      }
       alert("ĐÃ DUYỆT VÀ CỘNG XU THÀNH CÔNG!");
-      // Refresh usersMap entry so next approve shows the updated balance
-      try {
-        const freshUser = await getDoc(doc(db, 'users', report.uid))
-        if (freshUser.exists()) usersMap.value[report.uid] = freshUser.data()
-      } catch {}
     } else {
       alert("ĐÃ DUYỆT ĐƠN! (Tài khoản user không tồn tại nên XU không được cộng)");
     }
-    updateLocalStatsOnApprove(report);
+    updateLocalStatsOnApprove(outcome.report);
   } catch (error) { alert("LỖI KHI DUYỆT: " + error) }
 }
 
@@ -1856,9 +1937,12 @@ const handleAdminLogout = async () => {
       <div class="overflow-x-auto" v-else>
         <Transition name="fade">
           <div class="bg-blue-900/40 border-b border-blue-500/30 p-4 flex justify-between items-center px-6" v-if="activeTab === 'other_jobs' && selectedOtherJobs.length > 0">
-            <span class="text-blue-400 font-bold text-sm tracking-widest">ĐÃ CHỌN: <span class="text-white text-lg">{{ selectedOtherJobs.length }}</span> ĐƠN</span>
-            <button class="bg-blue-500 hover:bg-blue-400 text-white px-6 py-3 rounded-xl text-[10px] md:text-sm tracking-widest font-black transition-all active:scale-95 shadow-[0_0_20px_rgba(59,130,246,0.5)]" @click="bulkApproveOtherJobs">
-              DUYỆT TẤT CẢ ĐƠN ĐÃ CHỌN 🚀
+            <span class="text-blue-400 font-bold text-sm tracking-widest">
+              ĐÃ CHỌN: <span class="text-white text-lg">{{ selectedOtherJobs.length }}</span> ĐƠN
+              <span class="text-amber-400 ml-2" v-if="isBulkProcessing">(ĐANG DUYỆT {{ bulkProgress.current }}/{{ bulkProgress.total }}...)</span>
+            </span>
+            <button class="bg-blue-500 hover:bg-blue-400 disabled:opacity-40 disabled:cursor-not-allowed text-white px-6 py-3 rounded-xl text-[10px] md:text-sm tracking-widest font-black transition-all active:scale-95 shadow-[0_0_20px_rgba(59,130,246,0.5)]" :disabled="isBulkProcessing" @click="bulkApproveOtherJobs">
+              {{ isBulkProcessing ? 'ĐANG XỬ LÝ...' : 'DUYỆT TẤT CẢ ĐƠN ĐÃ CHỌN 🚀' }}
             </button>
           </div>
         </Transition>
@@ -1867,7 +1951,7 @@ const handleAdminLogout = async () => {
           <thead>
             <tr class="bg-[#0d121f] text-blue-500 text-[10px] tracking-[2px] border-b border-slate-800">
               <th class="p-6 text-center w-12" v-if="activeTab === 'other_jobs'">
-                <input class="w-5 h-5 cursor-pointer accent-blue-500 bg-[#111726] border-slate-700 rounded" type="checkbox" :checked="isAllOtherJobsSelected" @change="toggleAllOtherJobs" />
+                <input class="w-5 h-5 cursor-pointer accent-blue-500 bg-[#111726] border-slate-700 rounded disabled:opacity-40 disabled:cursor-not-allowed" type="checkbox" :checked="isAllOtherJobsSelected" :disabled="isBulkProcessing" @change="toggleAllOtherJobs" />
               </th>
               <th class="p-6 min-w-[250px]">NGƯỜI NỘP / TÀI KHOẢN</th>
               <th class="p-6 min-w-[150px]">CÔNG VIỆC</th>
@@ -1880,7 +1964,7 @@ const handleAdminLogout = async () => {
             <tr v-for="rp in (activeTab === 'app_jobs' ? filteredAppReports : filteredOtherReports)" :key="rp.id" :class="['hover:bg-white/[0.02] transition-colors group', selectedOtherJobs.includes(rp.id) ? 'bg-blue-900/10' : '']">
               
               <td class="p-6 text-center" v-if="activeTab === 'other_jobs'">
-                <input class="w-5 h-5 cursor-pointer accent-blue-500 bg-[#111726] border-slate-700 rounded" v-if="rp.status === 'pending'" type="checkbox" :value="rp.id" v-model="selectedOtherJobs" />
+                <input class="w-5 h-5 cursor-pointer accent-blue-500 bg-[#111726] border-slate-700 rounded disabled:opacity-40 disabled:cursor-not-allowed" v-if="rp.status === 'pending'" type="checkbox" :value="rp.id" :disabled="isBulkProcessing" v-model="selectedOtherJobs" />
               </td>
 
               <td class="p-6">
@@ -1929,7 +2013,7 @@ const handleAdminLogout = async () => {
                     <a class="bg-blue-600 text-[8px] text-white p-2 rounded" v-if="rp.taskLink" :href="rp.taskLink" target="_blank">LINK BÀI</a>
                     <div class="cursor-pointer" v-for="(img, idx) in getImageUrls(rp)" :key="idx" @click="openImage(img)">
                       <div class="w-12 h-12 rounded-lg border border-slate-700 overflow-hidden hover:scale-110 hover:border-blue-500 transition-all">
-                        <img class="w-full h-full object-cover" :src="img" />
+                        <img class="w-full h-full object-cover" :src="img" loading="lazy" decoding="async" />
                       </div>
                     </div>
                     <div class="text-slate-700 text-[9px]" v-if="!getImageUrls(rp).length && !rp.taskLink && !rp.imagesDeleted">KHÔNG CÓ ẢNH</div>
