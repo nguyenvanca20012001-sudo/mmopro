@@ -421,7 +421,7 @@ provide('dailyThreadsUnlock', {
   isChecking: isDataLoading
 })
 
-// GIỚI THIỆU BẠN BÈ — mở khóa khi đã hoàn thành (duyệt) APP LPBANK PLUS hoặc APP ABBANK
+// GIỚI THIỆU BẠN BÈ — mở khóa khi đã hoàn thành (duyệt) APP LPBANK PLUS
 const matchedLpbankReports = computed(() =>
   myReports.value.filter((r: any) =>
     (r.jobId === 'lpbank-plus' || (r.jobName && String(r.jobName).toUpperCase().includes('LPBANK'))) &&
@@ -430,15 +430,7 @@ const matchedLpbankReports = computed(() =>
 )
 const hasCompletedLpbank = computed(() => matchedLpbankReports.value.length > 0)
 
-const matchedAbbankReports = computed(() =>
-  myReports.value.filter((r: any) =>
-    (r.jobId === 'mbbank' || (r.jobName && String(r.jobName).toUpperCase().includes('ABBANK'))) &&
-    (r.status === 'approved' || r.status === 'collected')
-  )
-)
-const hasCompletedAbbank = computed(() => matchedAbbankReports.value.length > 0)
-
-const canAccessReferralJob = computed(() => hasCompletedLpbank.value || hasCompletedAbbank.value)
+const canAccessReferralJob = computed(() => hasCompletedLpbank.value)
 
 // DEBUG TẠM THỜI — kiểm tra điều kiện mở khóa Giới thiệu bạn bè (xóa sau khi xác nhận đúng)
 watch([canAccessReferralJob, isDataLoading], () => {
@@ -446,13 +438,12 @@ watch([canAccessReferralJob, isDataLoading], () => {
   console.log('Referral unlock check:', {
     uid: auth.currentUser?.uid,
     hasCompletedLpbank: hasCompletedLpbank.value,
-    hasCompletedAbbank: hasCompletedAbbank.value,
     canAccessReferralJob: canAccessReferralJob.value,
-    matchedReports: [...matchedLpbankReports.value, ...matchedAbbankReports.value]
+    matchedLpbankReports: matchedLpbankReports.value
   })
 })
 
-// Chia sẻ trạng thái khóa/mở khóa Giới thiệu bạn bè cho route con (ReferralAbbankView/ReferralLpbankView) qua provide/inject
+// Chia sẻ trạng thái khóa/mở khóa Giới thiệu bạn bè cho route con (ReferralLpbankView) qua provide/inject
 provide('referralUnlock', {
   canAccessReferralJob,
   isChecking: isDataLoading
@@ -1375,13 +1366,9 @@ const getMobileAgeBadgeClass = (age: number): string => {
         <div class="text-5xl mb-4">🔒</div>
         <h3 class="text-xl text-slate-800 font-black uppercase italic tracking-tighter mb-3">Chưa đủ điều kiện</h3>
         <p class="text-slate-500 text-xs font-medium not-italic normal-case tracking-normal mb-8 leading-relaxed">
-          Bạn cần hoàn thành Job VIP APP ABBANK hoặc LPBANK trước khi mở khóa công việc Giới thiệu bạn bè.
+          Bạn cần hoàn thành Job VIP APP LPBANK PLUS trước khi mở khóa công việc Giới thiệu bạn bè.
         </p>
         <div class="space-y-3 font-bold uppercase italic font-black">
-          <button @click="() => { showReferralLockedNotice = false; router.push('/job/mbbank') }"
-            class="w-full py-4 rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-500 text-amber-900 text-[11px] tracking-widest active:scale-95 transition-all shadow-lg">
-            Làm APP ABBANK
-          </button>
           <button @click="() => { showReferralLockedNotice = false; router.push('/job/lpbank-plus') }"
             class="w-full py-4 rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-500 text-amber-900 text-[11px] tracking-widest active:scale-95 transition-all shadow-lg">
             Làm APP LPBANK PLUS
@@ -1580,12 +1567,12 @@ const getMobileAgeBadgeClass = (age: number): string => {
                   <span class="bg-black/70 text-red-400 text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg">❌ HẾT LƯỢT</span>
                 </div>
 
-                <!-- LOCK OVERLAY — chỉ áp dụng cho referral-hub khi chưa hoàn thành APP ABBANK/LPBANK -->
+                <!-- LOCK OVERLAY — chỉ áp dụng cho referral-hub khi chưa hoàn thành APP LPBANK PLUS -->
                 <template v-if="job.id === 'referral-hub' && !isDataLoading && !canAccessReferralJob">
                   <div class="absolute inset-0 bg-black/55 z-20 rounded-[18px] pointer-events-none"></div>
                   <div class="absolute inset-0 flex items-center justify-center z-30 px-3 pointer-events-none">
                     <span class="bg-black/80 border border-amber-400/40 text-amber-300 text-[7px] font-black uppercase tracking-wide px-2 py-1.5 rounded-lg text-center leading-tight">
-                      🔒 Cần hoàn thành APP ABBANK hoặc LPBANK trước
+                      🔒 Cần hoàn thành APP LPBANK PLUS trước
                     </span>
                   </div>
                 </template>

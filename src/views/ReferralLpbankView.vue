@@ -17,13 +17,13 @@ const rewardTiers = [
 const router = useRouter()
 const baseUrl = import.meta.env.BASE_URL
 
-// Chặn truy cập trực tiếp route hướng dẫn khi chưa hoàn thành APP LPBANK PLUS hoặc APP ABBANK
+// Chặn truy cập trực tiếp route hướng dẫn khi chưa hoàn thành APP LPBANK PLUS
 const referralUnlock = inject<{ canAccessReferralJob: any; isChecking: any } | null>('referralUnlock', null)
 const isCheckingUnlock = computed(() => referralUnlock ? !!referralUnlock.isChecking.value : true)
 const isUnlocked = computed(() => referralUnlock ? !!referralUnlock.canAccessReferralJob.value : false)
 
-function goToVipJobs() {
-  router.push('/')
+function goToLpbankPlus() {
+  router.push('/job/lpbank-plus')
 }
 
 const showProofModal = ref(false)
@@ -83,17 +83,17 @@ const closeImage = () => { selectedImage.value = null }
       <p class="text-amber-300 text-[11px] not-italic normal-case tracking-widest">Đang kiểm tra điều kiện mở khóa...</p>
     </div>
 
-    <!-- Khóa: chưa hoàn thành APP ABBANK hoặc LPBANK -->
+    <!-- Khóa: chưa hoàn thành APP LPBANK PLUS -->
     <div v-else-if="!isUnlocked" class="max-w-lg mx-auto">
       <div class="bg-[#111726]/80 border border-amber-500/30 rounded-[28px] p-8 text-center space-y-4">
         <div class="text-5xl">🔒</div>
         <h2 class="text-white text-lg leading-tight">Công việc Giới thiệu bạn bè đang khóa</h2>
         <p class="text-slate-300 text-sm font-medium not-italic normal-case leading-relaxed">
-          Bạn cần hoàn thành Job VIP <span class="text-yellow-400 font-black">APP ABBANK</span> hoặc <span class="text-yellow-400 font-black">LPBANK</span> trước khi xem hướng dẫn.
+          Bạn cần hoàn thành Job VIP <span class="text-yellow-400 font-black">APP LPBANK PLUS</span> trước khi xem hướng dẫn.
         </p>
-        <button @click="goToVipJobs"
+        <button @click="goToLpbankPlus"
           class="w-full py-4 rounded-2xl text-sm tracking-widest transition-all active:scale-95 shadow-xl bg-gradient-to-r from-amber-500 to-yellow-500 text-amber-900 shadow-[0_0_30px_rgba(245,158,11,0.4)]">
-          Làm APP ABBANK / LPBANK trước
+          Làm APP LPBANK PLUS
         </button>
       </div>
     </div>

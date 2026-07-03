@@ -478,12 +478,12 @@ const goToPostThreadsJob = () => {
               <span class="bg-black/75 text-red-400 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl">❌ HẾT LƯỢT</span>
             </div>
 
-            <!-- LOCK OVERLAY — chỉ áp dụng cho referral-hub khi chưa hoàn thành APP ABBANK/LPBANK -->
+            <!-- LOCK OVERLAY — chỉ áp dụng cho referral-hub khi chưa hoàn thành APP LPBANK PLUS -->
             <template v-if="job.id === 'referral-hub' && referralLocked">
               <div class="absolute inset-0 bg-black/55 z-20 rounded-[28px] pointer-events-none"></div>
               <div class="absolute inset-0 flex items-center justify-center z-30 px-4 pointer-events-none">
                 <span class="bg-black/80 border border-amber-500/40 text-amber-300 text-[8px] md:text-[9px] font-black uppercase tracking-wide px-3 py-2 rounded-xl text-center leading-tight">
-                  🔒 Cần hoàn thành APP ABBANK hoặc LPBANK trước
+                  🔒 Cần hoàn thành APP LPBANK PLUS trước
                 </span>
               </div>
             </template>
