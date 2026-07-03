@@ -59,6 +59,18 @@ export function getVipJobOrder(id: string, config: any): number {
   return config?.order ?? 999
 }
 
+// referral-hub có thưởng tăng dần (100k-150k tuỳ số lần duyệt) nên cần hiển thị dạng khoảng
+// thay vì 1 số cố định. Fallback hardcode phòng khi Firestore doc referral-hub chưa có rewardText.
+const REFERRAL_HUB_REWARD_TEXT_FALLBACK = '100.000 - 150.000 xu'
+
+// Trả về chuỗi hiển thị reward ngoài card VIP. Ưu tiên rewardText (đã có sẵn text/đơn vị,
+// không strip số) — nếu không có thì strip reward về số thuần như cách hiển thị cũ.
+export function getVipJobRewardLabel(job: { id: string; reward?: any; rewardText?: string }): string {
+  if (job.rewardText) return job.rewardText
+  if (job.id === 'referral-hub') return REFERRAL_HUB_REWARD_TEXT_FALLBACK
+  return String(job.reward ?? '').replace(/\D/g, '')
+}
+
 export function getJobStatus(jobId: string): 'open' | 'paused' | 'hidden' | 'soldout' {
   return (vipJobConfigs.value[jobId]?.status as 'open' | 'paused' | 'hidden' | 'soldout') ?? 'open'
 }

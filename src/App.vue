@@ -16,7 +16,7 @@ import ProfileCard from '@/components/home/ProfileCard.vue'
 import Logo from '@/components/Logo.vue'
 import { jobsData } from '@/data/jobs'
 import Swal from 'sweetalert2'
-import { useVipJobs, startVipJobsListener, VIP_JOB_IDS as VIP_IDS, getVipJobOrder } from '@/composables/useVipJobs'
+import { useVipJobs, startVipJobsListener, VIP_JOB_IDS as VIP_IDS, getVipJobOrder, getVipJobRewardLabel } from '@/composables/useVipJobs'
 import { appConfig, startAppConfigListener } from '@/composables/useAppConfig'
 import { setCurrentUserProfile, clearCurrentUserProfile } from '@/composables/useCurrentUser'
 import { supportConfig, startSupportConfigListener, SUPPORT_FANPAGE_URL } from '@/composables/useSupportConfig'
@@ -813,6 +813,7 @@ const mergedVipJobsMobile = computed(() => {
         id,
         title: config.title || staticJob.title,
         reward: config.reward || staticJob.reward,
+        rewardText: config.rewardText || (staticJob as any).rewardText,
         badge: config.badge || staticJob.badge,
         status: config.status || 'open',
         order: getVipJobOrder(id, config),
@@ -1614,10 +1615,17 @@ const getMobileAgeBadgeClass = (age: number): string => {
 
                 <!-- Reward -->
                 <div class="flex items-baseline gap-1 mb-3 relative z-10">
-                  <span class="text-lg font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-yellow-600">
-                    +{{ String(job.reward).replace(/\D/g,'') }}
-                  </span>
-                  <span class="text-[9px] font-black text-amber-500/70">XU</span>
+                  <template v-if="job.rewardText || job.id === 'referral-hub'">
+                    <span class="text-lg font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-yellow-600">
+                      {{ getVipJobRewardLabel(job) }}
+                    </span>
+                  </template>
+                  <template v-else>
+                    <span class="text-lg font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-yellow-600">
+                      +{{ getVipJobRewardLabel(job) }}
+                    </span>
+                    <span class="text-[9px] font-black text-amber-500/70">XU</span>
+                  </template>
                 </div>
 
                 <!-- CTA button -->
