@@ -12,7 +12,9 @@ type HistoryReport = {
   id: string
   friendName: string
   friendPhone: string
-  reward: string
+  reward: string | number
+  actualReward?: number
+  referralSuccessNumber?: number
   status: 'pending' | 'approved' | 'collected' | 'rejected'
   createdAt: any
   note?: string
@@ -28,6 +30,12 @@ function formatTime(ts: any): string {
   if (!ts) return '—'
   const d = ts.toDate ? ts.toDate() : new Date(ts)
   return d.toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+
+function formatDisplayReward(r: HistoryReport): string {
+  const raw = r.actualReward ?? r.reward
+  if (typeof raw === 'number') return `${raw.toLocaleString('vi-VN')} XU`
+  return String(raw)
 }
 
 async function loadHistory() {
@@ -139,8 +147,15 @@ defineExpose({ loadHistory })
 
             <!-- approved/collected: reward -->
             <div v-if="r.status === 'approved' || r.status === 'collected'" class="flex items-center justify-between text-xs not-italic normal-case pt-0.5">
-              <span class="text-yellow-400 font-black">+{{ r.reward }}</span>
+              <span class="text-yellow-400 font-black">+{{ formatDisplayReward(r) }}</span>
+              <span v-if="r.referralSuccessNumber" class="text-slate-500 text-[10px]">Lần giới thiệu #{{ r.referralSuccessNumber }}</span>
             </div>
+
+            <!-- pending: gợi ý -->
+            <p v-if="r.status === 'pending'"
+              class="text-[11px] text-slate-500 not-italic normal-case pt-0.5">
+              Thưởng sẽ được tính khi admin duyệt
+            </p>
 
             <!-- rejected: lý do -->
             <p v-if="r.status === 'rejected' && r.note"

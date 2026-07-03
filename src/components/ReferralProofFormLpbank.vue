@@ -240,7 +240,8 @@ async function handleSubmit() {
       username: username.value,
       jobId: 'referral_lpbank',
       jobName: 'Giới thiệu bạn bè đăng ký APP LPBANK',
-      reward: '100.000 xu',
+      reward: 0,
+      estimatedReward: null,
       status: 'pending',
       friendName: friendName.value.trim(),
       friendPhone: friendPhone.value.trim(),
@@ -251,6 +252,7 @@ async function handleSubmit() {
       site: userSite.value,
       proofImages,
       imageCount: proofImages.length,
+      storageCleaned: false,
       createdAt: serverTimestamp(),
     })
 

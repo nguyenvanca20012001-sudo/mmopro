@@ -136,7 +136,7 @@ const getShortDesc = (id: string) => {
     'app-chung-khoan-4': 'Đăng ký tài khoản chứng khoán',
     'msb-bank': 'Nhận quà tặng khi mở thẻ MSB',
     'liobank':  'Mở tài khoản LioBank thẻ 2 in 1',
-    'referral-hub': 'Mời bạn bè đăng ký app nhận thưởng'
+    'referral-hub': 'Giới thiệu càng nhiều, thưởng càng cao'
   };
   return desc[id] || 'Làm nhiệm vụ ngay';
 }
@@ -525,7 +525,7 @@ const goToPostThreadsJob = () => {
               <p class="text-[9px] md:text-[10px] font-bold text-amber-600 uppercase tracking-widest mb-1">Thưởng ngay:</p>
               <div class="flex items-center gap-1.5">
                 <p class="font-black text-2xl md:text-4xl tracking-tighter italic leading-none text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-yellow-600">
-                  {{ formatReward(job.reward).toLocaleString() }}
+                  {{ job.id === 'referral-hub' ? job.reward : formatReward(job.reward).toLocaleString() }}
                 </p>
                 <div class="flex flex-col items-start translate-y-[-2px]">
                   <svg class="w-5 h-5 md:w-6 md:h-6 drop-shadow-[0_0_8px_rgba(234,179,8,0.8)]" viewBox="0 0 24 24">

@@ -199,10 +199,10 @@ export const jobsData: Record<string, any> = {
     steps: [
       {
         id: 1,
-        title: "THAM GIA NHÓM ZALO MMO PRO - GROUP 8",
-        content: "CỘNG ĐỒNG MMO PRO GROUP 1- GROUP 7 ĐÃ FULL , THAM GIA GROUP 8 NHÁ  .",
+        title: "THAM GIA NHÓM ZALO MMO PRO - GROUP 9",
+        content: "CỘNG ĐỒNG MMO PRO GROUP 1- GROUP 8 ĐÃ FULL , THAM GIA GROUP 8 NHÁ  .",
         extraLinks: [
-          { text: "THAM GIA NHÓM 8 ➔", url: "https://zalo.me/g/mjkl4v1oxkkqbqljbvwa" }
+          { text: "THAM GIA NHÓM 9 ➔", url: "https://zalo.me/g/r8rvzvql7h5nheekhcyc" }
         ]
       },
       {
@@ -546,7 +546,7 @@ export const jobsData: Record<string, any> = {
 
   'referral-hub': {
     title: "GIỚI THIỆU BẠN BÈ",
-    reward: "100.000 xu",
+    reward: "100.000 - 150.000 xu",
     color: "text-amber-400",
     badge: "VIP 💎",
     steps: []

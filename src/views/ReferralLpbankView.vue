@@ -5,6 +5,14 @@ import { useRouter } from 'vue-router'
 import ReferralProofModal from '@/components/ReferralProofModal.vue'
 // @ts-ignore
 import ReferralHistoryModal from '@/components/ReferralHistoryModal.vue'
+import { LPBANK_REFERRAL_TIER_REWARDS, LPBANK_REFERRAL_MAX_TIER_REWARD } from '@/utils/lpbankReferral'
+
+const rewardTiers = [
+  { label: 'Lần 1', amount: LPBANK_REFERRAL_TIER_REWARDS[0] },
+  { label: 'Lần 2', amount: LPBANK_REFERRAL_TIER_REWARDS[1] },
+  { label: 'Lần 3', amount: LPBANK_REFERRAL_TIER_REWARDS[2] },
+  { label: 'Từ lần 4', amount: LPBANK_REFERRAL_MAX_TIER_REWARD },
+]
 
 const router = useRouter()
 const baseUrl = import.meta.env.BASE_URL
@@ -126,9 +134,22 @@ const closeImage = () => { selectedImage.value = null }
             <path d="M12 7v10M9 10h6M9 14h6" stroke="#854d0e" stroke-width="2" stroke-linecap="round"/>
           </svg>
           <div>
-            <p class="text-[9px] text-slate-400 not-italic normal-case tracking-widest">Thưởng mỗi lượt giới thiệu</p>
-            <p class="text-xl text-yellow-400 leading-none tracking-tighter">100.000 <span class="text-sm text-yellow-500">XU</span></p>
+            <p class="text-[9px] text-slate-400 not-italic normal-case tracking-widest">Thưởng mỗi lượt giới thiệu (tăng dần)</p>
+            <p class="text-xl text-yellow-400 leading-none tracking-tighter">100.000 - 150.000 <span class="text-sm text-yellow-500">XU</span></p>
           </div>
+        </div>
+
+        <div class="relative z-10 bg-amber-900/20 border border-amber-500/25 rounded-2xl px-4 py-3 mb-5">
+          <p class="text-[10px] text-amber-300 tracking-widest font-black not-italic normal-case mb-2">🎁 Thưởng tăng dần</p>
+          <div class="grid grid-cols-4 gap-1.5">
+            <div v-for="tier in rewardTiers" :key="tier.label" class="text-center">
+              <p class="text-[8px] text-slate-400 not-italic normal-case tracking-wide">{{ tier.label }}</p>
+              <p class="text-[11px] md:text-xs text-yellow-400 font-black not-italic">{{ tier.amount.toLocaleString('vi-VN') }}</p>
+            </div>
+          </div>
+          <p class="text-[10px] text-slate-400 not-italic normal-case font-medium leading-relaxed mt-2.5 pt-2.5 border-t border-amber-500/15">
+            Chỉ tính những đơn đã được admin duyệt thành công. Đơn chờ duyệt hoặc bị từ chối không được tính.
+          </p>
         </div>
 
         <p class="relative z-10 text-slate-300 text-sm font-medium not-italic normal-case leading-relaxed mb-5">

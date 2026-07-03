@@ -15,6 +15,7 @@ import { basicJobConfigs, startBasicJobConfigsListener } from '@/composables/use
 import { storage } from '@/firebase'
 import { ref as storageRef, deleteObject } from 'firebase/storage'
 import { normalizePhone } from '@/utils/phoneUtils'
+import { getLpbankReferralRewardByCount } from '@/utils/lpbankReferral'
 // @ts-ignore
 import AdminDailyThreads from '@/components/AdminDailyThreads.vue'
 
@@ -1449,6 +1450,84 @@ const approveOneReportTx = async (reportId: string) => {
   })
 }
 
+// Duyệt đơn referral_lpbank: thưởng tăng dần theo số lần user đã được duyệt thành công trước đó.
+// Tách riêng khỏi approveOneReportTx để không ảnh hưởng logic duyệt của các job khác.
+const approveLpbankReferralReportTx = async (reportId: string) => {
+  const reportRef = doc(db, "reports", reportId)
+
+  // Firestore transaction không cho query tuỳ ý (chỉ get-by-reference), nên đọc trước
+  // ngoài transaction để biết có cần fallback đếm đơn cũ đã duyệt hay không.
+  const preReportSnap = await getDoc(reportRef)
+  if (!preReportSnap.exists()) {
+    return { outcome: 'error' as const, reason: 'not-found' }
+  }
+  const preReport: any = preReportSnap.data()
+  if (preReport.status !== 'pending') {
+    return { outcome: 'skipped' as const, status: preReport.status }
+  }
+
+  const userRef = doc(db, "users", preReport.uid)
+  const preUserSnap = await getDoc(userRef)
+  const preUserData: any = preUserSnap.exists() ? preUserSnap.data() : null
+
+  let fallbackCount = 0
+  if (preUserData && preUserData.lpbankReferralPaidCount === undefined) {
+    // Đơn cũ chưa có counter — đếm lại từ report referral_lpbank đã duyệt/thu ví trước đó
+    const historySnap = await getDocs(query(
+      collection(db, 'reports'),
+      where('uid', '==', preReport.uid),
+      where('jobId', '==', 'referral_lpbank'),
+      where('status', 'in', ['approved', 'collected'])
+    ))
+    fallbackCount = historySnap.size
+  }
+
+  return await runTransaction(db, async (transaction) => {
+    const reportSnap = await transaction.get(reportRef)
+    if (!reportSnap.exists()) {
+      return { outcome: 'error' as const, reason: 'not-found' }
+    }
+
+    const report: any = { id: reportId, ...reportSnap.data() }
+    if (report.status !== 'pending') {
+      return { outcome: 'skipped' as const, status: report.status }
+    }
+
+    const userSnap = await transaction.get(userRef)
+    const userExists = userSnap.exists()
+    const userData: any = userExists ? userSnap.data() : {}
+
+    const successCountBefore = Number(userData.lpbankReferralPaidCount ?? fallbackCount ?? 0)
+    const nextNumber = successCountBefore + 1
+    const actualReward = getLpbankReferralRewardByCount(successCountBefore)
+
+    if (import.meta.env.DEV) {
+      console.log('LPBANK referral reward calculation:', { reportId, uid: report.uid, successCountBefore, nextNumber, actualReward })
+    }
+
+    if (userExists) {
+      transaction.update(userRef, {
+        balance: increment(actualReward),
+        lpbankReferralPaidCount: successCountBefore + 1,
+      })
+    }
+    transaction.update(reportRef, {
+      status: 'approved',
+      approvedAt: serverTimestamp(),
+      reward: actualReward,
+      actualReward,
+      referralSuccessNumber: nextNumber,
+      referralProgram: 'lpbank',
+    })
+
+    if (import.meta.env.DEV) {
+      console.log('LPBANK referral approved:', { reportId, uid: report.uid, actualReward, referralSuccessNumber: nextNumber })
+    }
+
+    return { outcome: 'success' as const, report, userExists, rewardValue: actualReward }
+  })
+}
+
 const renderBulkProgressHtml = () => {
   const p = bulkProgress.value
   return `
@@ -1814,17 +1893,29 @@ const congXu = async (uid: string) => {
 }
 
 const approveReport = async (report: any) => {
-  const cleanRewardString = String(report.reward || '0').replace(/\D/g, '');
-  const rewardValue = Number(cleanRewardString) || 0;
+  const isLpbankReferral = report.jobId === 'referral_lpbank'
+
+  let rewardValue: number
+  if (isLpbankReferral) {
+    // Reward thật được tính trong transaction lúc duyệt — đây chỉ là số dự kiến cho dialog xác nhận.
+    const successCountBefore = Number(usersMap.value[report.uid]?.lpbankReferralPaidCount || 0)
+    rewardValue = getLpbankReferralRewardByCount(successCountBefore)
+  } else {
+    const cleanRewardString = String(report.reward || '0').replace(/\D/g, '');
+    rewardValue = Number(cleanRewardString) || 0;
+  }
 
   const currentBalance = usersMap.value[report.uid]?.balance || 0;
-  if (!confirm(`XÁC NHẬN DUYỆT ĐƠN NÀY?\n\n+ Tiền cộng: ${rewardValue.toLocaleString()} XU\n+ Ví cũ đang có: ${currentBalance.toLocaleString()} XU\n👉 TỔNG TIỀN MỚI: ${(currentBalance + rewardValue).toLocaleString()} XU`)) return;
+  const confirmLabel = isLpbankReferral ? 'dự kiến' : ''
+  if (!confirm(`XÁC NHẬN DUYỆT ĐƠN NÀY?\n\n+ Tiền cộng${confirmLabel ? ' (' + confirmLabel + ')' : ''}: ${rewardValue.toLocaleString()} XU\n+ Ví cũ đang có: ${currentBalance.toLocaleString()} XU\n👉 TỔNG TIỀN MỚI${confirmLabel ? ' (' + confirmLabel + ')' : ''}: ${(currentBalance + rewardValue).toLocaleString()} XU`)) return;
 
   try {
     // Dùng chung transaction với bulk approve: đọc lại status mới nhất ngay trước khi ghi
     // (chống duyệt trùng nếu bấm 2 lần / admin khác duyệt cùng lúc), và không cần đọc lại
     // user doc riêng sau khi ghi — cập nhật usersMap tại chỗ từ kết quả transaction.
-    const outcome = await approveOneReportTx(report.id)
+    const outcome = isLpbankReferral
+      ? await approveLpbankReferralReportTx(report.id)
+      : await approveOneReportTx(report.id)
 
     if (outcome.outcome === 'skipped') {
       alert("ĐƠN NÀY ĐÃ ĐƯỢC XỬ LÝ TRƯỚC ĐÓ, KHÔNG THỂ DUYỆT LẠI.");
@@ -1838,7 +1929,8 @@ const approveReport = async (report: any) => {
     if (outcome.userExists && usersMap.value[report.uid]) {
       usersMap.value[report.uid] = {
         ...usersMap.value[report.uid],
-        balance: (usersMap.value[report.uid].balance || 0) + outcome.rewardValue
+        balance: (usersMap.value[report.uid].balance || 0) + outcome.rewardValue,
+        ...(isLpbankReferral ? { lpbankReferralPaidCount: (usersMap.value[report.uid].lpbankReferralPaidCount || 0) + 1 } : {})
       }
       alert("ĐÃ DUYỆT VÀ CỘNG XU THÀNH CÔNG!");
     } else {
@@ -2203,7 +2295,21 @@ const handleAdminLogout = async () => {
               </td>
               <td class="p-6">
                 <div class="text-slate-300 text-[11px] leading-tight mb-1">{{ rp.jobName }}</div>
-                <div class="text-emerald-400 text-sm font-black">+{{ String(rp.reward).replace(/\D/g, '') }} XU</div>
+                <template v-if="rp.jobId === 'referral_lpbank' && rp.status === 'pending'">
+                  <div class="text-amber-400 text-sm font-black">
+                    Thưởng đề xuất: {{ getLpbankReferralRewardByCount(usersMap[rp.uid]?.lpbankReferralPaidCount || 0).toLocaleString('vi-VN') }} XU
+                  </div>
+                  <div class="text-slate-500 text-[10px] mt-0.5">
+                    Lần giới thiệu dự kiến: #{{ (usersMap[rp.uid]?.lpbankReferralPaidCount || 0) + 1 }}
+                  </div>
+                </template>
+                <template v-else-if="rp.jobId === 'referral_lpbank' && (rp.status === 'approved' || rp.status === 'collected')">
+                  <div class="text-emerald-400 text-sm font-black">Đã cộng: {{ Number(rp.actualReward ?? rp.reward ?? 0).toLocaleString('vi-VN') }} XU</div>
+                  <div v-if="rp.referralSuccessNumber" class="text-slate-500 text-[10px] mt-0.5">Lần giới thiệu: #{{ rp.referralSuccessNumber }}</div>
+                </template>
+                <template v-else>
+                  <div class="text-emerald-400 text-sm font-black">+{{ String(rp.reward).replace(/\D/g, '') }} XU</div>
+                </template>
               </td>
               <td class="p-6">
                 <div class="flex flex-col items-center gap-2">
