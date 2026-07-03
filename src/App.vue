@@ -1328,8 +1328,7 @@ const getMobileAgeBadgeClass = (age: number): string => {
 
         <div class="space-y-4 pb-10 lg:pb-0 relative z-10">
           <div v-for="opt in [
-                 { id: 'referral-lpbank', name: 'APP LPBANK', reward: '100.000', badge: 'HOT 🔥', desc: 'Dễ làm — thưởng cao', featured: true },
-                 { id: 'referral-abbank', name: 'APP ABBANK', reward: '85.000', badge: '', desc: 'Giới thiệu bạn bè đăng ký ABBANK nhận thưởng', featured: false }
+                 { id: 'referral-lpbank', name: 'APP LPBANK', reward: '100.000', badge: 'HOT 🔥', desc: 'Dễ làm — thưởng cao', featured: true }
                ]"
                :key="opt.id"
                @click="() => { showReferralModal = false; router.push(`/job/${opt.id}`) }"
