@@ -5,6 +5,7 @@ import { db, auth, storage } from '@/firebase'
 import { doc, getDoc, collection, setDoc, serverTimestamp } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
 import { normalizePhone } from '@/utils/phoneUtils'
+import { SUPPORT_FANPAGE_URL } from '@/composables/useSupportConfig'
 
 const baseUrl = import.meta.env.BASE_URL
 
@@ -30,7 +31,10 @@ const isBusy = computed(() => isCompressing.value || isSubmitting.value)
 const formError = ref('')
 
 const submitSuccess = ref(false)
-const submittedInfo = ref({ friendName: '', friendPhone: '', sentAt: '' })
+const submittedInfo = ref({ friendName: '', friendPhone: '', sentAt: '', orderCode: '' })
+
+const orderCodeCopied = ref(false)
+const orderCodeCopyError = ref(false)
 
 const zoomImage = ref<string | null>(null)
 const openZoom = (img: string) => { zoomImage.value = img }
@@ -192,6 +196,8 @@ function resetForm() {
   imagePreviews.value = []
   formError.value = ''
   submitSuccess.value = false
+  orderCodeCopied.value = false
+  orderCodeCopyError.value = false
 }
 
 function handleClose() {
@@ -202,6 +208,35 @@ function handleClose() {
 function handleOpenHistory() {
   resetForm()
   emit('open-history')
+}
+
+async function copyOrderCode() {
+  const code = submittedInfo.value.orderCode
+  orderCodeCopyError.value = false
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(code)
+    } else {
+      const textarea = document.createElement('textarea')
+      textarea.value = code
+      textarea.style.position = 'fixed'
+      textarea.style.opacity = '0'
+      document.body.appendChild(textarea)
+      textarea.focus()
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+    }
+    orderCodeCopied.value = true
+    setTimeout(() => { orderCodeCopied.value = false }, 2000)
+  } catch (_) {
+    orderCodeCopyError.value = true
+    setTimeout(() => { orderCodeCopyError.value = false }, 2500)
+  }
+}
+
+function openFanpage() {
+  window.open(SUPPORT_FANPAGE_URL, '_blank', 'noopener,noreferrer')
 }
 
 async function handleSubmit() {
@@ -235,6 +270,10 @@ async function handleSubmit() {
       uploadTotal.value = total
     })
 
+    const trimmedFriendName = friendName.value.trim()
+    const trimmedFriendPhone = friendPhone.value.trim()
+    const orderCode = `${trimmedFriendName} - ${trimmedFriendPhone}`
+
     await setDoc(reportRef, {
       uid,
       username: username.value,
@@ -243,9 +282,10 @@ async function handleSubmit() {
       reward: 0,
       estimatedReward: null,
       status: 'pending',
-      friendName: friendName.value.trim(),
-      friendPhone: friendPhone.value.trim(),
-      friendPhoneNormalized: normalizePhone(friendPhone.value.trim()),
+      friendName: trimmedFriendName,
+      friendPhone: trimmedFriendPhone,
+      friendPhoneNormalized: normalizePhone(trimmedFriendPhone),
+      referralOrderCode: orderCode,
       bankType: 'lpbank',
       category: 'vip',
       type: 'friend_referral',
@@ -257,9 +297,10 @@ async function handleSubmit() {
     })
 
     submittedInfo.value = {
-      friendName: friendName.value.trim(),
-      friendPhone: friendPhone.value.trim(),
+      friendName: trimmedFriendName,
+      friendPhone: trimmedFriendPhone,
       sentAt: new Date().toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
+      orderCode,
     }
 
     emit('submitted')
@@ -276,19 +317,37 @@ async function handleSubmit() {
 <template>
   <div class="bg-[#111726]/80 border border-amber-500/30 rounded-[24px] p-5">
 
-    <!-- ── Màn hình thành công ──────────────────────────────── -->
+    <!-- ── Màn hình thành công (riêng cho referral_lpbank) ──── -->
     <div v-if="submitSuccess" class="space-y-5 text-center py-2">
       <div class="text-5xl">✅</div>
 
       <div class="space-y-2">
-        <h2 class="text-base font-black uppercase tracking-wide text-white">Đã gửi bằng chứng LPBANK</h2>
+        <h2 class="text-base font-black uppercase tracking-wide text-white">Nộp đơn thành công</h2>
         <p class="text-slate-400 text-sm not-italic normal-case font-medium leading-relaxed">
-          Bằng chứng giới thiệu bạn bè APP LPBANK đã được gửi.<br/>
-          Vui lòng chờ admin kiểm tra và cộng xu.
+          Đơn giới thiệu bạn bè LPBANK đã được gửi.<br/>
+          Vui lòng chờ phê duyệt.
+        </p>
+        <p class="text-amber-300/90 text-xs not-italic normal-case font-medium leading-relaxed">
+          Để được duyệt nhanh hơn, hãy gửi ảnh bằng chứng + mã đơn này qua Fanpage.
         </p>
       </div>
 
+      <!-- Mã đơn -->
+      <div class="bg-slate-900/60 border border-amber-500/40 rounded-2xl p-4 space-y-2.5">
+        <p class="text-[10px] text-amber-300 tracking-widest font-black uppercase text-center">Mã đơn của bạn</p>
+        <p class="text-yellow-400 font-black text-sm not-italic normal-case tracking-wide break-all text-center">{{ submittedInfo.orderCode }}</p>
+        <button
+          @click="copyOrderCode"
+          class="w-full py-2.5 rounded-xl text-xs font-black italic uppercase tracking-wide transition-all active:scale-95
+                 bg-gradient-to-r from-amber-500 to-yellow-500 text-amber-900 shadow-[0_0_10px_rgba(245,158,11,0.3)]">
+          📋 Sao chép mã đơn
+        </button>
+        <p v-if="orderCodeCopied" class="text-emerald-400 text-[11px] not-italic normal-case font-bold">Đã sao chép mã đơn</p>
+        <p v-if="orderCodeCopyError" class="text-red-400 text-[11px] not-italic normal-case font-bold">Không thể sao chép, vui lòng copy thủ công.</p>
+      </div>
+
       <div class="bg-slate-800/40 border border-slate-700/40 rounded-2xl p-4 text-left space-y-3">
+        <p class="text-[10px] text-slate-500 tracking-widest font-black uppercase">Thông tin đơn</p>
         <div class="flex items-center justify-between text-sm gap-3">
           <span class="text-slate-400 not-italic normal-case font-semibold shrink-0">Bạn bè</span>
           <span class="text-amber-300 font-black truncate">{{ submittedInfo.friendName }}</span>
@@ -317,6 +376,13 @@ async function handleSubmit() {
           Xem lịch sử
         </button>
       </div>
+
+      <button
+        @click="openFanpage"
+        class="w-full py-3.5 rounded-2xl text-sm font-black italic uppercase tracking-wide transition-all active:scale-95
+               bg-[#1877F2] text-white flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(24,119,242,0.3)]">
+        💬 Nhắn Fanpage
+      </button>
     </div>
 
     <!-- ── Form nhập liệu ───────────────────────────────────── -->
