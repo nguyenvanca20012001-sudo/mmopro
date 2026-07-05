@@ -20,8 +20,8 @@ import { getLpbankReferralRewardByCount } from '@/utils/lpbankReferral'
 import AdminDailyThreads from '@/components/AdminDailyThreads.vue'
 
 const reports = ref<any[]>([])
-const withdrawals = ref<any[]>([]) 
-const dailyNotes = ref<any[]>([]) 
+const withdrawals = ref<any[]>([])
+const dailyNotes = ref<any[]>([])
 const usersMap = ref<Record<string, any>>({})
 
 // Lazy-load user docs only for UIDs present in the current report/withdrawal batch.
@@ -39,6 +39,37 @@ const ensureUsers = async (uids: string[]) => {
       if (import.meta.env.DEV) console.log('[Firestore] users batch docs:', snap.size)
       snap.docs.forEach(d => { usersMap.value[d.id] = d.data() })
     } catch {}
+  }
+}
+
+// users/{report.uid} có thể không tồn tại nhưng user vẫn có ví thật dưới UID khác
+// (VD: đăng ký lại, đổi thiết bị...). Trước khi coi là "chưa có hồ sơ", thử tìm theo
+// SĐT để tránh admin tạo trùng ví cho user đã có sẵn.
+const USER_PHONE_FIELDS = ['phoneRef', 'phone', 'phoneNormalized', 'submittedPhone']
+const phoneMatchCache = ref<Record<string, { uid: string; data: any } | null>>({})
+
+const findUserByPhone = async (normalizedPhone: string): Promise<{ uid: string; data: any } | null> => {
+  if (!normalizedPhone) return null
+  for (const field of USER_PHONE_FIELDS) {
+    try {
+      const snap = await getDocs(query(collection(db, 'users'), where(field, '==', normalizedPhone), limit(1)))
+      const d = snap.docs[0]
+      if (d) {
+        return { uid: d.id, data: d.data() }
+      }
+    } catch { /* field có thể chưa được index/tồn tại — thử field kế tiếp */ }
+  }
+  return null
+}
+
+// Chạy nền cho danh sách report đang hiển thị: report nào thiếu users/{uid} thì tra
+// trước theo SĐT và cache theo SĐT đã chuẩn hoá, để template hiển thị ngay khi có kết quả.
+const ensurePhoneFallback = async (reportList: any[]) => {
+  const candidates = reportList.filter(r => r.uid && !usersMap.value[r.uid] && !r.repairedUserUid)
+  for (const rp of candidates) {
+    const normalized = normalizePhone(rp.phoneRef || rp.phone || rp.submittedPhone)
+    if (!normalized || phoneMatchCache.value[normalized] !== undefined) continue
+    phoneMatchCache.value[normalized] = await findUserByPhone(normalized)
   }
 }
 const isLoading = ref(true)
@@ -1418,7 +1449,10 @@ const bulkProgress = ref({ total: 0, current: 0, success: 0, skipped: 0, error: 
 // Duyệt 1 đơn trong transaction: đọc lại status mới nhất từ Firestore ngay trước khi ghi,
 // nên nếu đơn đã được duyệt/hủy bởi thao tác khác (admin khác, hoặc click trùng) thì bỏ qua,
 // tránh cộng XU 2 lần cho cùng 1 report.
-const approveOneReportTx = async (reportId: string) => {
+// targetUid: ví cần cộng xu, mặc định là report.uid. Được truyền riêng khi admin đã xác
+// nhận dùng hồ sơ tìm theo SĐT (report.uid không tồn tại nhưng có ví thật khác UID) — khi
+// đó report được đánh dấu repairedUserUid/originalReportUid để lần sau nhận diện đúng ví.
+const approveOneReportTx = async (reportId: string, targetUid?: string) => {
   const reportRef = doc(db, "reports", reportId)
   return await runTransaction(db, async (transaction) => {
     const reportSnap = await transaction.get(reportRef)
@@ -1430,29 +1464,41 @@ const approveOneReportTx = async (reportId: string) => {
     if (report.status !== 'pending') {
       return { outcome: 'skipped' as const, status: report.status }
     }
+    if (!report.uid) {
+      return { outcome: 'error' as const, reason: 'missing-uid' }
+    }
 
+    const effectiveTargetUid = targetUid || report.uid
     const cleanRewardString = String(report.reward || '0').replace(/\D/g, '')
     const rewardValue = Number(cleanRewardString) || 0
 
-    const userRef = doc(db, "users", report.uid)
+    const userRef = doc(db, "users", effectiveTargetUid)
     const userSnap = await transaction.get(userRef)
 
-    const userExists = userSnap.exists()
-    if (userExists) {
+    // users/{uid} có thể chưa tồn tại (đơn cũ, hoặc user bị thiếu hồ sơ) — updateDoc sẽ
+    // fail trên doc chưa tồn tại nên phải set(..., {merge:true}) để vừa tạo vừa cộng xu.
+    const userExisted = userSnap.exists()
+    if (userExisted) {
       transaction.update(userRef, { balance: increment(rewardValue) })
+    } else {
+      warnMissingUserProfile(report)
+      transaction.set(userRef, buildFallbackUserProfile({ ...report, uid: effectiveTargetUid }, rewardValue), { merge: true })
     }
-    transaction.update(reportRef, {
-      status: 'approved',
-      approvedAt: serverTimestamp()
-    })
 
-    return { outcome: 'success' as const, report, userExists, rewardValue }
+    const reportUpdate: any = { status: 'approved', approvedAt: serverTimestamp() }
+    if (effectiveTargetUid !== report.uid) {
+      Object.assign(reportUpdate, markRepairedByPhone(report, effectiveTargetUid))
+    }
+    transaction.update(reportRef, reportUpdate)
+
+    return { outcome: 'success' as const, report, userExists: true, repaired: !userExisted, rewardValue, targetUid: effectiveTargetUid }
   })
 }
 
 // Duyệt đơn referral_lpbank: thưởng tăng dần theo số lần user đã được duyệt thành công trước đó.
 // Tách riêng khỏi approveOneReportTx để không ảnh hưởng logic duyệt của các job khác.
-const approveLpbankReferralReportTx = async (reportId: string) => {
+// targetUid: xem giải thích ở approveOneReportTx — dùng ví thật tìm theo SĐT khi cần.
+const approveLpbankReferralReportTx = async (reportId: string, targetUid?: string) => {
   const reportRef = doc(db, "reports", reportId)
 
   // Firestore transaction không cho query tuỳ ý (chỉ get-by-reference), nên đọc trước
@@ -1465,17 +1511,22 @@ const approveLpbankReferralReportTx = async (reportId: string) => {
   if (preReport.status !== 'pending') {
     return { outcome: 'skipped' as const, status: preReport.status }
   }
+  if (!preReport.uid) {
+    return { outcome: 'error' as const, reason: 'missing-uid' }
+  }
 
-  const userRef = doc(db, "users", preReport.uid)
+  const effectiveTargetUid = targetUid || preReport.uid
+  const userRef = doc(db, "users", effectiveTargetUid)
   const preUserSnap = await getDoc(userRef)
   const preUserData: any = preUserSnap.exists() ? preUserSnap.data() : null
 
   let fallbackCount = 0
   if (preUserData && preUserData.lpbankReferralPaidCount === undefined) {
     // Đơn cũ chưa có counter — đếm lại từ report referral_lpbank đã duyệt/thu ví trước đó
+    // của đúng ví đang được cộng (targetUid), không phải uid gốc trên report nếu 2 cái khác nhau.
     const historySnap = await getDocs(query(
       collection(db, 'reports'),
-      where('uid', '==', preReport.uid),
+      where('uid', '==', effectiveTargetUid),
       where('jobId', '==', 'referral_lpbank'),
       where('status', 'in', ['approved', 'collected'])
     ))
@@ -1494,8 +1545,8 @@ const approveLpbankReferralReportTx = async (reportId: string) => {
     }
 
     const userSnap = await transaction.get(userRef)
-    const userExists = userSnap.exists()
-    const userData: any = userExists ? userSnap.data() : {}
+    const userExisted = userSnap.exists()
+    const userData: any = userExisted ? userSnap.data() : {}
 
     const successCountBefore = Number(userData.lpbankReferralPaidCount ?? fallbackCount ?? 0)
     const nextNumber = successCountBefore + 1
@@ -1505,26 +1556,37 @@ const approveLpbankReferralReportTx = async (reportId: string) => {
       console.log('LPBANK referral reward calculation:', { reportId, uid: report.uid, successCountBefore, nextNumber, actualReward })
     }
 
-    if (userExists) {
+    if (userExisted) {
       transaction.update(userRef, {
         balance: increment(actualReward),
         lpbankReferralPaidCount: successCountBefore + 1,
       })
+    } else {
+      warnMissingUserProfile(report)
+      transaction.set(userRef, {
+        ...buildFallbackUserProfile({ ...report, uid: effectiveTargetUid }, actualReward),
+        lpbankReferralPaidCount: successCountBefore + 1,
+      }, { merge: true })
     }
-    transaction.update(reportRef, {
+
+    const reportUpdate: any = {
       status: 'approved',
       approvedAt: serverTimestamp(),
       reward: actualReward,
       actualReward,
       referralSuccessNumber: nextNumber,
       referralProgram: 'lpbank',
-    })
+    }
+    if (effectiveTargetUid !== report.uid) {
+      Object.assign(reportUpdate, markRepairedByPhone(report, effectiveTargetUid))
+    }
+    transaction.update(reportRef, reportUpdate)
 
     if (import.meta.env.DEV) {
       console.log('LPBANK referral approved:', { reportId, uid: report.uid, actualReward, referralSuccessNumber: nextNumber })
     }
 
-    return { outcome: 'success' as const, report, userExists, rewardValue: actualReward }
+    return { outcome: 'success' as const, report, userExists: true, repaired: !userExisted, rewardValue: actualReward, targetUid: effectiveTargetUid }
   })
 }
 
@@ -1655,7 +1717,8 @@ const loadData = (newStatus: string) => {
       data.sort((a, b) => getTime(b.createdAt) - getTime(a.createdAt))
       reports.value = data
       isLoading.value = false
-      await ensureUsers(data.map((r: any) => r.uid).filter(Boolean))
+      await ensureUsers(data.flatMap((r: any) => [r.uid, r.repairedUserUid]).filter(Boolean))
+      ensurePhoneFallback(data)
     }, (error) => {
       console.error("LỖI BẰNG CHỨNG:", error)
       isLoading.value = false
@@ -1845,21 +1908,112 @@ const selectedQrImage = ref<string | null>(null)
 const openQrModal = (url: string) => { selectedQrImage.value = url }
 const closeQrModal = () => { selectedQrImage.value = null }
 
-const fixUserWallet = async (uid: string) => {
-  const currentVal = usersMap.value[uid]?.balance || 0;
+// Fallback profile dùng để tạo/vá users/{uid} khi doc chưa tồn tại — ưu tiên field
+// gốc của report, khớp với những gì admin đã thấy trong đơn (không bịa dữ liệu mới).
+const buildFallbackUserProfile = (rp: any, balance: number) => ({
+  uid: rp.uid,
+  fullName: rp.fullName || rp.name || rp.submittedName || rp.reportFullName || 'Chưa cập nhật',
+  phoneRef: rp.phoneRef || rp.phone || rp.submittedPhone || '',
+  birthYear: rp.birthYear || rp.yearOfBirth || '',
+  balance,
+  createdAt: serverTimestamp(),
+  repairedByAdmin: true,
+  repairedAt: serverTimestamp()
+})
+
+const warnMissingUserProfile = (rp: any) => {
+  console.warn('Report uid missing user profile', {
+    reportId: rp.id, reportUid: rp.uid,
+    reportPhone: rp.phoneRef || rp.phone || rp.submittedPhone,
+    foundUserByPhoneUid: rp.__foundUserByPhoneUid
+  })
+}
+
+// Trước khi ghi xu/sửa ví: nếu users/{report.uid} không tồn tại, thử tìm hồ sơ theo
+// SĐT (phoneRef/phone/phoneNormalized/submittedPhone) trước khi coi là "chưa có hồ sơ".
+// Tránh admin tạo trùng ví cho user đã có sẵn dưới UID khác (VD: đăng ký lại máy khác).
+const resolveUserTarget = async (rp: any): Promise<{ targetUid: string; viaPhoneMatch: { uid: string; data: any } | null }> => {
+  const uid = rp.uid
+  if (rp.repairedUserUid && usersMap.value[rp.repairedUserUid]) {
+    return { targetUid: rp.repairedUserUid, viaPhoneMatch: null }
+  }
+  if (usersMap.value[uid]) return { targetUid: uid, viaPhoneMatch: null }
+
+  const userSnap = await getDoc(doc(db, 'users', uid))
+  if (userSnap.exists()) {
+    usersMap.value[uid] = userSnap.data()
+    return { targetUid: uid, viaPhoneMatch: null }
+  }
+
+  const normalized = normalizePhone(rp.phoneRef || rp.phone || rp.submittedPhone)
+  if (!normalized) return { targetUid: uid, viaPhoneMatch: null }
+
+  const cached = phoneMatchCache.value[normalized]
+  const found = cached !== undefined ? cached : await findUserByPhone(normalized)
+  phoneMatchCache.value[normalized] = found ?? null
+  if (!found) return { targetUid: uid, viaPhoneMatch: null }
+
+  warnMissingUserProfile({ ...rp, __foundUserByPhoneUid: found.uid })
+  usersMap.value[found.uid] = found.data
+  return { targetUid: found.uid, viaPhoneMatch: found }
+}
+
+const confirmPhoneMatchUsage = (rp: any, found: { uid: string; data: any }) => {
+  const phone = rp.phoneRef || rp.phone || rp.submittedPhone || ''
+  return confirm(
+    `Report UID khác hồ sơ ví. Cộng xu vào hồ sơ tìm theo SĐT này?\n\n` +
+    `UID report: ${rp.uid}\nUID user tìm thấy: ${found.uid}\nSĐT: ${phone}\n` +
+    `Ví hiện tại: ${(found.data?.balance || 0).toLocaleString('vi-VN')} XU`
+  )
+}
+
+// Đánh dấu report đã được ghi vào ví tìm theo SĐT — để lần sau (hiển thị lẫn thao tác
+// cộng xu tiếp theo) nhận diện đúng ví thật, không hỏi lại / không tạo trùng ví nữa.
+const markRepairedByPhone = (rp: any, foundUid: string) => ({
+  repairedUserUid: foundUid,
+  originalReportUid: rp.uid,
+  repairedByPhone: true,
+  repairedAt: serverTimestamp()
+})
+
+const fixUserWallet = async (rp: any) => {
+  const uid = rp?.uid
+  if (!uid) { alert('Đơn này thiếu UID user, không thể sửa ví.'); return }
+
+  const { targetUid, viaPhoneMatch } = await resolveUserTarget(rp)
+  if (viaPhoneMatch && !confirmPhoneMatchUsage(rp, viaPhoneMatch)) return
+
+  const currentVal = usersMap.value[targetUid]?.balance || 0;
   const newVal = prompt(`Khách đang có: ${currentVal} XU.\n\nNhập số tiền chuẩn để sửa ví (CHỈ NHẬP SỐ):`, "0");
   if (newVal !== null) {
     let cleanNum = Number(newVal.replace(/\D/g, '')) || 0;
     try {
-      await updateDoc(doc(db, "users", uid), { balance: cleanNum });
+      const userRef = doc(db, "users", targetUid)
+      const userSnap = await getDoc(userRef)
+      if (userSnap.exists()) {
+        await updateDoc(userRef, { balance: cleanNum });
+      } else {
+        warnMissingUserProfile(rp)
+        await setDoc(userRef, buildFallbackUserProfile({ ...rp, uid: targetUid }, cleanNum), { merge: true })
+      }
+      if (viaPhoneMatch) {
+        await updateDoc(doc(db, 'reports', rp.id), markRepairedByPhone(rp, targetUid)).catch(() => {})
+      }
+      usersMap.value[targetUid] = (await getDoc(userRef)).data()
       alert(`🎉 Đã sửa ví khách thành công: ${cleanNum} XU!`);
     } catch (e) { alert("Lỗi: " + e); }
   }
 }
 
-const congXu = async (uid: string) => {
-  const username = usersMap.value[uid]?.username || uid
-  const currentVal = usersMap.value[uid]?.balance || 0
+const congXu = async (rp: any) => {
+  const uid = rp?.uid
+  if (!uid) { Swal.fire({ icon: 'error', title: 'Thiếu UID', text: 'Đơn này thiếu UID user, không thể cộng xu tự động.' }); return }
+
+  const { targetUid, viaPhoneMatch } = await resolveUserTarget(rp)
+  if (viaPhoneMatch && !confirmPhoneMatchUsage(rp, viaPhoneMatch)) return
+
+  const username = usersMap.value[targetUid]?.username || usersMap.value[targetUid]?.fullName || rp.fullName || targetUid
+  const currentVal = usersMap.value[targetUid]?.balance || 0
   const { value: inputVal, isConfirmed } = await Swal.fire({
     title: 'Cộng xu cho tài khoản',
     html: `<div style="margin-bottom:8px;color:#aaa">User: <b style="color:#fff">${username}</b> — Hiện có: <b style="color:#facc15">${currentVal.toLocaleString('vi-VN')} XU</b></div>`,
@@ -1879,7 +2033,18 @@ const congXu = async (uid: string) => {
   if (!isConfirmed || !inputVal) return
   const amount = Math.floor(Number(inputVal))
   try {
-    await updateDoc(doc(db, 'users', uid), { balance: increment(amount) })
+    const userRef = doc(db, 'users', targetUid)
+    const userSnap = await getDoc(userRef)
+    if (userSnap.exists()) {
+      await updateDoc(userRef, { balance: increment(amount) })
+    } else {
+      warnMissingUserProfile(rp)
+      await setDoc(userRef, buildFallbackUserProfile({ ...rp, uid: targetUid }, amount), { merge: true })
+    }
+    if (viaPhoneMatch) {
+      await updateDoc(doc(db, 'reports', rp.id), markRepairedByPhone(rp, targetUid)).catch(() => {})
+    }
+    usersMap.value[targetUid] = (await getDoc(userRef)).data()
     addDoc(collection(db, 'admin_notes'), {
       dateLabel: new Date().toLocaleDateString('vi-VN'),
       content: `Admin cộng ${amount.toLocaleString('vi-VN')} xu cho ${username}`,
@@ -1892,20 +2057,66 @@ const congXu = async (uid: string) => {
   }
 }
 
+// Tạo hồ sơ ví thủ công cho report có uid nhưng chưa có users/{uid} — nút "TẠO HỒ SƠ VÍ".
+// Chỉ tạo mới khi chắc chắn không có hồ sơ nào khớp SĐT (kiểm tra lại phòng khi cache nền
+// chưa kịp chạy xong), để tránh tạo trùng ví.
+const createWalletProfile = async (rp: any) => {
+  const uid = rp?.uid
+  if (!uid) { alert('Đơn này thiếu UID, không thể tạo hồ sơ ví.'); return }
+  if (usersMap.value[uid]) { alert('User này đã có hồ sơ ví.'); return }
+
+  const normalized = normalizePhone(rp.phoneRef || rp.phone || rp.submittedPhone)
+  const found = normalized ? await findUserByPhone(normalized) : null
+  if (normalized) phoneMatchCache.value[normalized] = found ?? null
+  if (found) {
+    usersMap.value[found.uid] = found.data
+    alert(`Đã tìm thấy hồ sơ ví theo SĐT (UID: ${found.uid}). Dùng nút "GẮN VÀO HỒ SƠ VÍ TÌM THẤY" thay vì tạo mới để tránh trùng ví.`)
+    return
+  }
+
+  if (!confirm(`Tạo hồ sơ ví cho UID: ${uid}?`)) return
+  try {
+    const userRef = doc(db, 'users', uid)
+    warnMissingUserProfile(rp)
+    await setDoc(userRef, buildFallbackUserProfile(rp, 0), { merge: true })
+    const snap = await getDoc(userRef)
+    if (snap.exists()) usersMap.value[uid] = snap.data()
+    alert('🎉 Đã tạo hồ sơ ví cho user!')
+  } catch (e) { alert('Lỗi tạo hồ sơ ví: ' + e) }
+}
+
+// Gắn report vào hồ sơ ví thật tìm được theo SĐT — KHÔNG cộng xu, chỉ đánh dấu để các thao
+// tác cộng xu/duyệt sau này (và hiển thị) tự nhận đúng ví, tránh phải hỏi lại/tạo trùng ví.
+const linkReportToFoundUser = async (rp: any, found: { uid: string; data: any } | undefined) => {
+  if (!found) return
+  if (!confirm(`Gắn đơn này vào hồ sơ ví UID: ${found.uid}?`)) return
+  try {
+    await updateDoc(doc(db, 'reports', rp.id), markRepairedByPhone(rp, found.uid))
+    warnMissingUserProfile({ ...rp, __foundUserByPhoneUid: found.uid })
+    usersMap.value[found.uid] = found.data
+    alert('🎉 Đã gắn đơn vào hồ sơ ví tìm thấy!')
+  } catch (e) { alert('Lỗi: ' + e) }
+}
+
 const approveReport = async (report: any) => {
   const isLpbankReferral = report.jobId === 'referral_lpbank'
+
+  if (!report.uid) { alert("Đơn này thiếu UID user, không thể cộng xu tự động."); return }
+
+  const { targetUid, viaPhoneMatch } = await resolveUserTarget(report)
+  if (viaPhoneMatch && !confirmPhoneMatchUsage(report, viaPhoneMatch)) return
 
   let rewardValue: number
   if (isLpbankReferral) {
     // Reward thật được tính trong transaction lúc duyệt — đây chỉ là số dự kiến cho dialog xác nhận.
-    const successCountBefore = Number(usersMap.value[report.uid]?.lpbankReferralPaidCount || 0)
+    const successCountBefore = Number(usersMap.value[targetUid]?.lpbankReferralPaidCount || 0)
     rewardValue = getLpbankReferralRewardByCount(successCountBefore)
   } else {
     const cleanRewardString = String(report.reward || '0').replace(/\D/g, '');
     rewardValue = Number(cleanRewardString) || 0;
   }
 
-  const currentBalance = usersMap.value[report.uid]?.balance || 0;
+  const currentBalance = usersMap.value[targetUid]?.balance || 0;
   const confirmLabel = isLpbankReferral ? 'dự kiến' : ''
   if (!confirm(`XÁC NHẬN DUYỆT ĐƠN NÀY?\n\n+ Tiền cộng${confirmLabel ? ' (' + confirmLabel + ')' : ''}: ${rewardValue.toLocaleString()} XU\n+ Ví cũ đang có: ${currentBalance.toLocaleString()} XU\n👉 TỔNG TIỀN MỚI${confirmLabel ? ' (' + confirmLabel + ')' : ''}: ${(currentBalance + rewardValue).toLocaleString()} XU`)) return;
 
@@ -1914,27 +2125,39 @@ const approveReport = async (report: any) => {
     // (chống duyệt trùng nếu bấm 2 lần / admin khác duyệt cùng lúc), và không cần đọc lại
     // user doc riêng sau khi ghi — cập nhật usersMap tại chỗ từ kết quả transaction.
     const outcome = isLpbankReferral
-      ? await approveLpbankReferralReportTx(report.id)
-      : await approveOneReportTx(report.id)
+      ? await approveLpbankReferralReportTx(report.id, targetUid)
+      : await approveOneReportTx(report.id, targetUid)
 
     if (outcome.outcome === 'skipped') {
       alert("ĐƠN NÀY ĐÃ ĐƯỢC XỬ LÝ TRƯỚC ĐÓ, KHÔNG THỂ DUYỆT LẠI.");
       return
     }
     if (outcome.outcome === 'error') {
-      alert("LỖI KHI DUYỆT: không tìm thấy đơn.");
+      if (outcome.reason === 'missing-uid') {
+        alert("Đơn này thiếu UID user, không thể cộng xu tự động.");
+      } else {
+        alert("LỖI KHI DUYỆT: không tìm thấy đơn.");
+      }
       return
     }
 
-    if (outcome.userExists && usersMap.value[report.uid]) {
-      usersMap.value[report.uid] = {
-        ...usersMap.value[report.uid],
-        balance: (usersMap.value[report.uid].balance || 0) + outcome.rewardValue,
-        ...(isLpbankReferral ? { lpbankReferralPaidCount: (usersMap.value[report.uid].lpbankReferralPaidCount || 0) + 1 } : {})
+    if (outcome.repaired) {
+      // users/{uid} chưa tồn tại trước đó — transaction đã tự tạo hồ sơ ví tối thiểu
+      // kèm reward, nên cập nhật cache tại chỗ từ chính report thay vì đọc lại Firestore.
+      usersMap.value[outcome.targetUid] = {
+        ...buildFallbackUserProfile({ ...report, uid: outcome.targetUid }, outcome.rewardValue),
+        ...(isLpbankReferral ? { lpbankReferralPaidCount: 1 } : {})
       }
-      alert("ĐÃ DUYỆT VÀ CỘNG XU THÀNH CÔNG!");
+      alert("ĐÃ DUYỆT VÀ CỘNG XU THÀNH CÔNG! (Đã tự động tạo hồ sơ ví vì user chưa có sẵn)");
     } else {
-      alert("ĐÃ DUYỆT ĐƠN! (Tài khoản user không tồn tại nên XU không được cộng)");
+      usersMap.value[outcome.targetUid] = {
+        ...(usersMap.value[outcome.targetUid] || {}),
+        balance: (usersMap.value[outcome.targetUid]?.balance || 0) + outcome.rewardValue,
+        ...(isLpbankReferral ? { lpbankReferralPaidCount: (usersMap.value[outcome.targetUid]?.lpbankReferralPaidCount || 0) + 1 } : {})
+      }
+      alert(outcome.targetUid !== report.uid
+        ? "ĐÃ DUYỆT VÀ CỘNG XU THÀNH CÔNG VÀO HỒ SƠ VÍ TÌM THEO SĐT!"
+        : "ĐÃ DUYỆT VÀ CỘNG XU THÀNH CÔNG!");
     }
     updateLocalStatsOnApprove(outcome.report);
   } catch (error) { alert("LỖI KHI DUYỆT: " + error) }
@@ -2022,6 +2245,58 @@ const parseExifDate = (d: any) => { if (!d) return null; const dt = new Date(d);
 const isOldPhoto = (dateTaken: any, createdAt: any) => { const shot = parseExifDate(dateTaken); if (!shot) return false; return (toMs(createdAt) - shot.getTime()) / 86400000 > 7 }
 const fmtDate = (d: any) => { const dt = parseExifDate(d); if (!dt) return ''; return dt.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' }) }
 const hasOldPhoto = (arr: any[], createdAt: any) => Array.isArray(arr) && arr.some(e => isOldPhoto(e?.dateTaken, createdAt))
+
+const shortUid = (uid: string | undefined | null) => uid ? `${uid.slice(0, 6)}...${uid.slice(-4)}` : ''
+
+const describeUserDoc = (rp: any, userDoc: any) => ({
+  state: 'direct' as const,
+  fullName: userDoc?.username || userDoc?.fullName || rp?.fullName || 'Chưa cập nhật',
+  birth: userDoc?.dateOfBirth || userDoc?.dob || userDoc?.ngaysinh || rp?.birthYear || rp?.yearOfBirth || 'Khách cũ',
+  balanceLabel: `${(userDoc?.balance || 0).toLocaleString('vi-VN')} XU`,
+})
+
+// users/{uid} có thể chưa được tạo (report cũ, hoặc user thiếu hồ sơ) — không để ô
+// "TÀI KHOẢN GỐC" hiện trống. Ưu tiên: đã gắn thủ công theo SĐT (repairedUserUid) → user
+// doc đúng UID → tìm thấy khớp SĐT (đang chờ admin xác nhận gắn, hiện balance thật để
+// admin đối chiếu nhưng KHÔNG tự nhận là tài khoản gốc) → fallback từ report.
+type AccountDisplay = {
+  state: 'direct' | 'no-match' | 'checking' | 'phone-match'
+  fullName: string
+  birth: string
+  balanceLabel: string
+  match?: { uid: string; data: any }
+}
+
+const getAccountDisplay = (rp: any): AccountDisplay => {
+  if (rp?.repairedUserUid && usersMap.value[rp.repairedUserUid]) {
+    return describeUserDoc(rp, usersMap.value[rp.repairedUserUid])
+  }
+  if (rp?.uid && usersMap.value[rp.uid]) {
+    return describeUserDoc(rp, usersMap.value[rp.uid])
+  }
+
+  const fallbackName = rp?.fullName || rp?.name || rp?.reportFullName || 'Chưa cập nhật'
+  const fallbackBirth = rp?.birthYear || rp?.yearOfBirth || 'Khách cũ'
+
+  const normalized = normalizePhone(rp?.phoneRef || rp?.phone || rp?.submittedPhone)
+  if (!normalized) {
+    return { state: 'no-match', fullName: fallbackName, birth: fallbackBirth, balanceLabel: 'Chưa có hồ sơ ví' }
+  }
+  const cached = phoneMatchCache.value[normalized]
+  if (cached === undefined) {
+    return { state: 'checking', fullName: fallbackName, birth: fallbackBirth, balanceLabel: 'Đang kiểm tra hồ sơ theo SĐT...' }
+  }
+  if (cached) {
+    return {
+      state: 'phone-match',
+      fullName: fallbackName,
+      birth: fallbackBirth,
+      balanceLabel: `${(cached.data?.balance || 0).toLocaleString('vi-VN')} XU (hồ sơ tìm theo SĐT)`,
+      match: cached,
+    }
+  }
+  return { state: 'no-match', fullName: fallbackName, birth: fallbackBirth, balanceLabel: 'Chưa có hồ sơ ví' }
+}
 
 const handleAdminLogout = async () => {
   if(confirm('XÁC NHẬN THOÁT ADMIN?')) { await signOut(auth); router.push('/login') }
@@ -2259,19 +2534,40 @@ const handleAdminLogout = async () => {
                   <div>
                     <span class="text-[9px] text-emerald-400 tracking-widest block mb-0.5">TÀI KHOẢN GỐC:</span>
                     <div class="text-white text-sm md:text-base font-black truncate max-w-[200px] flex items-center gap-1.5">
-                      {{ usersMap[rp.uid]?.username || usersMap[rp.uid]?.fullName || 'CHƯA CẬP NHẬT' }}
+                      {{ getAccountDisplay(rp).fullName }}
                       <span v-if="lastSearchedKeywordLower && String(usersMap[rp.uid]?.username || '').toLowerCase() === lastSearchedKeywordLower" class="text-[8px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded-full tracking-wide shrink-0">✓ KHỚP CHÍNH XÁC</span>
                     </div>
-                    <div class="text-slate-400 text-[10px] mt-0.5 font-sans not-italic tracking-normal">Ví hiện tại: <span class="text-yellow-400 font-black">{{ usersMap[rp.uid]?.balance }} XU</span></div>
+                    <div class="text-slate-400 text-[10px] mt-0.5 font-sans not-italic tracking-normal">Ví hiện tại: <span class="text-yellow-400 font-black">{{ getAccountDisplay(rp).balanceLabel }}</span></div>
                     <div class="text-slate-400 text-[10px] mt-0.5 font-sans not-italic tracking-normal">
-                      Ngày sinh: 
-                      <span class="text-emerald-400 font-bold uppercase" v-if="usersMap[rp.uid]?.dateOfBirth || usersMap[rp.uid]?.dob || usersMap[rp.uid]?.ngaysinh">{{ usersMap[rp.uid]?.dateOfBirth || usersMap[rp.uid]?.dob || usersMap[rp.uid]?.ngaysinh }}</span>
-                      <span class="text-slate-600 italic bg-slate-800/50 px-1 py-0.5 rounded" v-else>Khách cũ</span>
+                      Ngày sinh:
+                      <span class="text-emerald-400 font-bold uppercase" v-if="usersMap[rp.repairedUserUid || rp.uid]?.dateOfBirth || usersMap[rp.repairedUserUid || rp.uid]?.dob || usersMap[rp.repairedUserUid || rp.uid]?.ngaysinh">{{ usersMap[rp.repairedUserUid || rp.uid]?.dateOfBirth || usersMap[rp.repairedUserUid || rp.uid]?.dob || usersMap[rp.repairedUserUid || rp.uid]?.ngaysinh }}</span>
+                      <span class="text-slate-600 italic bg-slate-800/50 px-1 py-0.5 rounded" v-else>{{ getAccountDisplay(rp).birth }}</span>
+                    </div>
+                    <div class="mt-1" v-if="getAccountDisplay(rp).state !== 'direct'">
+                      <template v-if="getAccountDisplay(rp).state === 'phone-match'">
+                        <span class="text-[8px] text-amber-400 font-bold bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.5 rounded block leading-tight w-fit">
+                          ⚠️ Tìm thấy hồ sơ ví theo SĐT nhưng UID report khác UID user
+                        </span>
+                        <div class="text-[8px] text-slate-400 mt-0.5 leading-tight">
+                          UID report: {{ shortUid(rp.uid) }} · UID user thật: {{ shortUid(getAccountDisplay(rp).match?.uid) }}<br />
+                          SĐT: {{ rp.phoneRef || rp.phone || rp.submittedPhone || 'Không có' }} · Ví hiện tại: {{ (getAccountDisplay(rp).match?.data?.balance || 0).toLocaleString('vi-VN') }} XU
+                        </div>
+                        <button class="mt-1 bg-amber-600/20 text-amber-400 hover:bg-amber-500 hover:text-white border border-amber-600/50 px-2 py-1 rounded-lg text-[8px] transition-all" @click="linkReportToFoundUser(rp, getAccountDisplay(rp).match)">GẮN VÀO HỒ SƠ VÍ TÌM THẤY</button>
+                      </template>
+                      <template v-else-if="getAccountDisplay(rp).state === 'checking'">
+                        <span class="text-[8px] text-slate-500 italic">Đang kiểm tra hồ sơ theo SĐT...</span>
+                      </template>
+                      <template v-else>
+                        <span class="text-[8px] text-red-400 font-bold bg-red-500/10 border border-red-500/30 px-1.5 py-0.5 rounded block leading-tight w-fit">
+                          ⚠️ Chưa có hồ sơ user (UID: {{ shortUid(rp.uid) }})
+                        </span>
+                        <button class="mt-1 bg-red-600/20 text-red-400 hover:bg-red-500 hover:text-white border border-red-600/50 px-2 py-1 rounded-lg text-[8px] transition-all" @click="createWalletProfile(rp)">TẠO HỒ SƠ VÍ</button>
+                      </template>
                     </div>
                   </div>
                   <div class="flex flex-col items-end gap-1">
-                    <button class="bg-yellow-600/20 text-yellow-500 hover:bg-yellow-500 hover:text-white border border-yellow-600/50 px-2 py-1 rounded-lg text-[8px] transition-all" @click="fixUserWallet(rp.uid)">SỬA VÍ</button>
-                    <button class="bg-green-600/20 text-green-400 hover:bg-green-500 hover:text-white border border-green-600/50 px-2 py-1 rounded-lg text-[8px] transition-all" @click="congXu(rp.uid)">+ CỘNG XU</button>
+                    <button class="bg-yellow-600/20 text-yellow-500 hover:bg-yellow-500 hover:text-white border border-yellow-600/50 px-2 py-1 rounded-lg text-[8px] transition-all" @click="fixUserWallet(rp)">SỬA VÍ</button>
+                    <button class="bg-green-600/20 text-green-400 hover:bg-green-500 hover:text-white border border-green-600/50 px-2 py-1 rounded-lg text-[8px] transition-all" @click="congXu(rp)">+ CỘNG XU</button>
                   </div>
                 </div>
                 <div>
