@@ -188,6 +188,18 @@ const closeImage = () => { selectedImage.value = null }
         <p v-if="codeCopied" class="text-emerald-400 text-[11px] not-italic normal-case font-bold mt-2">Đã sao chép mã giới thiệu</p>
       </div>
 
+      <!-- ── Cảnh báo 1 SĐT chỉ đăng ký 1 tài khoản LPBANK ───── -->
+      <div class="bg-red-950/40 border border-red-500/40 rounded-2xl px-4 py-3 space-y-1.5">
+        <p class="flex items-start gap-2 text-red-300 text-[12px] md:text-sm font-bold not-italic normal-case leading-snug">
+          <span class="shrink-0">⚠️</span>
+          <span>1 điện thoại chỉ đăng ký được 1 tài khoản LPBANK.</span>
+        </p>
+        <p class="flex items-start gap-2 text-red-300 text-[12px] md:text-sm font-bold not-italic normal-case leading-snug">
+          <span class="shrink-0">⚠️</span>
+          <span>Không được đăng ký 2 tài khoản LPBANK trên cùng 1 điện thoại.</span>
+        </p>
+      </div>
+
       <!-- ── Hướng dẫn ───────────────────────────────────────── -->
       <div class="bg-[#111726]/80 border border-slate-800/60 rounded-[24px] p-5 space-y-4">
         <p class="text-[10px] text-amber-300 tracking-widest mb-1">HƯỚNG DẪN</p>
