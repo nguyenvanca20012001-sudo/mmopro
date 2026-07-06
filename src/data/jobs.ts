@@ -59,8 +59,8 @@ export const jobsData: Record<string, any> = {
         id: 3,
         title: "BƯỚC 3: ĐĂNG BÀI VÀ GHIM MÃ QR DƯỚI BÌNH LUẬN",
         contentHtml: `<span class="text-yellow-400 font-black not-italic">Dưới phần bình luận: kêu gọi mọi người tham gia nhóm</span>, <span class="text-red-400 font-black not-italic">ví dụ: vào nhóm lụm lúa nè mọi người....Rồi ghim mã QR 📌</span>`,
-        img: "images/qr-zalo-nhom13.jpg",
-        downloadLink: "images/qr-zalo-nhom13.jpg",
+        img: "images/qr-zalo-nhom14.jpg",
+        downloadLink: "images/qr-zalo-nhom14.jpg",
         buttonText: "📥 TẢI MÃ QR ZALO VỀ MÁY"
       },
       {
