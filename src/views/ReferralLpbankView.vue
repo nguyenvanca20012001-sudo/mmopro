@@ -52,7 +52,7 @@ async function copyReferralCode() {
 }
 
 const steps = [
-  'Hướng dẫn bạn bè tải APP LPBANK, đăng ký tài khoản và nhập mã giới thiệu như ảnh mẫu bên dưới.',
+  'Hướng dẫn bạn bè tải APP LPBANK PLUS, đăng ký tài khoản và nhập mã giới thiệu như ảnh mẫu bên dưới.',
   'Làm theo 2 ảnh mẫu bên dưới, sau đó chụp lại và gửi bằng chứng.',
 ]
 
@@ -116,7 +116,7 @@ const closeImage = () => { selectedImage.value = null }
             <p class="text-[10px] text-amber-300 tracking-widest mb-1">GIỚI THIỆU BẠN BÈ</p>
             <h1 class="text-lg md:text-xl text-white leading-tight tracking-tight">
               GIỚI THIỆU BẠN BÈ<br/>
-              <span class="text-amber-300">ĐĂNG KÝ APP LPBANK</span>
+              <span class="text-amber-300">ĐĂNG KÝ APP LPBANK PLUS</span>
             </h1>
           </div>
         </div>
@@ -153,7 +153,7 @@ const closeImage = () => { selectedImage.value = null }
         </div>
 
         <p class="relative z-10 text-slate-300 text-sm font-medium not-italic normal-case leading-relaxed mb-5">
-          Mời bạn bè đăng ký APP LPBANK theo hướng dẫn để nhận thưởng.
+          Mời bạn bè đăng ký APP LPBANK PLUS theo hướng dẫn để nhận thưởng.
         </p>
 
         <div class="relative z-10 grid grid-cols-2 gap-3">
