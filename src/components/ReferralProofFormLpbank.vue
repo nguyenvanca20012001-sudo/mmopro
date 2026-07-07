@@ -20,6 +20,10 @@ const userSite = ref('mmo')
 const friendName = ref('')
 const friendPhone = ref('')
 
+const submitterFullName = ref('')
+const submitterPhoneRef = ref('')
+const submitterBirthYear = ref('')
+
 const imageBlobs = ref<Blob[]>([])
 const imagePreviews = ref<string[]>([])
 const isCompressing = ref(false)
@@ -47,8 +51,13 @@ onMounted(async () => {
     const snap = await getDoc(doc(db, 'users', uid))
     if (snap.exists()) {
       const data = snap.data()
-      if (data.username) username.value = data.username
+      username.value = data.username || data.fullName || ''
       if (data.site) userSite.value = data.site
+      submitterFullName.value = data.fullName || ''
+      submitterPhoneRef.value = data.phone || data.phoneRef || ''
+      submitterBirthYear.value = data.dob || data.birthYear || ''
+    } else {
+      console.warn('[ReferralProofFormLpbank] users/{uid} chưa tồn tại lúc submit', { uid })
     }
   } catch (_) {}
 })
@@ -277,6 +286,10 @@ async function handleSubmit() {
     await setDoc(reportRef, {
       uid,
       username: username.value,
+      fullName: submitterFullName.value,
+      phoneRef: submitterPhoneRef.value,
+      phoneNormalized: normalizePhone(submitterPhoneRef.value),
+      birthYear: submitterBirthYear.value,
       jobId: 'referral_lpbank',
       jobName: 'Giới thiệu bạn bè đăng ký APP LPBANK',
       reward: 0,

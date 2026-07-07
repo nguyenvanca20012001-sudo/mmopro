@@ -32,7 +32,7 @@ No test suite is configured.
 | `withdrawals` | Withdrawal requests: `uid`, `amountXu`, `realMoney`, `bankInfo`, `status`, `site`, `createdAt` |
 | `admin_notes` | Daily admin ledger entries: `dateLabel`, `content`, `totalToday`, `createdAt` |
 
-Balance mutations use Firestore `increment()` to avoid race conditions — **except** `approveReport()` in AdminView which currently uses a read-then-write pattern (known race condition risk; safe to fix with `increment()`).
+Balance mutations use Firestore `increment()` to avoid race conditions. `approveReport()` in AdminView delegates to `approveOneReportTx()`/`approveLpbankReferralReportTx()`, which run inside `runTransaction()` and use `increment()` — safe against concurrent approval.
 
 ### Multi-site architecture
 
@@ -112,7 +112,6 @@ The special job ID `'APP NGÂN HÀNG'` is intercepted in `App.vue`'s `handleRece
 
 ## Known issues
 
-- `approveReport()` in AdminView uses read-then-write for balance update instead of `increment()` — race condition risk if two admins approve simultaneously or user collects at the same time. `bulkApproveOtherJobs()` already uses `increment()` correctly.
 - Several `.vue` files were previously corrupted with AI-generated markdown text at the top of the file (before the `<script>` tag). Files already fixed: `JobSection.vue`, `SubmitReportView.vue`. If a file fails to compile, check if there is markdown preamble text before `<script setup>`.
 ## Quy tắc bắt buộc
 - Khi sửa UI: CHỈ được đụng vào class CSS, màu sắc, font

@@ -1194,15 +1194,18 @@ function getPhoneMatchScore(report: any, normalizedPhoneKeyword: string): number
   return 0
 }
 
-// Điểm cho daily_thread_reports — cùng tầng bậc, khác field
+// Điểm cho daily_thread_reports — cùng tầng bậc, khác field. Ưu tiên: username web
+// (resolve qua users/uid, gắn vào report trước khi tính điểm) > uid > threadNick > fullName > postUrl.
 function getThreadSearchScore(threadReport: any, keyword: string): number {
   const keywordLower = keyword.trim().toLowerCase()
+  const usernameLower = String(threadReport.username || "").toLowerCase()
   const nickLower = String(threadReport.threadNickLower || threadReport.threadNick || "").toLowerCase()
   const uidLower = String(threadReport.uid || "").toLowerCase()
   const fullNameLower = String(threadReport.fullName || "").toLowerCase()
   const postUrlLower = String(threadReport.postUrlNormalized || threadReport.postUrl || "").toLowerCase()
-  if (nickLower === keywordLower) return 100
+  if (usernameLower && usernameLower === keywordLower) return 100
   if (uidLower === keywordLower) return 95
+  if (nickLower === keywordLower) return 90
   if (nickLower.startsWith(keywordLower)) return 80
   if (fullNameLower === keywordLower) return 75
   if (fullNameLower.startsWith(keywordLower)) return 60
@@ -1335,6 +1338,18 @@ const handleSearch = async () => {
     reports.value = data;
     lastSearchedKeywordLower.value = keywordLower;
 
+    // Hydrate usersMap cho toàn bộ report vừa hiển thị — search trước đây bỏ qua bước
+    // này (khác loadData()), khiến report có users/{uid} thật vẫn hiện "Chưa cập nhật".
+    await ensureUsers(data.flatMap((r: any) => [r.uid, r.repairedUserUid]).filter(Boolean))
+    ensurePhoneFallback(data)
+    if (import.meta.env.DEV) {
+      console.log('Hydrating admin search reports', {
+        reportCount: data.length,
+        uniqueUids: [...new Set(data.map((r: any) => r.uid).filter(Boolean))].length,
+        missingUserUids: data.filter((r: any) => r.uid && !usersMap.value[r.uid] && !(r.repairedUserUid && usersMap.value[r.repairedUserUid])).map((r: any) => r.uid),
+      })
+    }
+
     // BƯỚC 5: withdrawals cùng bộ uid — giữ NGUYÊN logic fallback gốc.
     let uidsToSearchWith = isPhoneSearch ? [] : limitedUids;
     if (uidsToSearchWith.length === 0 && data.length > 0) {
@@ -1347,19 +1362,69 @@ const handleSearch = async () => {
       const snapWith = await getDocs(qWith);
       let wData = snapWith.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       wData.sort((a, b) => getTime(b.createdAt) - getTime(a.createdAt));
+      await ensureUsers(wData.map((w: any) => w.uid).filter(Boolean))
       withdrawals.value = wData;
     } else {
       withdrawals.value = [];
     }
 
-    // BƯỚC 6: daily_thread_reports (300 đơn gần nhất) — filter + rank client-side.
-    const qThreads = query(
-      collection(db, "daily_thread_reports"),
-      orderBy("createdAt", "desc"),
-      limit(300)
-    )
-    const snapThreads = await getDocs(qThreads)
-    let threadData: any[] = snapThreads.docs.map(d => ({ id: d.id, ...d.data() }))
+    // BƯỚC 6: daily_thread_reports — gộp nhiều nguồn truy vấn để không bỏ sót lịch sử cũ
+    // của user. Trước đây chỉ quét 300 đơn gần nhất TOÀN HỆ THỐNG rồi lọc client-side —
+    // user có đơn rải rác nhiều ngày rất dễ rớt khỏi cửa sổ 300 đơn này khi site đông user.
+    let threadData: any[] = []
+    const existingThreadIds = new Set<string>()
+    const pushUniqueThread = (docs: any[]) => {
+      for (const d of docs) {
+        if (!existingThreadIds.has(d.id)) { threadData.push(d); existingThreadIds.add(d.id) }
+      }
+    }
+
+    try {
+      // 6a. Username/uid đã resolve từ BƯỚC 1 (users collection) — lấy TOÀN BỘ lịch sử
+      // Thread của đúng (các) uid này, không giới hạn theo ngày/độ mới.
+      if (!isPhoneSearch && limitedUids.length > 0) {
+        const qThreadsByUid = query(
+          collection(db, "daily_thread_reports"),
+          where("uid", "in", limitedUids.slice(0, 10)),
+          limit(200)
+        )
+        const snapByUid = await getDocs(qThreadsByUid)
+        pushUniqueThread(snapByUid.docs.map(d => ({ id: d.id, ...d.data() })))
+      }
+
+      // 6b. SĐT chính xác — cùng field phoneRef như report thường.
+      if (isPhoneSearch) {
+        const qThreadsByPhone = query(collection(db, "daily_thread_reports"), where("phoneRef", "==", text), limit(100))
+        const snapByPhone = await getDocs(qThreadsByPhone)
+        pushUniqueThread(snapByPhone.docs.map(d => ({ id: d.id, ...d.data() })))
+      }
+
+      // 6c. Nick Thread chính xác — cho phép tìm ra đơn dù không biết username web.
+      if (!isPhoneSearch && !isIdMode && keywordLower) {
+        const qThreadsByNick = query(collection(db, "daily_thread_reports"), where("threadNickLower", "==", keywordLower), limit(100))
+        const snapByNick = await getDocs(qThreadsByNick)
+        pushUniqueThread(snapByNick.docs.map(d => ({ id: d.id, ...d.data() })))
+      }
+
+      // 6d. UID đầy đủ dán trực tiếp vào ô search (không qua resolve username).
+      if (!isPhoneSearch && effectiveText) {
+        const qThreadsByUidDirect = query(collection(db, "daily_thread_reports"), where("uid", "==", effectiveText), limit(50))
+        const snapByUidDirect = await getDocs(qThreadsByUidDirect)
+        pushUniqueThread(snapByUidDirect.docs.map(d => ({ id: d.id, ...d.data() })))
+      }
+
+      // 6e. Fallback: quét 300 đơn gần nhất toàn hệ thống — bắt các trường hợp fuzzy
+      // (fullName/nick chứa từ khóa) mà 4 truy vấn exact ở trên không phủ tới.
+      const qThreadsRecent = query(collection(db, "daily_thread_reports"), orderBy("createdAt", "desc"), limit(300))
+      const snapThreadsRecent = await getDocs(qThreadsRecent)
+      pushUniqueThread(snapThreadsRecent.docs.map(d => ({ id: d.id, ...d.data() })))
+    } catch (threadScanErr) {
+      console.error("Lỗi quét daily_thread_reports:", threadScanErr)
+    }
+
+    // Gắn username đã resolve (nếu có) để getThreadSearchScore nhận diện đúng theo
+    // username web — không phải report Thread nào cũng tự có sẵn field username.
+    threadData.forEach(r => { r.username = r.username || usersMap.value[r.uid]?.username || "" })
 
     threadData = threadData
       .map(r => {
@@ -1369,10 +1434,14 @@ const handleSearch = async () => {
           if (phoneRefN === normalizedPhoneKeyword) score = 100;
           else if (r.phoneRef && String(r.phoneRef).includes(text)) score = 40; // giữ hành vi cũ (raw includes)
         } else if (isIdMode) {
-          score = getIdModeScore({ uid: r.uid, username: r.threadNickLower || r.threadNick }, keywordLower);
+          score = getIdModeScore({ uid: r.uid, username: r.username || r.threadNickLower || r.threadNick }, keywordLower);
         } else {
           score = getThreadSearchScore(r, keywordLower);
         }
+        // Report lấy về nhờ khớp đúng uid đã resolve ở 6a luôn được coi là liên quan, dù
+        // nick/fullName không chứa keyword theo nghĩa đen — đây chính là mục tiêu chính:
+        // search username phải ra TOÀN BỘ lịch sử Thread, không phụ thuộc có chứa chữ hay không.
+        if (!isPhoneSearch && limitedUids.includes(r.uid) && score === 0) score = 65;
         return { ...r, searchScore: score };
       })
       .filter(r => r.searchScore > 0)
@@ -1395,6 +1464,18 @@ const handleSearch = async () => {
         isPhoneSearch,
         isIdMode,
         results: data.map(r => ({ id: r.id, username: r.username, fullName: r.fullName, phoneRef: r.phoneRef, score: r.searchScore }))
+      });
+      console.log("Admin global search:", {
+        keyword: text,
+        resolvedUsers: limitedUids.map(uid => ({ uid, username: usersMap.value[uid]?.username || usersMap.value[uid]?.fullName || '' })),
+        reportResultsCount: data.length,
+        dailyThreadResultsCount: threadData.length,
+        withdrawalResultsCount: withdrawals.value.length,
+      });
+      console.log("Daily thread search result:", {
+        keyword: text,
+        resolvedUids: limitedUids,
+        dailyThreadReports: threadData.map(r => ({ id: r.id, uid: r.uid, threadNick: r.threadNick, dateKey: r.dateKey, status: r.status })),
       });
     }
   } catch (error: any) {
@@ -1478,6 +1559,11 @@ const approveOneReportTx = async (reportId: string, targetUid?: string) => {
     // users/{uid} có thể chưa tồn tại (đơn cũ, hoặc user bị thiếu hồ sơ) — updateDoc sẽ
     // fail trên doc chưa tồn tại nên phải set(..., {merge:true}) để vừa tạo vừa cộng xu.
     const userExisted = userSnap.exists()
+    if (!userExisted && !hasSubmitterIdentity(report)) {
+      // Không có users/{uid} lẫn snapshot người nộp (fullName/phoneRef) trong report —
+      // không đủ căn cứ để tạo ví mới, tránh cộng xu vào một hồ sơ ẩn danh.
+      return { outcome: 'error' as const, reason: 'missing-profile-info' }
+    }
     if (userExisted) {
       transaction.update(userRef, { balance: increment(rewardValue) })
     } else {
@@ -1547,6 +1633,12 @@ const approveLpbankReferralReportTx = async (reportId: string, targetUid?: strin
     const userSnap = await transaction.get(userRef)
     const userExisted = userSnap.exists()
     const userData: any = userExisted ? userSnap.data() : {}
+
+    if (!userExisted && !hasSubmitterIdentity(report)) {
+      // Không có users/{uid} lẫn snapshot người nộp (fullName/phoneRef) trong report —
+      // không đủ căn cứ để tạo ví mới, tránh cộng xu vào một hồ sơ ẩn danh.
+      return { outcome: 'error' as const, reason: 'missing-profile-info' }
+    }
 
     const successCountBefore = Number(userData.lpbankReferralPaidCount ?? fallbackCount ?? 0)
     const nextNumber = successCountBefore + 1
@@ -1924,10 +2016,20 @@ const buildFallbackUserProfile = (rp: any, balance: number) => ({
 const warnMissingUserProfile = (rp: any) => {
   console.warn('Report uid missing user profile', {
     reportId: rp.id, reportUid: rp.uid,
-    reportPhone: rp.phoneRef || rp.phone || rp.submittedPhone,
+    effectiveUid: rp.repairedUserUid || rp.uid,
+    jobId: rp.jobId, jobName: rp.jobName,
+    reportFullName: rp.fullName,
+    reportPhoneRef: rp.phoneRef || rp.phone || rp.submittedPhone,
+    friendName: rp.friendName, friendPhone: rp.friendPhone,
+    repairedUserUid: rp.repairedUserUid,
     foundUserByPhoneUid: rp.__foundUserByPhoneUid
   })
 }
+
+// Xác định report có snapshot đủ tin cậy của NGƯỜI NỘP (không phải bạn bè được giới
+// thiệu) để cho phép tự động tạo hồ sơ ví khi duyệt/cộng xu — không dùng friendName/
+// friendPhone ở đây vì đó là thông tin của người khác, không phải chủ ví nhận xu.
+const hasSubmitterIdentity = (rp: any) => !!(rp.fullName || rp.phoneRef || rp.phone || rp.phoneNormalized)
 
 // Trước khi ghi xu/sửa ví: nếu users/{report.uid} không tồn tại, thử tìm hồ sơ theo
 // SĐT (phoneRef/phone/phoneNormalized/submittedPhone) trước khi coi là "chưa có hồ sơ".
@@ -2035,6 +2137,10 @@ const congXu = async (rp: any) => {
   try {
     const userRef = doc(db, 'users', targetUid)
     const userSnap = await getDoc(userRef)
+    if (!userSnap.exists() && !hasSubmitterIdentity(rp)) {
+      Swal.fire({ icon: 'error', title: 'Thiếu hồ sơ ví', text: 'Đơn này thiếu hồ sơ ví và thiếu thông tin người nộp. Vui lòng tạo/gắn hồ sơ ví trước khi cộng xu.' })
+      return
+    }
     if (userSnap.exists()) {
       await updateDoc(userRef, { balance: increment(amount) })
     } else {
@@ -2065,6 +2171,17 @@ const createWalletProfile = async (rp: any) => {
   if (!uid) { alert('Đơn này thiếu UID, không thể tạo hồ sơ ví.'); return }
   if (usersMap.value[uid]) { alert('User này đã có hồ sơ ví.'); return }
 
+  // usersMap chỉ là cache lười (VD: vừa search xong, hydrate chưa kịp chạy) — phải
+  // kiểm tra sống trước khi tạo mới, nếu không setDoc({merge:true}) bên dưới với
+  // balance:0 tường minh sẽ ghi đè mất balance thật của user.
+  const userRef = doc(db, 'users', uid)
+  const liveSnap = await getDoc(userRef)
+  if (liveSnap.exists()) {
+    usersMap.value[uid] = liveSnap.data()
+    alert('User này đã có hồ sơ ví (vừa đồng bộ lại, không tạo mới để tránh mất dữ liệu).')
+    return
+  }
+
   const normalized = normalizePhone(rp.phoneRef || rp.phone || rp.submittedPhone)
   const found = normalized ? await findUserByPhone(normalized) : null
   if (normalized) phoneMatchCache.value[normalized] = found ?? null
@@ -2076,7 +2193,6 @@ const createWalletProfile = async (rp: any) => {
 
   if (!confirm(`Tạo hồ sơ ví cho UID: ${uid}?`)) return
   try {
-    const userRef = doc(db, 'users', uid)
     warnMissingUserProfile(rp)
     await setDoc(userRef, buildFallbackUserProfile(rp, 0), { merge: true })
     const snap = await getDoc(userRef)
@@ -2096,6 +2212,86 @@ const linkReportToFoundUser = async (rp: any, found: { uid: string; data: any } 
     usersMap.value[found.uid] = found.data
     alert('🎉 Đã gắn đơn vào hồ sơ ví tìm thấy!')
   } catch (e) { alert('Lỗi: ' + e) }
+}
+
+// ============================================================================
+// GẮN HỒ SƠ VÍ THỦ CÔNG — admin chủ động tìm user thật theo SĐT/tên/UID để gắn vào
+// report cũ thiếu hồ sơ, thay vì chỉ trông chờ auto-detect theo SĐT ở trên.
+// ============================================================================
+const walletLinkModal = ref<{ open: boolean; report: any | null }>({ open: false, report: null })
+const walletLinkQuery = ref('')
+const walletLinkResults = ref<Array<{ uid: string; data: any }>>([])
+const walletLinkLoading = ref(false)
+const walletLinkError = ref('')
+
+const openWalletLinkModal = (rp: any) => {
+  walletLinkModal.value = { open: true, report: rp }
+  walletLinkQuery.value = ''
+  walletLinkResults.value = []
+  walletLinkError.value = ''
+}
+
+const closeWalletLinkModal = () => {
+  walletLinkModal.value = { open: false, report: null }
+}
+
+// Tìm user thật theo UID trực tiếp / SĐT / tên đăng nhập / họ tên — KHÔNG bao giờ dùng
+// friendPhone/friendName vì đó là thông tin bạn bè được giới thiệu, không phải chủ ví.
+const searchUsersToLink = async () => {
+  const text = walletLinkQuery.value.trim()
+  if (!text) return
+  walletLinkLoading.value = true
+  walletLinkError.value = ''
+  const found: Record<string, { uid: string; data: any }> = {}
+  try {
+    try {
+      const directSnap = await getDoc(doc(db, 'users', text))
+      if (directSnap.exists()) found[directSnap.id] = { uid: directSnap.id, data: directSnap.data() }
+    } catch {}
+
+    const normalized = normalizePhone(text)
+    if (normalized.length >= 6) {
+      for (const field of ['phone', 'phoneRef', 'phoneNormalized']) {
+        try {
+          const snap = await getDocs(query(collection(db, 'users'), where(field, '==', normalized), limit(5)))
+          snap.docs.forEach(d => { found[d.id] = { uid: d.id, data: d.data() } })
+        } catch {}
+      }
+    }
+
+    for (const field of ['username', 'fullName']) {
+      try {
+        const snap = await getDocs(query(collection(db, 'users'), where(field, '==', text), limit(5)))
+        snap.docs.forEach(d => { found[d.id] = { uid: d.id, data: d.data() } })
+      } catch {}
+    }
+
+    walletLinkResults.value = Object.values(found)
+    if (walletLinkResults.value.length === 0) walletLinkError.value = 'Không tìm thấy user nào khớp SĐT/tên/UID.'
+  } catch (e) {
+    walletLinkError.value = 'Lỗi tìm kiếm: ' + e
+  } finally {
+    walletLinkLoading.value = false
+  }
+}
+
+const confirmWalletLink = async (candidate: { uid: string; data: any }) => {
+  const rp = walletLinkModal.value.report
+  if (!rp) return
+  const candidateName = candidate.data?.fullName || candidate.data?.username || 'Chưa cập nhật'
+  if (!confirm(`Gắn đơn này (UID gốc: ${rp.uid}) vào hồ sơ ví UID: ${candidate.uid} (${candidateName})?`)) return
+  try {
+    await updateDoc(doc(db, 'reports', rp.id), {
+      repairedUserUid: candidate.uid,
+      originalReportUid: rp.uid,
+      repairedByAdmin: true,
+      repairedAt: serverTimestamp(),
+    })
+    usersMap.value[candidate.uid] = candidate.data
+    console.warn('Manual wallet link by admin', { reportId: rp.id, originalReportUid: rp.uid, repairedUserUid: candidate.uid })
+    alert('🎉 Đã gắn hồ sơ ví thành công!')
+    closeWalletLinkModal()
+  } catch (e) { alert('Lỗi gắn hồ sơ ví: ' + e) }
 }
 
 const approveReport = async (report: any) => {
@@ -2135,6 +2331,8 @@ const approveReport = async (report: any) => {
     if (outcome.outcome === 'error') {
       if (outcome.reason === 'missing-uid') {
         alert("Đơn này thiếu UID user, không thể cộng xu tự động.");
+      } else if (outcome.reason === 'missing-profile-info') {
+        alert("Đơn này thiếu hồ sơ ví và thiếu thông tin người nộp. Vui lòng tạo/gắn hồ sơ ví trước khi cộng xu.");
       } else {
         alert("LỖI KHI DUYỆT: không tìm thấy đơn.");
       }
@@ -2260,7 +2458,7 @@ const describeUserDoc = (rp: any, userDoc: any) => ({
 // doc đúng UID → tìm thấy khớp SĐT (đang chờ admin xác nhận gắn, hiện balance thật để
 // admin đối chiếu nhưng KHÔNG tự nhận là tài khoản gốc) → fallback từ report.
 type AccountDisplay = {
-  state: 'direct' | 'no-match' | 'checking' | 'phone-match'
+  state: 'direct' | 'no-match' | 'checking' | 'phone-match' | 'repaired'
   fullName: string
   birth: string
   balanceLabel: string
@@ -2269,7 +2467,11 @@ type AccountDisplay = {
 
 const getAccountDisplay = (rp: any): AccountDisplay => {
   if (rp?.repairedUserUid && usersMap.value[rp.repairedUserUid]) {
-    return describeUserDoc(rp, usersMap.value[rp.repairedUserUid])
+    return {
+      ...describeUserDoc(rp, usersMap.value[rp.repairedUserUid]),
+      state: 'repaired',
+      match: { uid: rp.repairedUserUid, data: usersMap.value[rp.repairedUserUid] },
+    }
   }
   if (rp?.uid && usersMap.value[rp.uid]) {
     return describeUserDoc(rp, usersMap.value[rp.uid])
@@ -2361,6 +2563,9 @@ const handleAdminLogout = async () => {
           <button class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-lg text-[10px] font-black transition-colors" @click="handleSearch">TÌM</button>
           <button class="bg-slate-700 hover:bg-slate-600 text-white px-2 py-2 rounded-lg text-[10px] font-black transition-colors" v-if="searchQuery" @click="searchQuery = ''; handleSearch()">✕</button>
         </div>
+        <span v-if="lastSearchedKeywordLower" class="text-[10px] text-slate-500 not-italic normal-case font-semibold">
+          Đang tìm kiếm: <span class="text-blue-400 font-black">{{ searchQuery }}</span>
+        </span>
 
         <div class="flex items-center gap-2 bg-[#111726] p-1.5 rounded-xl border border-slate-800">
           <span class="text-[10px] text-emerald-500 tracking-[2px] ml-2 hidden md:inline">TRẠNG THÁI:</span>
@@ -2461,7 +2666,7 @@ const handleAdminLogout = async () => {
         CÁC JOB KHÁC ({{ filteredOtherReports.length }})
       </button>
       <button :class="['flex-1 py-4 rounded-xl tracking-widest transition-all text-xs md:text-sm', activeTab === 'daily_threads' ? 'bg-purple-600 text-white shadow-[0_0_20px_rgba(124,58,237,0.3)]' : 'bg-[#111726] text-slate-500 hover:bg-[#1a2335]']" @click="activeTab = 'daily_threads'">
-        🧵 Thread hằng ngày
+        🧵 Thread hằng ngày{{ isThreadSearchMode ? ` (${searchThreadResults.length})` : '' }}
       </button>
       <button :class="['flex-1 py-4 rounded-xl tracking-widest transition-all text-xs md:text-sm', activeTab === 'withdrawals' ? 'bg-emerald-600 text-white shadow-[0_0_20px_rgba(16,185,129,0.3)]' : 'bg-[#111726] text-slate-500 hover:bg-[#1a2335]']" @click="activeTab = 'withdrawals'">
         QUẢN LÝ RÚT TIỀN ({{ filteredWithdrawals.length }})
@@ -2543,7 +2748,15 @@ const handleAdminLogout = async () => {
                       <span class="text-emerald-400 font-bold uppercase" v-if="usersMap[rp.repairedUserUid || rp.uid]?.dateOfBirth || usersMap[rp.repairedUserUid || rp.uid]?.dob || usersMap[rp.repairedUserUid || rp.uid]?.ngaysinh">{{ usersMap[rp.repairedUserUid || rp.uid]?.dateOfBirth || usersMap[rp.repairedUserUid || rp.uid]?.dob || usersMap[rp.repairedUserUid || rp.uid]?.ngaysinh }}</span>
                       <span class="text-slate-600 italic bg-slate-800/50 px-1 py-0.5 rounded" v-else>{{ getAccountDisplay(rp).birth }}</span>
                     </div>
-                    <div class="mt-1" v-if="getAccountDisplay(rp).state !== 'direct'">
+                    <div class="mt-1" v-if="getAccountDisplay(rp).state === 'repaired'">
+                      <span class="text-[8px] text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.5 rounded block leading-tight w-fit">
+                        ✓ Đã gắn ví thủ công: {{ getAccountDisplay(rp).fullName }}
+                      </span>
+                      <div class="text-[8px] text-slate-400 mt-0.5 leading-tight">
+                        UID gốc của đơn: {{ shortUid(rp.uid) }} · UID ví nhận xu: {{ shortUid(rp.repairedUserUid) }}
+                      </div>
+                    </div>
+                    <div class="mt-1" v-else-if="getAccountDisplay(rp).state !== 'direct'">
                       <template v-if="getAccountDisplay(rp).state === 'phone-match'">
                         <span class="text-[8px] text-amber-400 font-bold bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.5 rounded block leading-tight w-fit">
                           ⚠️ Tìm thấy hồ sơ ví theo SĐT nhưng UID report khác UID user
@@ -2561,7 +2774,10 @@ const handleAdminLogout = async () => {
                         <span class="text-[8px] text-red-400 font-bold bg-red-500/10 border border-red-500/30 px-1.5 py-0.5 rounded block leading-tight w-fit">
                           ⚠️ Chưa có hồ sơ user (UID: {{ shortUid(rp.uid) }})
                         </span>
-                        <button class="mt-1 bg-red-600/20 text-red-400 hover:bg-red-500 hover:text-white border border-red-600/50 px-2 py-1 rounded-lg text-[8px] transition-all" @click="createWalletProfile(rp)">TẠO HỒ SƠ VÍ</button>
+                        <div class="flex gap-1 mt-1">
+                          <button class="bg-red-600/20 text-red-400 hover:bg-red-500 hover:text-white border border-red-600/50 px-2 py-1 rounded-lg text-[8px] transition-all" @click="createWalletProfile(rp)">TẠO HỒ SƠ VÍ</button>
+                          <button class="bg-blue-600/20 text-blue-400 hover:bg-blue-500 hover:text-white border border-blue-600/50 px-2 py-1 rounded-lg text-[8px] transition-all" @click="openWalletLinkModal(rp)">GẮN HỒ SƠ VÍ</button>
+                        </div>
                       </template>
                     </div>
                   </div>
@@ -3284,6 +3500,7 @@ const handleAdminLogout = async () => {
           <AdminDailyThreads
             :globalSearchResults="searchThreadResults"
             :isGlobalSearch="isThreadSearchMode"
+            :searchKeyword="searchQuery"
             @clearSearch="clearThreadSearch"
           />
         </div>
@@ -3312,6 +3529,41 @@ const handleAdminLogout = async () => {
              class="flex-1 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-[10px] tracking-widest transition-all active:scale-95 flex items-center justify-center uppercase font-black italic">
             MỞ ẢNH GỐC
           </a>
+        </div>
+      </div>
+    </div>
+  </Transition>
+
+  <!-- Gắn hồ sơ ví thủ công — tìm user thật theo SĐT/tên/UID -->
+  <Transition name="fade">
+    <div v-if="walletLinkModal.open" class="fixed inset-0 z-[9000] flex items-center justify-center px-4">
+      <div class="absolute inset-0 bg-black/90 backdrop-blur-md" @click="closeWalletLinkModal"></div>
+      <div class="relative z-10 bg-[#111827] border border-slate-700/60 rounded-[24px] p-6 max-w-md w-full shadow-2xl">
+        <div class="flex justify-between items-center mb-3">
+          <h3 class="text-white text-sm font-black tracking-widest uppercase">Gắn hồ sơ ví thủ công</h3>
+          <button @click="closeWalletLinkModal" class="text-slate-400 hover:text-white text-lg leading-none">✕</button>
+        </div>
+        <p class="text-slate-400 text-[11px] mb-3">Đơn UID gốc: {{ walletLinkModal.report?.uid }}</p>
+        <div class="flex gap-2 mb-2">
+          <input v-model="walletLinkQuery" @keyup.enter="searchUsersToLink" type="text" placeholder="SĐT / Tên đăng nhập / Họ tên / UID"
+                 class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500/60" />
+          <button @click="searchUsersToLink" :disabled="walletLinkLoading"
+                  class="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-xs font-black uppercase transition-all active:scale-95">
+            {{ walletLinkLoading ? '...' : 'Tìm' }}
+          </button>
+        </div>
+        <p v-if="walletLinkError" class="text-red-400 text-[11px] mb-2">{{ walletLinkError }}</p>
+        <div class="max-h-64 overflow-y-auto space-y-2">
+          <div v-for="r in walletLinkResults" :key="r.uid" class="bg-slate-800/60 border border-slate-700/60 rounded-lg p-3 flex justify-between items-center gap-2">
+            <div class="text-xs min-w-0">
+              <div class="text-white font-bold truncate">{{ r.data?.fullName || r.data?.username || 'Chưa cập nhật' }}</div>
+              <div class="text-slate-400 text-[10px] truncate">UID: {{ shortUid(r.uid) }} · SĐT: {{ r.data?.phone || r.data?.phoneRef || 'N/A' }} · Ví: {{ (r.data?.balance || 0).toLocaleString('vi-VN') }} XU</div>
+            </div>
+            <button @click="confirmWalletLink(r)"
+                    class="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all active:scale-95 shrink-0">
+              Chọn
+            </button>
+          </div>
         </div>
       </div>
     </div>

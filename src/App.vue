@@ -3,7 +3,7 @@ import { ref, onMounted, computed, watch, nextTick, provide } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { auth, db } from '@/firebase' 
 import { onAuthStateChanged, signOut } from "firebase/auth" 
-import { doc, onSnapshot, collection, query, where, updateDoc, increment, arrayUnion, limit } from "firebase/firestore"
+import { doc, onSnapshot, collection, query, where, updateDoc, increment, arrayUnion, limit, setDoc, serverTimestamp } from "firebase/firestore"
 
 // --- IMPORT COMPONENT ---
 import AppBrowserBlocker from '@/components/AppBrowserBlocker.vue'
@@ -550,6 +550,18 @@ const initFirebaseSync = (user: any) => {
 
       localStorage.setItem('mmo_username', username.value)
       localStorage.setItem('mmo_balance', String(realBalance))
+    } else {
+      console.warn('[Firestore] users/{uid} chưa tồn tại, tạo hồ sơ tối thiểu', { uid: user.uid })
+      setDoc(doc(db, "users", user.uid), {
+        uid: user.uid,
+        email: user.email || '',
+        fullName: '',
+        phone: '',
+        dob: '',
+        balance: 0,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }, { merge: true }).catch(e => console.error('Lỗi tạo hồ sơ user:', e))
     }
   })
   

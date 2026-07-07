@@ -89,9 +89,11 @@ function isHeavyWarning(code: WarningCode) {
 const props = withDefaults(defineProps<{
   globalSearchResults?: any[]
   isGlobalSearch?: boolean
+  searchKeyword?: string
 }>(), {
   globalSearchResults: () => [],
-  isGlobalSearch: false
+  isGlobalSearch: false,
+  searchKeyword: ''
 })
 const emit = defineEmits<{ (e: 'clearSearch'): void }>()
 
@@ -255,10 +257,15 @@ const groupedByUser = computed((): UserGroup[] => {
   return Object.values(map).sort((a, b) => b.pendingCount - a.pendingCount)
 })
 
-const totalPending   = computed(() => reports.value.filter(r => r.status === 'pending').length)
-const totalPaid      = computed(() => reports.value.filter(r => r.status === 'paid').length)
-const totalRejected  = computed(() => reports.value.filter(r => r.status === 'rejected').length)
-const totalXuPending = computed(() => reports.value.filter(r => r.status === 'pending').reduce((s, r) => s + (r.reward || 0), 0))
+// Ở chế độ tìm kiếm toàn cục, các ô thống kê phải phản ánh đúng kết quả search (toàn bộ
+// lịch sử user) thay vì đơn của ngày/status đang chọn nội bộ trong reports.value.
+const statsSourceReports = computed((): ThreadReport[] =>
+  props.isGlobalSearch ? (props.globalSearchResults as ThreadReport[]) : reports.value
+)
+const totalPending   = computed(() => statsSourceReports.value.filter(r => r.status === 'pending').length)
+const totalPaid      = computed(() => statsSourceReports.value.filter(r => r.status === 'paid').length)
+const totalRejected  = computed(() => statsSourceReports.value.filter(r => r.status === 'rejected').length)
+const totalXuPending = computed(() => statsSourceReports.value.filter(r => r.status === 'pending').reduce((s, r) => s + (r.reward || 0), 0))
 const selectedPending = computed(() => selectedDailyThreadReportIds.value.filter(id => reports.value.find(r => r.id === id)?.status === 'pending'))
 const visiblePendingReports = computed(() => filteredReports.value.filter(r => r.status === 'pending'))
 const isProcessingBulk = computed(() => isBulkPaying.value || isBulkRejecting.value)
@@ -683,14 +690,15 @@ const yesterdayKey = computed(() => {
 
     <!-- Banner: chế độ tìm kiếm toàn cục -->
     <div v-if="props.isGlobalSearch"
-         class="flex items-center justify-between bg-purple-900/20 border border-purple-500/30 rounded-xl px-4 py-3 text-xs">
+         class="flex items-center justify-between bg-purple-900/20 border border-purple-500/30 rounded-xl px-4 py-3 text-xs flex-wrap gap-2">
       <span class="text-purple-300">
-        🔍 Kết quả tìm kiếm toàn cục —
-        <b class="text-white">{{ props.globalSearchResults?.length || 0 }}</b> đơn Thread
+        🔍 Lịch sử Thread hằng ngày cho tìm kiếm:
+        <b class="text-white">{{ props.searchKeyword }}</b>
+        — <b class="text-white">{{ props.globalSearchResults?.length || 0 }}</b> đơn (toàn bộ lịch sử, không giới hạn theo ngày)
       </span>
       <button class="bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1 rounded-lg transition-all active:scale-95"
               @click="emit('clearSearch')">
-        ✕ Xóa tìm kiếm
+        ✕ Xóa tìm kiếm · Quay lại danh sách hôm nay
       </button>
     </div>
 
@@ -778,8 +786,8 @@ const yesterdayKey = computed(() => {
       </div>
       <div class="bg-slate-800/60 border border-slate-700/40 rounded-xl py-2.5 px-2">
         <p class="text-[9px] text-slate-400 uppercase tracking-wide font-semibold">Tổng đơn</p>
-        <p class="text-white font-black text-lg leading-tight">{{ reports.length }}</p>
-        <p v-if="isScanAllDone" class="text-[9px] text-emerald-400/60">toàn bộ ngày</p>
+        <p class="text-white font-black text-lg leading-tight">{{ statsSourceReports.length }}</p>
+        <p v-if="isScanAllDone && !props.isGlobalSearch" class="text-[9px] text-emerald-400/60">toàn bộ ngày</p>
       </div>
     </div>
 
