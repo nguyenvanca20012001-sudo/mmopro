@@ -155,7 +155,6 @@ const getAgeBadgeClass = (age: number): string => {
 const router = useRouter()
 const showThreadsVipModal = ref(false)
 const threadsVipUnlocked = computed(() => !!props.threadsOldJobDone)
-const referralLocked = computed(() => !props.referralChecking && !props.referralUnlocked)
 
 const handleThreadsVipClick = () => {
   if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(50)
@@ -478,16 +477,6 @@ const goToPostThreadsJob = () => {
               <span class="bg-black/75 text-red-400 text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-xl">❌ HẾT LƯỢT</span>
             </div>
 
-            <!-- LOCK OVERLAY — chỉ áp dụng cho referral-hub khi chưa hoàn thành APP LPBANK PLUS -->
-            <template v-if="job.id === 'referral-hub' && referralLocked">
-              <div class="absolute inset-0 bg-black/55 z-20 rounded-[28px] pointer-events-none"></div>
-              <div class="absolute inset-0 flex items-center justify-center z-30 px-4 pointer-events-none">
-                <span class="bg-black/80 border border-amber-500/40 text-amber-300 text-[8px] md:text-[9px] font-black uppercase tracking-wide px-3 py-2 rounded-xl text-center leading-tight">
-                  🔒 Cần hoàn thành APP LPBANK PLUS trước
-                </span>
-              </div>
-            </template>
-
             <!-- BADGE VIP -->
             <div class="absolute -top-0 -right-0 z-20 flex items-center gap-1 text-[9px] md:text-[10px] tracking-widest px-3 py-1.5 rounded-bl-2xl rounded-tr-[26px] font-black italic uppercase border-b border-l border-amber-300/40 shadow-lg bg-gradient-to-r from-amber-500 to-yellow-400 text-amber-900">
               VIP 💎
@@ -543,11 +532,8 @@ const goToPostThreadsJob = () => {
               <span>Đang mở đăng ký — {{ getSocialProof(job.id) }} người đã nhận</span>
             </div>
             <button @click.stop="handleJobClick(job.id)"
-              class="vip-btn w-full py-3.5 md:py-4 rounded-xl text-[11px] md:text-[13px] font-black italic uppercase transition-all relative z-10 border active:scale-95"
-              :class="(job.id === 'referral-hub' && (referralChecking || referralLocked))
-                ? 'border-slate-600 bg-slate-700 text-slate-400 cursor-not-allowed'
-                : 'border-amber-400/60 bg-gradient-to-r from-amber-500 to-yellow-500 text-amber-900 shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:shadow-[0_0_35px_rgba(245,158,11,0.5)] hover:from-amber-400 hover:to-yellow-400'">
-              {{ job.id === 'referral-hub' ? (referralChecking ? 'ĐANG KIỂM TRA...' : (referralLocked ? 'ĐANG KHÓA 🔒' : 'NHẬN NGAY 💰')) : 'NHẬN NGAY 💰' }}
+              class="vip-btn w-full py-3.5 md:py-4 rounded-xl text-[11px] md:text-[13px] font-black italic uppercase transition-all relative z-10 border active:scale-95 border-amber-400/60 bg-gradient-to-r from-amber-500 to-yellow-500 text-amber-900 shadow-[0_0_20px_rgba(245,158,11,0.3)] hover:shadow-[0_0_35px_rgba(245,158,11,0.5)] hover:from-amber-400 hover:to-yellow-400">
+              NHẬN NGAY 💰
             </button>
           </div>
         </div>

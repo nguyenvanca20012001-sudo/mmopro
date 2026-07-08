@@ -95,7 +95,6 @@ const windowWidth = ref(0)
 const showWelcomePopup = ref(false)
 const showBankModal = ref(false)
 const showReferralModal = ref(false)
-const showReferralLockedNotice = ref(false)
 const activePopup = ref<'nop-bai' | 'cong-viec' | 'lich-su' | ''>('')
 const jobCategory = ref<'basic' | 'vip' | ''>('')
 
@@ -421,29 +420,10 @@ provide('dailyThreadsUnlock', {
   isChecking: isDataLoading
 })
 
-// GIỚI THIỆU BẠN BÈ — mở khóa khi đã hoàn thành (duyệt) APP LPBANK PLUS
-const matchedLpbankReports = computed(() =>
-  myReports.value.filter((r: any) =>
-    (r.jobId === 'lpbank-plus' || (r.jobName && String(r.jobName).toUpperCase().includes('LPBANK'))) &&
-    (r.status === 'approved' || r.status === 'collected')
-  )
-)
-const hasCompletedLpbank = computed(() => matchedLpbankReports.value.length > 0)
+// GIỚI THIỆU BẠN BÈ — luôn mở cho tất cả user, không cần điều kiện gì
+const canAccessReferralJob = computed(() => true)
 
-const canAccessReferralJob = computed(() => hasCompletedLpbank.value)
-
-// DEBUG TẠM THỜI — kiểm tra điều kiện mở khóa Giới thiệu bạn bè (xóa sau khi xác nhận đúng)
-watch([canAccessReferralJob, isDataLoading], () => {
-  if (isDataLoading.value) return
-  console.log('Referral unlock check:', {
-    uid: auth.currentUser?.uid,
-    hasCompletedLpbank: hasCompletedLpbank.value,
-    canAccessReferralJob: canAccessReferralJob.value,
-    matchedLpbankReports: matchedLpbankReports.value
-  })
-})
-
-// Chia sẻ trạng thái khóa/mở khóa Giới thiệu bạn bè cho route con (ReferralLpbankView) qua provide/inject
+// Chia sẻ trạng thái mở khóa Giới thiệu bạn bè cho route con (ReferralLpbankView) qua provide/inject
 provide('referralUnlock', {
   canAccessReferralJob,
   isChecking: isDataLoading
@@ -724,11 +704,6 @@ const handleReceiveJob = (jobId: string) => {
   } else if (jobId === 'APP NGÂN HÀNG' || jobId === 'app-ngan-hang') {
     showBankModal.value = true
   } else if (jobId === 'referral-hub') {
-    if (isDataLoading.value) return
-    if (!canAccessReferralJob.value) {
-      showReferralLockedNotice.value = true
-      return
-    }
     showReferralModal.value = true
   } else if (effectiveWarning) {
     activePopup.value = ''
@@ -1389,27 +1364,6 @@ const getMobileAgeBadgeClass = (age: number): string => {
       </div>
     </div>
 
-    <!-- THÔNG BÁO KHÓA GIỚI THIỆU BẠN BÈ -->
-    <div v-if="showReferralLockedNotice" class="fixed inset-0 z-[5000] flex items-end lg:items-center justify-center">
-      <div @click="showReferralLockedNotice = false" class="absolute inset-0 bg-black/90 backdrop-blur-md transition-opacity"></div>
-
-      <div class="relative w-full lg:max-w-md bg-white border-t lg:border border-blue-100 rounded-t-[40px] lg:rounded-[35px] p-8 md:p-10 shadow-[0_-20px_60px_rgba(37,99,235,0.15)] animate-in slide-in-from-bottom duration-300 lg:zoom-in lg:slide-in-from-bottom-0 text-center">
-        <div class="w-12 h-1.5 bg-blue-100 rounded-full mx-auto mb-6 lg:hidden"></div>
-        <div class="text-5xl mb-4">🔒</div>
-        <h3 class="text-xl text-slate-800 font-black uppercase italic tracking-tighter mb-3">Chưa đủ điều kiện</h3>
-        <p class="text-slate-500 text-xs font-medium not-italic normal-case tracking-normal mb-8 leading-relaxed">
-          Bạn cần hoàn thành Job VIP APP LPBANK PLUS trước khi mở khóa công việc Giới thiệu bạn bè.
-        </p>
-        <div class="space-y-3 font-bold uppercase italic font-black">
-          <button @click="() => { showReferralLockedNotice = false; router.push('/job/lpbank-plus') }"
-            class="w-full py-4 rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-500 text-amber-900 text-[11px] tracking-widest active:scale-95 transition-all shadow-lg">
-            Làm APP LPBANK PLUS
-          </button>
-          <button @click="showReferralLockedNotice = false" class="w-full py-4 mt-1 bg-blue-50 text-slate-400 rounded-2xl text-[10px] tracking-widest">ĐÓNG LẠI</button>
-        </div>
-      </div>
-    </div>
-
     <!-- BOTTOM SHEET BACKDROP -->
     <Transition name="fade-backdrop">
       <div v-if="activePopup"
@@ -1599,16 +1553,6 @@ const getMobileAgeBadgeClass = (age: number): string => {
                   <span class="bg-black/70 text-red-400 text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg">❌ HẾT LƯỢT</span>
                 </div>
 
-                <!-- LOCK OVERLAY — chỉ áp dụng cho referral-hub khi chưa hoàn thành APP LPBANK PLUS -->
-                <template v-if="job.id === 'referral-hub' && !isDataLoading && !canAccessReferralJob">
-                  <div class="absolute inset-0 bg-black/55 z-20 rounded-[18px] pointer-events-none"></div>
-                  <div class="absolute inset-0 flex items-center justify-center z-30 px-3 pointer-events-none">
-                    <span class="bg-black/80 border border-amber-400/40 text-amber-300 text-[7px] font-black uppercase tracking-wide px-2 py-1.5 rounded-lg text-center leading-tight">
-                      🔒 Cần hoàn thành APP LPBANK PLUS trước
-                    </span>
-                  </div>
-                </template>
-
                 <!-- Badge top-right -->
                 <div class="absolute top-0 right-0 text-[8px] px-2 py-1 rounded-bl-xl rounded-tr-[18px] font-black italic uppercase border-b border-l border-amber-300/40 text-amber-900 z-10 bg-gradient-to-r from-amber-500 to-yellow-400">
                   {{ job.badge || 'VIP' }}
@@ -1648,14 +1592,8 @@ const getMobileAgeBadgeClass = (age: number): string => {
                 </div>
 
                 <!-- CTA button -->
-                <div class="w-full py-2 rounded-xl text-[10px] font-black italic uppercase text-center relative z-10"
-                  :class="(job.id === 'referral-hub' && (isDataLoading || !canAccessReferralJob))
-                    ? 'bg-slate-600 text-slate-300'
-                    : 'text-amber-900 bg-gradient-to-r from-amber-500 to-yellow-500'">
-                  <template v-if="job.id === 'referral-hub'">
-                    {{ isDataLoading ? 'ĐANG KIỂM TRA...' : (canAccessReferralJob ? 'ĐĂNG KÝ 👑' : 'ĐANG KHÓA 🔒') }}
-                  </template>
-                  <template v-else>ĐĂNG KÝ 👑</template>
+                <div class="w-full py-2 rounded-xl text-[10px] font-black italic uppercase text-center relative z-10 text-amber-900 bg-gradient-to-r from-amber-500 to-yellow-500">
+                  ĐĂNG KÝ 👑
                 </div>
               </button>
             </div>
