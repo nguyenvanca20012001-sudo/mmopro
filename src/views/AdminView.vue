@@ -2008,6 +2008,10 @@ const buildFallbackUserProfile = (rp: any, balance: number) => ({
   phoneRef: rp.phoneRef || rp.phone || rp.submittedPhone || '',
   birthYear: rp.birthYear || rp.yearOfBirth || '',
   balance,
+  // Hồ sơ do admin tạo/vá là user ĐÃ TỒN TẠI (đã nộp đơn) — đánh dấu đã nhận quà chào mừng
+  // để listener bên App.vue KHÔNG tự cộng thêm 10.000 xu khi user này đăng nhập lại (tránh
+  // hiện tượng ví "nhảy về/chồng thêm" 10.000). Quà 10.000 chỉ dành cho user tự đăng ký mới.
+  receivedWelcomeGift: true,
   createdAt: serverTimestamp(),
   repairedByAdmin: true,
   repairedAt: serverTimestamp()
@@ -2091,13 +2095,18 @@ const fixUserWallet = async (rp: any) => {
     let cleanNum = Number(newVal.replace(/\D/g, '')) || 0;
     try {
       const userRef = doc(db, "users", targetUid)
-      const userSnap = await getDoc(userRef)
-      if (userSnap.exists()) {
-        await updateDoc(userRef, { balance: cleanNum });
-      } else {
-        warnMissingUserProfile(rp)
-        await setDoc(userRef, buildFallbackUserProfile({ ...rp, uid: targetUid }, cleanNum), { merge: true })
-      }
+      // Gộp exists-check + ghi vào cùng 1 transaction để không có khoảng hở giữa lúc kiểm
+      // tra và lúc ghi (dù đây là ghi đè có chủ đích của admin, vẫn cần atomic để không bao
+      // giờ đọc nhầm trạng thái "chưa tồn tại" của một ví vừa được tạo bởi thao tác khác).
+      await runTransaction(db, async (tx) => {
+        const userSnap = await tx.get(userRef)
+        if (userSnap.exists()) {
+          tx.update(userRef, { balance: cleanNum })
+        } else {
+          warnMissingUserProfile(rp)
+          tx.set(userRef, buildFallbackUserProfile({ ...rp, uid: targetUid }, cleanNum), { merge: true })
+        }
+      })
       if (viaPhoneMatch) {
         await updateDoc(doc(db, 'reports', rp.id), markRepairedByPhone(rp, targetUid)).catch(() => {})
       }
@@ -2136,17 +2145,23 @@ const congXu = async (rp: any) => {
   const amount = Math.floor(Number(inputVal))
   try {
     const userRef = doc(db, 'users', targetUid)
-    const userSnap = await getDoc(userRef)
-    if (!userSnap.exists() && !hasSubmitterIdentity(rp)) {
+    const preSnap = await getDoc(userRef)
+    if (!preSnap.exists() && !hasSubmitterIdentity(rp)) {
       Swal.fire({ icon: 'error', title: 'Thiếu hồ sơ ví', text: 'Đơn này thiếu hồ sơ ví và thiếu thông tin người nộp. Vui lòng tạo/gắn hồ sơ ví trước khi cộng xu.' })
       return
     }
-    if (userSnap.exists()) {
-      await updateDoc(userRef, { balance: increment(amount) })
-    } else {
-      warnMissingUserProfile(rp)
-      await setDoc(userRef, buildFallbackUserProfile({ ...rp, uid: targetUid }, amount), { merge: true })
-    }
+    // Gộp exists-check + ghi vào cùng 1 transaction: nếu ví vừa được tạo/cộng xu bởi thao
+    // tác khác trong lúc admin đang xem dialog xác nhận, đọc lại ở đây sẽ thấy đã tồn tại
+    // và dùng increment (an toàn) thay vì setDoc(balance:amount) đè mất dữ liệu vừa tạo.
+    await runTransaction(db, async (tx) => {
+      const userSnap = await tx.get(userRef)
+      if (userSnap.exists()) {
+        tx.update(userRef, { balance: increment(amount) })
+      } else {
+        warnMissingUserProfile(rp)
+        tx.set(userRef, buildFallbackUserProfile({ ...rp, uid: targetUid }, amount), { merge: true })
+      }
+    })
     if (viaPhoneMatch) {
       await updateDoc(doc(db, 'reports', rp.id), markRepairedByPhone(rp, targetUid)).catch(() => {})
     }
@@ -2156,6 +2171,17 @@ const congXu = async (rp: any) => {
       content: `Admin cộng ${amount.toLocaleString('vi-VN')} xu cho ${username}`,
       totalToday: 0,
       createdAt: new Date()
+    }).catch(() => {})
+    // Ghi log biến động ví (best-effort — không được phép làm hỏng luồng cộng xu)
+    addDoc(collection(db, 'coin_transactions'), {
+      uid: targetUid,
+      type: 'manual_add',
+      delta: amount,
+      beforeCoins: currentVal,
+      afterCoins: currentVal + amount,
+      reason: 'Admin cộng xu thủ công',
+      createdBy: auth.currentUser?.uid || 'admin',
+      createdAt: serverTimestamp()
     }).catch(() => {})
     Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Đã cộng xu thành công', showConfirmButton: false, timer: 2500 })
   } catch (e) {
@@ -2194,10 +2220,23 @@ const createWalletProfile = async (rp: any) => {
   if (!confirm(`Tạo hồ sơ ví cho UID: ${uid}?`)) return
   try {
     warnMissingUserProfile(rp)
-    await setDoc(userRef, buildFallbackUserProfile(rp, 0), { merge: true })
+    // confirm() ở trên là dialog chờ người dùng bấm, có thể mất vài giây — trong lúc đó
+    // ví có thể vừa được tạo/cộng xu bởi thao tác khác (VD: admin khác duyệt đơn này).
+    // Đọc liveSnap ở trên không đủ vì không atomic với setDoc bên dưới, nên phải tự kiểm
+    // tra lại NGAY TRƯỚC KHI GHI trong transaction — nếu doc đã tồn tại thì bỏ qua, không
+    // ghi đè balance:0 lên ví vừa được tạo trong lúc chờ xác nhận.
+    let created = false
+    await runTransaction(db, async (tx) => {
+      const freshSnap = await tx.get(userRef)
+      if (freshSnap.exists()) return
+      tx.set(userRef, buildFallbackUserProfile(rp, 0), { merge: true })
+      created = true
+    })
     const snap = await getDoc(userRef)
     if (snap.exists()) usersMap.value[uid] = snap.data()
-    alert('🎉 Đã tạo hồ sơ ví cho user!')
+    alert(created
+      ? '🎉 Đã tạo hồ sơ ví cho user!'
+      : 'User này vừa có hồ sơ ví (được tạo trong lúc chờ xác nhận) — không tạo mới để tránh mất dữ liệu.')
   } catch (e) { alert('Lỗi tạo hồ sơ ví: ' + e) }
 }
 
@@ -2357,6 +2396,18 @@ const approveReport = async (report: any) => {
         ? "ĐÃ DUYỆT VÀ CỘNG XU THÀNH CÔNG VÀO HỒ SƠ VÍ TÌM THEO SĐT!"
         : "ĐÃ DUYỆT VÀ CỘNG XU THÀNH CÔNG!");
     }
+    // Ghi log biến động ví (best-effort — không được phép làm hỏng luồng duyệt đơn)
+    addDoc(collection(db, 'coin_transactions'), {
+      uid: outcome.targetUid,
+      type: 'admin_approve',
+      delta: outcome.rewardValue,
+      beforeCoins: currentBalance,
+      afterCoins: currentBalance + outcome.rewardValue,
+      reportId: report.id,
+      reason: report.jobName || report.jobId || '',
+      createdBy: auth.currentUser?.uid || 'admin',
+      createdAt: serverTimestamp()
+    }).catch(() => {})
     updateLocalStatsOnApprove(outcome.report);
   } catch (error) { alert("LỖI KHI DUYỆT: " + error) }
 }
@@ -2416,10 +2467,20 @@ const rejectWithdrawal = async (item: any) => {
       await updateDoc(doc(db, "withdrawals", item.id), { status: 'rejected', adminNote: note || 'Quản trị viên từ chối' })
       const refundAmount = getXuAmount(item);
 
-      await updateDoc(doc(db, "users", item.uid), { 
+      await updateDoc(doc(db, "users", item.uid), {
         balance: increment(refundAmount),
-        hasPendingWithdraw: false 
+        hasPendingWithdraw: false
       })
+      // Ghi log biến động ví (best-effort)
+      addDoc(collection(db, 'coin_transactions'), {
+        uid: item.uid,
+        type: 'withdraw_refund',
+        delta: refundAmount,
+        withdrawalId: item.id,
+        reason: 'Hoàn xu do từ chối rút tiền',
+        createdBy: auth.currentUser?.uid || 'admin',
+        createdAt: serverTimestamp()
+      }).catch(() => {})
 
       Swal.fire('Đã hủy & Hoàn xu!', `User đã nhận lại ${refundAmount.toLocaleString('vi-VN')} XU vào ví.`, 'success')
     } catch (error: any) { Swal.fire('Lỗi!', error.message, 'error') }

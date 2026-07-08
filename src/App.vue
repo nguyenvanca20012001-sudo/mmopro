@@ -3,7 +3,7 @@ import { ref, onMounted, computed, watch, nextTick, provide } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { auth, db } from '@/firebase' 
 import { onAuthStateChanged, signOut } from "firebase/auth" 
-import { doc, onSnapshot, collection, query, where, updateDoc, increment, arrayUnion, limit, setDoc, serverTimestamp } from "firebase/firestore"
+import { doc, getDoc, onSnapshot, collection, query, where, updateDoc, increment, arrayUnion, limit, setDoc, addDoc, serverTimestamp } from "firebase/firestore"
 
 // --- IMPORT COMPONENT ---
 import AppBrowserBlocker from '@/components/AppBrowserBlocker.vue'
@@ -533,17 +533,30 @@ const initFirebaseSync = (user: any) => {
       username.value = data.username || data.fullName || 'Member'
       const realBalance = data.balance ? Number(data.balance) : 0;
       userBalance.value = realBalance;
-      
-      if (data.receivedWelcomeGift !== true) {
-         if (realBalance === 0) {
+
+      // QUÀ CHÀO MỪNG 10.000 XU — chỉ dành cho user TỰ ĐĂNG KÝ MỚI, đúng 1 lần.
+      // An toàn tuyệt đối với ví user cũ:
+      //  1) Chỉ chạy khi receivedWelcomeGift !== true (đã nhận thì không bao giờ chạy lại).
+      //  2) Chỉ khi realBalance === 0 và KHÔNG phải hồ sơ do admin tạo/vá.
+      //  3) Dùng increment(10000) — KHÔNG set tuyệt đối → không thể biến 100.000 thành 10.000.
+      const alreadyGifted = data.receivedWelcomeGift === true
+      const looksExistingWallet = data.repairedByAdmin === true || realBalance > 0
+      if (!alreadyGifted) {
+         if (realBalance === 0 && !looksExistingWallet) {
            try {
-             await updateDoc(doc(db, "users", user.uid), { 
+             await updateDoc(doc(db, "users", user.uid), {
                balance: increment(10000),
-               receivedWelcomeGift: true 
+               receivedWelcomeGift: true
              })
+             addDoc(collection(db, 'coin_transactions'), {
+               uid: user.uid, type: 'welcome_gift', delta: 10000,
+               beforeCoins: 0, afterCoins: 10000, reason: 'Quà chào mừng',
+               createdAt: serverTimestamp(), createdBy: 'system'
+             }).catch(() => {})
              showWelcomePopup.value = true
            } catch (e) { console.error("Lỗi cộng tiền:", e) }
-         } else if (realBalance > 0) {
+         } else {
+           // Ví đã có tiền hoặc hồ sơ admin — CHỈ đánh dấu đã nhận, KHÔNG đụng tới balance.
            updateDoc(doc(db, "users", user.uid), { receivedWelcomeGift: true }).catch(e => {})
          }
       }
@@ -551,17 +564,24 @@ const initFirebaseSync = (user: any) => {
       localStorage.setItem('mmo_username', username.value)
       localStorage.setItem('mmo_balance', String(realBalance))
     } else {
-      console.warn('[Firestore] users/{uid} chưa tồn tại, tạo hồ sơ tối thiểu', { uid: user.uid })
-      setDoc(doc(db, "users", user.uid), {
-        uid: user.uid,
-        email: user.email || '',
-        fullName: '',
-        phone: '',
-        dob: '',
-        balance: 0,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      }, { merge: true }).catch(e => console.error('Lỗi tạo hồ sơ user:', e))
+      // users/{uid} thiếu — có thể user mới (race ngay sau đăng ký) hoặc snapshot cache tạm.
+      // KIỂM TRA LẠI SỐNG trước khi ghi để KHÔNG BAO GIỜ ghi đè ví thật về 0 do cache sai.
+      console.warn('[Firestore] users/{uid} chưa tồn tại, kiểm tra lại trước khi tạo hồ sơ tối thiểu', { uid: user.uid })
+      try {
+        const liveSnap = await getDoc(doc(db, "users", user.uid))
+        if (!liveSnap.exists()) {
+          await setDoc(doc(db, "users", user.uid), {
+            uid: user.uid,
+            email: user.email || '',
+            fullName: '',
+            phone: '',
+            dob: '',
+            balance: 0,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          }, { merge: true })
+        }
+      } catch (e) { console.error('Lỗi tạo hồ sơ user:', e) }
     }
   })
   

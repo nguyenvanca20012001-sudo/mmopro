@@ -2,7 +2,7 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { auth, db, storage } from '@/firebase'
-import { collection, doc, setDoc, updateDoc } from "firebase/firestore"
+import { collection, doc, runTransaction, increment, addDoc } from "firebase/firestore"
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import Swal from 'sweetalert2'
 
@@ -279,25 +279,48 @@ const handleConfirmWithdraw = async () => {
     await uploadBytes(sRef, qrBlob.value, { contentType: 'image/webp' })
     const qrUrl = await getDownloadURL(sRef)
 
-    await setDoc(withdrawalDocRef, {
-      uid: user.uid,
-      amount: amount.value,
-      realMoney: realMoneyVND,
-      status: 'pending',
-      createdAt: new Date(),
-      qrImage: {
-        url: qrUrl,
-        path: qrPath,
-        size: qrBlob.value.size,
-        contentType: 'image/webp'
+    const withdrawAmount = amount.value
+
+    // Trừ ví + tạo lệnh rút trong CÙNG 1 transaction, đọc số dư SỐNG mới nhất từ Firestore
+    // ngay trước khi trừ. KHÔNG dùng props.userBalance (giá trị UI có thể cũ) để tính ra
+    // balance tuyệt đối — cách cũ sẽ GHI ĐÈ mất khoản admin vừa cộng nếu UI chưa kịp đồng bộ.
+    // Dùng increment(-amount) nên an toàn với thao tác cộng xu diễn ra đồng thời.
+    await runTransaction(db, async (tx) => {
+      const userRef = doc(db, "users", user.uid)
+      const userSnap = await tx.get(userRef)
+      const currentBalance = userSnap.exists() ? Number(userSnap.data().balance || 0) : 0
+      if (currentBalance < withdrawAmount) {
+        throw new Error('INSUFFICIENT_BALANCE')
       }
+      tx.set(withdrawalDocRef, {
+        uid: user.uid,
+        amount: withdrawAmount,
+        realMoney: realMoneyVND,
+        status: 'pending',
+        createdAt: new Date(),
+        qrImage: {
+          url: qrUrl,
+          path: qrPath,
+          size: qrBlob.value!.size,
+          contentType: 'image/webp'
+        }
+      })
+      tx.update(userRef, {
+        balance: increment(-withdrawAmount),
+        hasPendingWithdraw: true
+      })
     })
 
-    const userRef = doc(db, "users", user.uid)
-    await updateDoc(userRef, {
-      balance: props.userBalance - amount.value,
-      hasPendingWithdraw: true
-    })
+    // Ghi log biến động ví (best-effort, không được phép làm hỏng luồng rút tiền)
+    addDoc(collection(db, 'coin_transactions'), {
+      uid: user.uid,
+      type: 'withdraw',
+      delta: -withdrawAmount,
+      withdrawalId,
+      reason: 'Rút tiền',
+      createdAt: new Date(),
+      createdBy: user.uid
+    }).catch(() => {})
 
     Swal.fire({
       title: 'GỬI ĐƠN THÀNH CÔNG!',
@@ -308,11 +331,14 @@ const handleConfirmWithdraw = async () => {
     }).then(() => {
       router.push('/')
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error("Lỗi khi rút tiền: ", error)
+    const insufficient = error?.message === 'INSUFFICIENT_BALANCE'
     Swal.fire({
-      title: 'LỖI HỆ THỐNG!',
-      text: 'Không thể kết nối tới máy chủ, vui lòng thử lại sau ít phút.',
+      title: insufficient ? 'SỐ DƯ KHÔNG ĐỦ!' : 'LỖI HỆ THỐNG!',
+      text: insufficient
+        ? 'Số dư ví XU của bạn không đủ để thực hiện giao dịch này!'
+        : 'Không thể kết nối tới máy chủ, vui lòng thử lại sau ít phút.',
       icon: 'error',
       confirmButtonColor: '#ef4444',
       customClass: { popup: 'rounded-[30px]' }
