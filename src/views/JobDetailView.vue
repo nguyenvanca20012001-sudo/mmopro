@@ -341,6 +341,16 @@ const handleRandomDownload = (links: string[]) => {
                 {{ step.content }}
               </p>
 
+              <div class="mb-5 bg-[#1c1200] border border-yellow-500/60 rounded-2xl px-5 py-4 shadow-[0_0_20px_rgba(234,179,8,0.15)] space-y-3" v-if="step.tips && step.tips.length">
+                <p class="flex items-center gap-2 text-yellow-400 text-[11px] font-black uppercase tracking-widest not-italic">
+                  <span class="text-base">📢</span> Lưu ý quan trọng
+                </p>
+                <div class="flex items-start gap-2.5" v-for="(tip, idx) in step.tips" :key="idx">
+                  <span class="shrink-0 w-5 h-5 rounded-full bg-yellow-500 text-[#1c1200] text-[10px] font-black flex items-center justify-center not-italic">{{ (idx as number) + 1 }}</span>
+                  <p class="text-yellow-100 text-xs font-bold not-italic normal-case leading-relaxed">{{ tip }}</p>
+                </div>
+              </div>
+
               <div class="mb-5" v-if="step.referralCode">
                 <button
                   class="w-full bg-blue-600 hover:bg-blue-500 text-white px-4 py-3 rounded-xl text-[11px] font-black transition-all active:scale-95 shadow-lg flex items-center justify-center gap-2"

@@ -193,7 +193,7 @@ export const jobsData: Record<string, any> = {
 
   'join-zalo': {
     title: "NHÓM ZALO",
-    reward: "10.000 xu",
+    reward: "30.000 xu",
     color: "text-blue-500",
     badge: "CƠ BẢN",
     steps: [
@@ -208,11 +208,20 @@ export const jobsData: Record<string, any> = {
       {
         id: 2,
         title: "THAM GIA SỰ KIỆN ZALO X KOKOMI",
-        content: "Nhấn nút bên dưới để tham gia sự kiện, sau đó chụp lại ảnh bằng chứng như ảnh mẫu bên dưới. Tải ảnh vừa chụp lên hệ thống để xác nhận hoàn thành nhiệm vụ và nhận xu.",
+    
+        tips: [
+          "Bạn chọn THAM GIA SỰ KIỆN KOKOMI và chụp lại ảnh SỐ 1 như ảnh mẫu bên dưới.",
+          "Chọn SAO CHÉP LINK rồi gửi cho 2 người bạn bất kỳ để cùng tham gia sự kiện KOKOMI.",
+          "Gửi đủ 3 ảnh bằng chứng: 1 ảnh của bạn tham gia sự kiện + 2 ảnh khi gửi link mời bạn bè tham gia."
+        ],
         extraLinks: [
           { text: "THAM GIA SỰ KIỆN ➔", url: "https://shorten.asia/jxg72pms" }
         ],
-        img: "images/anh-kokomi.jpg"
+        referralLink: "https://shorten.asia/jxg72pms",
+        images: [
+          "images/anh-kokomi.jpg",
+          "images/anh-kokomi1.jpg"
+        ]
       }
     ]
   },

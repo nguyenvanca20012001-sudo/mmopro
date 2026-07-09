@@ -199,7 +199,7 @@ const jobList = [
   { name: 'Cày View YouTube',         reward: '30.000'  },
   { name: 'Đăng Bài Threads',         reward: '30.000'  },
   { name: 'Seeding Vinfast',          reward: '30.000'  },
-  { name: 'Tham Gia Nhóm Zalo',       reward: '10.000'  },
+  { name: 'Tham Gia Nhóm Zalo',       reward: '30.000'  },
   { name: 'App Chứng Khoán Số 1',     reward: '85.000'  },
   { name: 'App Chứng Khoán Số 2',     reward: '85.000'  },
   { name: 'App Chứng Khoán Số 3',     reward: '100.000' },
