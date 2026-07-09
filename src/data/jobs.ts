@@ -207,8 +207,12 @@ export const jobsData: Record<string, any> = {
       },
       {
         id: 2,
-        title: "CHỤP LẠI ẢNH TRONG NHÓM ZALO ",
-        content: "Tải ảnh vừa chụp lên hệ thống để xác nhận hoàn thành nhiệm vụ và nhận xu."
+        title: "THAM GIA SỰ KIỆN ZALO X KOKOMI",
+        content: "Nhấn nút bên dưới để tham gia sự kiện, sau đó chụp lại ảnh bằng chứng như ảnh mẫu bên dưới. Tải ảnh vừa chụp lên hệ thống để xác nhận hoàn thành nhiệm vụ và nhận xu.",
+        extraLinks: [
+          { text: "THAM GIA SỰ KIỆN ➔", url: "https://shorten.asia/jxg72pms" }
+        ],
+        img: "images/anh-kokomi.jpg"
       }
     ]
   },
