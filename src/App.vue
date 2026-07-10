@@ -31,7 +31,7 @@ import { useDailyThreadNotifications, startDailyThreadListener, stopDailyThreadL
 const jobIconMap: Record<string, string> = {
   'view-tiktok': '🎵', 'view-youtube': '▶️', 'seeding-vinfast': '🚗', 'google-map': '⭐',
   'follow-cgv': '🎬', 'review-cinema': '⭐', 'checkin-cinema': '📸',
-  'survey-cinema': '📋', 'post-threads': '🧵', 'join-zalo': '💬',
+  'survey-cinema': '📋', 'post-threads': '🧵', 'join-zalo': '💬', 'zalo-kokomi': '🔗',
   'app-chung-khoan': '📈', 'app-chung-khoan-2': '📈', 'app-chung-khoan-3': '📈',
   'app-chung-khoan-4': '📈', 'msb-bank': '🏦', 'vpbank': '🏦', 'liobank': '🏦',
 }
@@ -1506,11 +1506,12 @@ const getMobileAgeBadgeClass = (age: number): string => {
                   <!-- Reward -->
                   <div class="flex items-baseline gap-1 mt-2 mb-2.5 relative z-10">
                     <span class="font-black italic tracking-tighter text-blue-600"
-                      :class="id === 'daily_threads' ? 'text-[13px]' : 'text-xl'">
+                      :class="['daily_threads', 'zalo-kokomi'].includes(id as string) ? 'text-[13px]' : 'text-xl'">
                       <template v-if="id === 'daily_threads'">20K-100K</template>
+                      <template v-else-if="id === 'zalo-kokomi'">KHÔNG GIỚI HẠN</template>
                       <template v-else>+{{ String(j.reward).replace(/\D/g,'') }}</template>
                     </span>
-                    <span class="text-[9px] font-black text-blue-400 not-italic">XU</span>
+                    <span v-if="id !== 'zalo-kokomi'" class="text-[9px] font-black text-blue-400 not-italic">XU</span>
                   </div>
 
                   <!-- CTA button -->

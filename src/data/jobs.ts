@@ -71,6 +71,37 @@ export const jobsData: Record<string, any> = {
     ]
   },
 
+  'zalo-kokomi': {
+    title: "ZALO X KOKOMI",
+    reward: "7.000 xu / 1",
+    color: "text-cyan-400",
+    badge: "CƠ BẢN",
+    subtitle: "Gửi link giới thiệu cho bạn bè, hoàn thành nhiệm vụ nhận thưởng",
+    referralLinkGlobal: "https://shorten.asia/jxg72pms",
+    minReferrals: 5,
+    noProofSubmit: true,
+    showFanpageCta: true,
+    simpleGuide: true,
+    guideIntro: [
+      "Sao chép link giới thiệu bên dưới và gửi cho bạn bè qua Zalo, Messenger, Threads hoặc Instagram đều được.",
+      "Khi đủ tối thiểu 5 lượt giới thiệu thành công, hãy nhắn Fanpage để gửi bằng chứng và nhận thưởng."
+    ],
+    sampleImage: "images/anh-kokomi1.jpg",
+    priceTiers: [
+      { count: 5, reward: "35.000 xu" },
+      { count: 10, reward: "80.000 xu" },
+      { count: 15, reward: "120.000 xu" },
+      { count: 20, reward: "180.000 xu" }
+    ],
+    fanpageMessageTemplate: [
+      "Họ tên:",
+      "Số điện thoại:",
+      "Số lượt giới thiệu thành công:",
+      "Ảnh bằng chứng:"
+    ],
+    steps: []
+  },
+
   'view-tiktok': {
     title: "CÀY VIEW TIKTOK",
     reward: "30.000 xu",
@@ -193,7 +224,7 @@ export const jobsData: Record<string, any> = {
 
   'join-zalo': {
     title: "NHÓM ZALO",
-    reward: "30.000 xu",
+    reward: "10.000 xu",
     color: "text-blue-500",
     badge: "CƠ BẢN",
     steps: [
@@ -208,19 +239,12 @@ export const jobsData: Record<string, any> = {
       {
         id: 2,
         title: "THAM GIA SỰ KIỆN ZALO X KOKOMI",
-    
-        tips: [
-          "Bạn chọn THAM GIA SỰ KIỆN KOKOMI và chụp lại ảnh SỐ 1 như ảnh mẫu bên dưới.",
-          "Chọn SAO CHÉP LINK rồi gửi cho 2 người bạn bất kỳ để cùng tham gia sự kiện KOKOMI.",
-          "Gửi đủ 3 ảnh bằng chứng: 1 ảnh của bạn tham gia sự kiện + 2 ảnh khi gửi link mời bạn bè tham gia."
-        ],
+        content: "Bạn chọn nút THAM GIA SỰ KIỆN bên dưới và gửi ảnh bằng chứng bên dưới.",
         extraLinks: [
           { text: "THAM GIA SỰ KIỆN ➔", url: "https://shorten.asia/jxg72pms" }
         ],
-        referralLink: "https://shorten.asia/jxg72pms",
         images: [
-          "images/anh-kokomi.jpg",
-          "images/anh-kokomi1.jpg"
+          "images/anh-kokomi.jpg"
         ]
       }
     ]

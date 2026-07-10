@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { jobsData } from '@/data/jobs'
 import { vipJobConfigs, VIP_JOB_IDS } from '@/composables/useVipJobs'
 import { basicJobConfigs, startBasicJobConfigsListener } from '@/composables/useBasicJobConfigs'
+import { SUPPORT_FANPAGE_URL } from '@/composables/useSupportConfig'
 import Swal from 'sweetalert2'
 
 const route = useRoute()
@@ -54,12 +55,12 @@ const selectedImage = ref<string | null>(null)
 const openImage = (img: string) => { selectedImage.value = img }
 const closeImage = () => { selectedImage.value = null }
 
-const handleCopy = (text: string) => {
+const handleCopy = (text: string, successMessage?: string) => {
   if (!text) return;
   navigator.clipboard.writeText(text).then(() => {
     Swal.fire({
       title: 'ĐÃ SAO CHÉP!',
-      text: 'Đã lưu nội dung vào khay nhớ tạm.',
+      text: successMessage || 'Đã lưu nội dung vào khay nhớ tạm.',
       icon: 'success',
       timer: 1500,
       showConfirmButton: false,
@@ -205,7 +206,11 @@ const handleRandomDownload = (links: string[]) => {
           </span>
         </div>
 
-        <div v-if="!['lpbank-plus', 'mbbank'].includes(route.params.id as string)"
+        <p v-if="_staticJob.subtitle" class="text-slate-400 text-xs md:text-sm font-semibold normal-case mt-4 max-w-md mx-auto leading-relaxed not-italic">
+          {{ _staticJob.subtitle }}
+        </p>
+
+        <div v-if="!['lpbank-plus', 'mbbank'].includes(route.params.id as string) && !_staticJob.simpleGuide"
              class="mt-6 max-w-xl mx-auto bg-[#1a0f14] border border-red-500/50 rounded-2xl overflow-hidden shadow-[0_0_24px_rgba(239,68,68,0.18)]">
           <div class="bg-red-500/20 border-b border-red-500/30 px-4 py-2.5 flex items-center gap-2">
             <span class="text-red-400 text-base">⚠️</span>
@@ -253,7 +258,7 @@ const handleRandomDownload = (links: string[]) => {
         </a>
       </div>
 
-      <div class="bg-[#111726] rounded-[45px] border border-slate-800/50 p-6 md:p-10 shadow-2xl relative">
+      <div v-if="!_staticJob.simpleGuide" class="bg-[#111726] rounded-[45px] border border-slate-800/50 p-6 md:p-10 shadow-2xl relative">
         <div class="text-center space-y-5">
 
          <div class="mb-6 bg-gradient-to-r from-yellow-500/10 to-orange-500/5 border border-yellow-500/30 rounded-2xl p-4 md:p-5 flex items-start gap-3 md:gap-4 shadow-[0_0_20px_rgba(234,179,8,0.1)] relative overflow-hidden animate-in fade-in duration-150"
@@ -458,10 +463,161 @@ const handleRandomDownload = (links: string[]) => {
 
             </div>
           </div>
+
+          <!-- CTA sao chép link giới thiệu (job referral, VD: zalo-kokomi) -->
+          <div class="max-w-md mx-auto text-center" v-if="_staticJob.referralLinkGlobal">
+            <div class="bg-[#0d121f] border border-slate-700 p-3 rounded-xl flex items-center gap-2 shadow-xl mb-3">
+              <input class="flex-1 bg-transparent border-none text-[10px] text-emerald-400 font-black italic px-2 outline-none overflow-hidden text-ellipsis whitespace-nowrap not-italic" readonly :value="_staticJob.referralLinkGlobal" />
+            </div>
+            <button
+              class="w-full bg-emerald-500 hover:bg-emerald-600 text-[#090e17] px-4 py-4 rounded-2xl text-sm font-black uppercase transition-all active:scale-95 shadow-lg flex items-center justify-center gap-2"
+              @click="handleCopy(_staticJob.referralLinkGlobal, 'Đã sao chép link giới thiệu')">
+              📋 SAO CHÉP LINK GIỚI THIỆU
+            </button>
+          </div>
+
+          <!-- Bảng thưởng theo số lượt giới thiệu -->
+          <div class="max-w-md mx-auto text-left" v-if="_staticJob.priceTiers && _staticJob.priceTiers.length">
+            <h4 class="text-[#3b82f6] text-sm md:text-base italic font-black mb-3 uppercase tracking-tight text-center">Bảng thưởng giới thiệu</h4>
+            <div class="bg-[#0d121f] border border-slate-700/80 rounded-2xl overflow-hidden shadow-inner">
+              <div class="grid grid-cols-2 bg-slate-800/60 px-4 py-3">
+                <span class="text-[9px] md:text-[11px] font-black uppercase tracking-wide text-slate-300 not-italic">Số người giới thiệu</span>
+                <span class="text-[9px] md:text-[11px] font-black uppercase tracking-wide text-slate-300 text-right not-italic">Thưởng</span>
+              </div>
+              <div v-for="(tier, idx) in _staticJob.priceTiers" :key="idx"
+                class="grid grid-cols-2 px-4 py-3 items-center"
+                :class="(idx as number) % 2 === 0 ? 'bg-transparent' : 'bg-slate-800/20'">
+                <span class="text-white text-xs md:text-sm font-bold normal-case not-italic">{{ tier.count }} người</span>
+                <span class="text-[#00df89] text-sm md:text-base font-black italic text-right">{{ tier.reward }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Lưu ý quan trọng: yêu cầu tối thiểu + không gửi bằng chứng trên web -->
+          <div class="max-w-md mx-auto bg-[#1c1200] border border-yellow-500/60 rounded-2xl px-5 py-4 shadow-[0_0_20px_rgba(234,179,8,0.15)] space-y-2.5 text-left" v-if="_staticJob.minReferrals">
+            <p class="flex items-center gap-2 text-yellow-400 text-[11px] font-black uppercase tracking-widest not-italic">
+              <span class="text-base">📢</span> Lưu ý quan trọng
+            </p>
+            <div class="flex items-start gap-2.5">
+              <span class="text-yellow-500 mt-0.5 shrink-0 not-italic">•</span>
+              <p class="text-yellow-100 text-xs font-bold not-italic normal-case leading-relaxed">Chỉ nhận đơn khi có tối thiểu {{ _staticJob.minReferrals }} lượt giới thiệu thành công trở lên.</p>
+            </div>
+            <div class="flex items-start gap-2.5">
+              <span class="text-yellow-500 mt-0.5 shrink-0 not-italic">•</span>
+              <p class="text-yellow-100 text-xs font-bold not-italic normal-case leading-relaxed">Không cần gửi bằng chứng trên web.</p>
+            </div>
+            <div class="flex items-start gap-2.5">
+              <span class="text-yellow-500 mt-0.5 shrink-0 not-italic">•</span>
+              <p class="text-yellow-100 text-xs font-bold not-italic normal-case leading-relaxed">Vui lòng nhắn tin Fanpage để gửi bằng chứng và được admin xét duyệt.</p>
+            </div>
+          </div>
+
+          <!-- Ảnh mẫu gửi bằng chứng -->
+          <div class="max-w-md mx-auto" v-if="_staticJob.sampleImage">
+            <h4 class="text-[#3b82f6] text-sm md:text-base italic font-black mb-3 uppercase tracking-tight text-center">Ảnh mẫu gửi bằng chứng</h4>
+            <div class="rounded-2xl overflow-hidden border border-slate-700/50 shadow-lg bg-slate-900 cursor-zoom-in group"
+                 @click="openImage(baseUrl + _staticJob.sampleImage)">
+              <img class="w-full h-auto object-contain group-hover:scale-105 transition-transform duration-300" :src="baseUrl + _staticJob.sampleImage" />
+            </div>
+          </div>
+
+          <!-- Mẫu nội dung gửi Fanpage -->
+          <div class="max-w-md mx-auto bg-[#0d121f] border border-slate-700 rounded-2xl p-5 shadow-inner text-left" v-if="_staticJob.fanpageMessageTemplate && _staticJob.fanpageMessageTemplate.length">
+            <p class="text-[10px] text-emerald-400 font-black mb-3 tracking-[2px] uppercase italic border-b border-slate-800 pb-2">Mẫu gửi Fanpage</p>
+            <p v-for="(line, idx) in _staticJob.fanpageMessageTemplate" :key="idx" class="text-slate-300 text-xs normal-case not-italic leading-relaxed mb-1">{{ line }}</p>
+          </div>
+
+          <!-- CTA nhắn tin Fanpage -->
+          <div class="max-w-md mx-auto" v-if="_staticJob.showFanpageCta">
+            <a :href="SUPPORT_FANPAGE_URL" target="_blank"
+               class="w-full inline-flex items-center justify-center gap-2 bg-[#1877F2] hover:bg-blue-500 text-white px-6 py-4 rounded-2xl text-sm font-black uppercase shadow-lg transition-all active:scale-95">
+              💬 NHẮN TIN FANPAGE
+            </a>
+          </div>
         </div>
       </div>
 
-      <section class="bg-[#111726] rounded-[45px] border border-slate-800/50 p-8 md:p-10 text-center shadow-xl mb-20">
+      <!-- LAYOUT RÚT GỌN (VD: zalo-kokomi) — copy link, bảng thưởng, lưu ý, ảnh mẫu, nhắn Fanpage -->
+      <div v-if="_staticJob.simpleGuide" class="bg-[#111726] rounded-[45px] border border-slate-800/50 p-6 md:p-10 shadow-2xl space-y-6">
+
+        <div class="max-w-md mx-auto text-left" v-if="_staticJob.priceTiers && _staticJob.priceTiers.length">
+          <h4 class="text-[#3b82f6] text-sm md:text-base italic font-black mb-3 uppercase tracking-tight text-center">Bảng thưởng giới thiệu</h4>
+          <div class="bg-[#0d121f] border border-slate-700/80 rounded-2xl overflow-hidden shadow-inner">
+            <div class="grid grid-cols-2 bg-slate-800/60 px-4 py-3">
+              <span class="text-[9px] md:text-[11px] font-black uppercase tracking-wide text-slate-300 not-italic">Số người giới thiệu</span>
+              <span class="text-[9px] md:text-[11px] font-black uppercase tracking-wide text-slate-300 text-right not-italic">Thưởng</span>
+            </div>
+            <div v-for="(tier, idx) in _staticJob.priceTiers" :key="idx"
+              class="grid grid-cols-2 px-4 py-3 items-center"
+              :class="(idx as number) % 2 === 0 ? 'bg-transparent' : 'bg-slate-800/20'">
+              <span class="text-white text-xs md:text-sm font-bold normal-case not-italic">{{ tier.count }} người</span>
+              <span class="text-[#00df89] text-sm md:text-base font-black italic text-right">{{ tier.reward }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="max-w-md mx-auto bg-[#1c1200] border border-yellow-500/60 rounded-2xl px-5 py-4 shadow-[0_0_20px_rgba(234,179,8,0.15)] space-y-2 text-left" v-if="_staticJob.minReferrals">
+          <p class="flex items-center gap-2 text-yellow-400 text-[11px] font-black uppercase tracking-widest not-italic">
+            <span class="text-base">📢</span> Lưu ý
+          </p>
+          <div class="flex items-start gap-2">
+            <span class="text-yellow-500 mt-0.5 shrink-0 not-italic">•</span>
+            <p class="text-yellow-100 text-xs font-bold not-italic normal-case leading-relaxed">Tối thiểu {{ _staticJob.minReferrals }} lượt giới thiệu thành công mới được tính thưởng.</p>
+          </div>
+          <div class="flex items-start gap-2">
+            <span class="text-yellow-500 mt-0.5 shrink-0 not-italic">•</span>
+            <p class="text-yellow-100 text-xs font-bold not-italic normal-case leading-relaxed">Không gửi bằng chứng trên web.</p>
+          </div>
+          <div class="flex items-start gap-2">
+            <span class="text-yellow-500 mt-0.5 shrink-0 not-italic">•</span>
+            <p class="text-yellow-100 text-xs font-bold not-italic normal-case leading-relaxed">Gửi ảnh bằng chứng qua Fanpage để admin kiểm tra.</p>
+          </div>
+        </div>
+
+        <div class="max-w-md mx-auto text-left" v-if="_staticJob.guideIntro && _staticJob.guideIntro.length">
+          <h4 class="text-[#3b82f6] text-sm md:text-base italic font-black mb-3 uppercase tracking-tight text-center">📖 Hướng dẫn</h4>
+          <div class="bg-[#0d121f] border border-slate-700/80 rounded-2xl px-5 py-4 space-y-3">
+            <div class="flex items-start gap-3" v-for="(line, idx) in _staticJob.guideIntro" :key="idx">
+              <span class="shrink-0 w-6 h-6 rounded-full bg-[#00df89] text-[#090e17] text-[11px] font-black flex items-center justify-center not-italic">{{ (idx as number) + 1 }}</span>
+              <p class="text-slate-300 text-xs md:text-sm font-semibold not-italic normal-case leading-relaxed pt-0.5">{{ line }}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="max-w-md mx-auto text-center" v-if="_staticJob.referralLinkGlobal">
+          <div class="bg-[#0d121f] border border-slate-700 px-3 py-2.5 rounded-xl flex items-center gap-2 shadow-xl mb-3">
+            <input class="flex-1 bg-transparent border-none text-[10px] text-emerald-400 font-black italic px-2 outline-none overflow-hidden text-ellipsis whitespace-nowrap not-italic" readonly :value="_staticJob.referralLinkGlobal" />
+          </div>
+          <button
+            class="w-full bg-emerald-500 hover:bg-emerald-600 text-[#090e17] px-4 py-4 rounded-2xl text-sm font-black uppercase transition-all active:scale-95 shadow-lg flex items-center justify-center gap-2"
+            @click="handleCopy(_staticJob.referralLinkGlobal, 'Đã sao chép link giới thiệu')">
+            📋 SAO CHÉP LINK GIỚI THIỆU
+          </button>
+        </div>
+
+        <div class="max-w-md mx-auto" v-if="_staticJob.sampleImage">
+          <h4 class="text-[#3b82f6] text-sm md:text-base italic font-black mb-3 uppercase tracking-tight text-center">Ảnh mẫu gửi bằng chứng</h4>
+          <p class="text-yellow-400 text-[13px] md:text-[15px] font-bold italic normal-case text-center mb-3">⚠️ Lưu ý: Chạm vào ảnh để zoom to, xem ảnh toàn màn hình.</p>
+          <div class="rounded-2xl overflow-hidden border border-slate-700/50 shadow-lg bg-slate-900 cursor-zoom-in group max-h-[340px]"
+               @click="openImage(baseUrl + _staticJob.sampleImage)">
+            <img class="w-full h-full max-h-[340px] object-cover group-hover:scale-105 transition-transform duration-300" :src="baseUrl + _staticJob.sampleImage" />
+          </div>
+        </div>
+
+        <div class="max-w-md mx-auto bg-[#0d121f] border border-slate-700 rounded-2xl p-5 shadow-inner text-left" v-if="_staticJob.fanpageMessageTemplate && _staticJob.fanpageMessageTemplate.length">
+          <p class="text-[10px] text-emerald-400 font-black mb-3 tracking-[2px] uppercase italic border-b border-slate-800 pb-2">Mẫu gửi Fanpage</p>
+          <p v-for="(line, idx) in _staticJob.fanpageMessageTemplate" :key="idx" class="text-slate-300 text-xs normal-case not-italic leading-relaxed mb-1">{{ line }}</p>
+        </div>
+
+        <div class="max-w-md mx-auto" v-if="_staticJob.showFanpageCta">
+          <a :href="SUPPORT_FANPAGE_URL" target="_blank"
+             class="w-full inline-flex items-center justify-center gap-2 bg-[#1877F2] hover:bg-blue-500 text-white px-6 py-4 rounded-2xl text-sm font-black uppercase shadow-lg transition-all active:scale-95">
+            💬 NHẮN TIN FANPAGE
+          </a>
+        </div>
+      </div>
+
+      <section v-if="!_staticJob.noProofSubmit" class="bg-[#111726] rounded-[45px] border border-slate-800/50 p-8 md:p-10 text-center shadow-xl mb-20">
         <h2 class="text-lg text-slate-400 font-black italic mb-6 tracking-wide uppercase opacity-60">BẠN ĐÃ LÀM XONG?</h2>
 
         <!-- Job paused or soldout: disabled button + status message -->

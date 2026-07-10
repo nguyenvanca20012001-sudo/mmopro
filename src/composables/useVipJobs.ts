@@ -21,9 +21,11 @@ export const proofSelectableJobs = computed<ProofJob[]>(() => {
 
   // Regular jobs — always open, from jobs.ts
   // daily_threads có form nộp bằng chứng riêng (DailyThreadProofModal → daily_thread_reports), không qua dropdown này
+  // noProofSubmit: job không có form nộp bằng chứng trên web (VD: zalo-kokomi — gửi bằng chứng qua Fanpage)
   for (const id of Object.keys(jobsData)) {
     if (VIP_JOB_IDS.includes(id) || id === 'daily_threads') continue
     const j = jobsData[id] as any
+    if (j.noProofSubmit) continue
     items.push({ id, title: j.title as string, reward: j.reward as string })
   }
 

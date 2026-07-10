@@ -79,6 +79,7 @@ const getJobIcon = (id: string) => {
     'post-threads':   { t: '🧵', c: 'text-white' },
     'daily_threads':  { t: '📅', c: 'text-white' },
     'join-zalo': { t: 'ZALO', c: 'text-white' },
+    'zalo-kokomi': { t: '🔗', c: 'text-white' },
     'app-chung-khoan': { t: '📈', c: 'text-white' },
     'app-chung-khoan-2': { t: '📈', c: 'text-white' },
     'app-chung-khoan-3': { t: '📈', c: 'text-white' },
@@ -102,6 +103,7 @@ const getSocialProof = (id: string) => {
     'post-threads':      '812',
     'daily_threads':     '456',
     'join-zalo':         '1.432',
+    'zalo-kokomi':       '389',
     'app-chung-khoan':   '312',
     'app-chung-khoan-2': '287',
     'app-chung-khoan-3': '241',
@@ -130,6 +132,7 @@ const getShortDesc = (id: string) => {
     'post-threads':  'Đăng bài tuyển CTV lên Threads nhận thưởng',
     'daily_threads': 'Đăng bài mỗi ngày, nhập link nhận xu',
     'join-zalo': 'Vào nhóm cộng đồng nhận thông báo',
+    'zalo-kokomi': 'Gửi link giới thiệu cho bạn bè',
     'app-chung-khoan': 'Đăng ký tài khoản Kafi X',
     'app-chung-khoan-2': 'Đăng ký tài khoản DNSE',
     'app-chung-khoan-3': 'Đăng ký tài khoản KIS',
@@ -327,6 +330,7 @@ const goToPostThreadsJob = () => {
                   : id === 'survey-cinema'  ? 'bg-gradient-to-br from-violet-900/40 to-violet-800/20 border-violet-500/60 shadow-[0_4px_20px_rgba(124,58,237,0.2)]'
                   : id === 'google-map'   ? 'bg-gradient-to-br from-blue-900/40 to-cyan-900/20 border-blue-500/60 shadow-[0_4px_20px_rgba(59,130,246,0.2)]'
                   : id === 'join-zalo'    ? 'bg-gradient-to-br from-sky-900/40 to-blue-900/20 border-sky-500/60 shadow-[0_4px_20px_rgba(14,165,233,0.2)]'
+                  : id === 'zalo-kokomi'  ? 'bg-gradient-to-br from-cyan-900/40 to-teal-900/20 border-cyan-500/60 shadow-[0_4px_20px_rgba(6,182,212,0.2)]'
                   : id === 'daily_threads' ? 'bg-gradient-to-br from-purple-900/40 to-purple-800/20 border-purple-500/60 shadow-[0_4px_20px_rgba(124,58,237,0.2)]'
                   : 'bg-slate-800/60 border-slate-600/60'
                 ]">
@@ -340,6 +344,7 @@ const goToPostThreadsJob = () => {
                        id === 'checkin-cinema'? 'bg-indigo-600 text-white' :
                        id === 'survey-cinema' ? 'bg-violet-600 text-white' :
                        id === 'google-map'      ? 'bg-blue-600 text-white' :
+                       id === 'zalo-kokomi'    ? 'bg-cyan-600 text-white' :
                        id === 'daily_threads'  ? 'bg-purple-600 text-white' :
                        'bg-sky-600 text-white'
                      ]">
@@ -365,6 +370,7 @@ const goToPostThreadsJob = () => {
                          id === 'survey-cinema' ? 'bg-violet-600/30 text-violet-300' :
                          id === 'google-map'    ? 'bg-blue-600/30 text-blue-300' :
                          id === 'join-zalo'      ? 'bg-sky-600/30 text-sky-300' :
+                         id === 'zalo-kokomi'    ? 'bg-cyan-600/30 text-cyan-300' :
                          id === 'daily_threads'  ? 'bg-purple-600/30 text-purple-300' :
                          'bg-slate-700/60'
                        ]">
@@ -388,7 +394,8 @@ const goToPostThreadsJob = () => {
                       'text-violet-300': id === 'survey-cinema',
                       'text-blue-300':   id === 'google-map',
                       'text-sky-300':    id === 'join-zalo',
-                      'text-white':      !['follow-cgv','review-cinema','checkin-cinema','survey-cinema','google-map','join-zalo'].includes(id as string)
+                      'text-cyan-300':   id === 'zalo-kokomi',
+                      'text-white':      !['follow-cgv','review-cinema','checkin-cinema','survey-cinema','google-map','join-zalo','zalo-kokomi'].includes(id as string)
                     }">
                   {{ j.title }}
                 </h4>
@@ -401,8 +408,9 @@ const goToPostThreadsJob = () => {
                   <p class="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-1">Thưởng ngay:</p>
                   <div class="flex items-center gap-1.5">
                     <p class="font-black tracking-tighter italic leading-none"
-                       :class="[j.color, id === 'daily_threads' ? 'text-base md:text-xl' : 'text-xl md:text-3xl']">
+                       :class="[j.color, ['daily_threads', 'zalo-kokomi'].includes(id as string) ? 'text-base md:text-xl' : 'text-xl md:text-3xl']">
                       <template v-if="id === 'daily_threads'">20K - 100K</template>
+                      <template v-else-if="id === 'zalo-kokomi'">KHÔNG GIỚI HẠN</template>
                       <template v-else>{{ formatReward(j.reward).toLocaleString() }}</template>
                     </p>
                     <div class="flex flex-col items-start translate-y-[-2px]">
@@ -429,6 +437,7 @@ const goToPostThreadsJob = () => {
                     id === 'survey-cinema' ? 'bg-gradient-to-r from-violet-600 to-purple-500 text-white' :
                     id === 'google-map'    ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white' :
                     id === 'join-zalo'     ? 'bg-gradient-to-r from-sky-600 to-blue-500 text-white' :
+                    id === 'zalo-kokomi'   ? 'bg-gradient-to-r from-cyan-600 to-teal-500 text-white' :
                     'bg-blue-600 text-white'
                   ]">
                   {{ (id === 'daily_threads' && !threadsVipUnlocked) ? 'ĐANG KHOÁ 🔒' : 'BẮT ĐẦU ⚡' }}

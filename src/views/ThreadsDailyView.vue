@@ -7,7 +7,7 @@ import DailyThreadProofModal from '@/components/DailyThreadProofModal.vue'
 import DailyThreadHistoryModal from '@/components/DailyThreadHistoryModal.vue'
 
 const router = useRouter()
-const THREADS_DAILY_ZALO_URL = "https://zalo.me/g/v4utvk3wgsra0l3e0nqx"
+const THREADS_DAILY_ZALO_URL = "https://zalo.me/g/wvjgbbcjwjvocumhma5z"
 
 // Chặn truy cập trực tiếp route hướng dẫn khi chưa hoàn thành job "Đăng bài Threads" cũ
 const dailyThreadsUnlock = inject<{ hasCompletedOldThreadsJob: any; isChecking: any } | null>('dailyThreadsUnlock', null)
