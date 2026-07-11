@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { auth, db } from '@/firebase'
 import { createUserWithEmailAndPassword } from "firebase/auth"
@@ -12,11 +12,16 @@ const email = ref('')
 const phone = ref('')
 const username = ref('')
 const password = ref('')
+const confirmPassword = ref('')
 const showPassword = ref(false)
 const loading = ref(false)
 
+const passwordMismatch = computed(() => {
+  return confirmPassword.value.length > 0 && password.value !== confirmPassword.value
+})
+
 const handleRegister = async () => {
-  if (!fullName.value || !email.value || !phone.value || !username.value || !password.value) {
+  if (!fullName.value || !email.value || !phone.value || !username.value || !password.value || !confirmPassword.value) {
     Swal.fire({
       title: 'THIẾU THÔNG TIN!',
       text: 'Vui lòng điền đầy đủ các trường để tiếp tục.',
@@ -32,6 +37,10 @@ const handleRegister = async () => {
         confirmButton: 'font-black uppercase italic rounded-xl px-8 py-3 shadow-lg active:scale-95 transition-all text-sm'
       }
     })
+    return
+  }
+
+  if (password.value !== confirmPassword.value) {
     return
   }
 
@@ -266,11 +275,19 @@ const handleRegister = async () => {
               <label class="text-[9px] text-slate-400 tracking-widest ml-1">Tên đăng nhập</label>
               <input v-model="username" type="text" placeholder="USERNAME..."
                      class="w-full bg-blue-50 border border-blue-100 rounded-2xl py-3.5 px-5 text-slate-800 placeholder-slate-300 outline-none focus:border-blue-500 focus:bg-white transition-all text-sm"/>
+              <p class="text-[9px] text-blue-600 normal-case not-italic font-bold mt-1 ml-1 leading-relaxed">
+                Tên đăng nhập không viết hoa, không dấu, không khoảng cách.<br/>
+                VD: nguyenvana123
+              </p>
             </div>
             <div class="space-y-1">
-              <label class="text-[9px] text-slate-400 tracking-widest ml-1">Địa chỉ Email</label>
-              <input v-model="email" type="email" placeholder="EMAIL..."
+              <label class="text-[9px] text-slate-400 tracking-widest ml-1">Tạo địa chỉ Email *</label>
+              <input v-model="email" type="email" placeholder="VD: tenbatky123@gmail.com"
                      class="w-full bg-blue-50 border border-blue-100 rounded-2xl py-3.5 px-5 text-slate-800 placeholder-slate-300 outline-none focus:border-blue-500 focus:bg-white transition-all text-sm"/>
+              <p class="text-[9px] text-blue-600 normal-case not-italic font-bold mt-1 ml-1 leading-relaxed">
+                Không cần dùng email thật. Bạn có thể tự tạo email bất kỳ, chỉ cần đúng dạng email.<br/>
+                Ví dụ: abc123@gmail.com
+              </p>
             </div>
           </div>
 
@@ -286,13 +303,23 @@ const handleRegister = async () => {
 
           <!-- Mật khẩu -->
           <div class="space-y-1 relative">
-            <label class="text-[9px] text-slate-400 tracking-widest ml-1">Mật khẩu</label>
-            <input v-model="password" :type="showPassword ? 'text' : 'password'" placeholder="••••••••"
+            <label class="text-[9px] text-slate-400 tracking-widest ml-1">Tạo mật khẩu *</label>
+            <input v-model="password" :type="showPassword ? 'text' : 'password'" placeholder="Tạo mật khẩu..."
                    class="w-full bg-blue-50 border border-blue-100 rounded-2xl py-3.5 px-5 pr-16 text-slate-800 placeholder-slate-300 outline-none focus:border-blue-500 focus:bg-white transition-all text-sm"/>
             <button @click="showPassword = !showPassword"
                     class="absolute right-5 top-[26px] text-[9px] text-blue-500 font-black hover:text-blue-400 tracking-widest z-10">
               {{ showPassword ? 'ẨN' : 'HIỆN' }}
             </button>
+          </div>
+
+          <!-- Nhập lại mật khẩu -->
+          <div class="space-y-1 relative">
+            <label class="text-[9px] text-slate-400 tracking-widest ml-1">Nhập lại mật khẩu *</label>
+            <input v-model="confirmPassword" :type="showPassword ? 'text' : 'password'" placeholder="Nhập lại mật khẩu..."
+                   class="w-full bg-blue-50 border border-blue-100 rounded-2xl py-3.5 px-5 pr-16 text-slate-800 placeholder-slate-300 outline-none focus:border-blue-500 focus:bg-white transition-all text-sm"/>
+            <p v-if="passwordMismatch" class="text-[9px] text-rose-500 normal-case not-italic font-black mt-1 ml-1">
+              Mật khẩu nhập lại không khớp.
+            </p>
           </div>
 
         </div>
