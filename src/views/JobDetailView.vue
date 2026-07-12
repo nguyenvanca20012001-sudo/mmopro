@@ -558,11 +558,21 @@ const handleRandomDownload = (links: string[]) => {
 
         <div class="max-w-md mx-auto bg-[#1c1200] border border-yellow-500/60 rounded-2xl px-5 py-4 shadow-[0_0_20px_rgba(234,179,8,0.15)] space-y-2 text-left" v-if="_staticJob.minReferrals">
           <p class="flex items-center gap-2 text-yellow-400 text-[11px] font-black uppercase tracking-widest not-italic">
-            <span class="text-base">📢</span> Lưu ý
+            <span class="text-base">📢</span> Lưu ý 1
           </p>
           <div class="flex items-start gap-2">
             <span class="text-yellow-500 mt-0.5 shrink-0 not-italic">•</span>
-            <p class="text-yellow-100 text-xs font-bold not-italic normal-case leading-relaxed">Tối thiểu {{ _staticJob.minReferrals }} lượt giới thiệu thành công mới được tính thưởng.</p>
+            <p class="text-yellow-100 text-xs font-bold not-italic normal-case leading-relaxed">Công việc này chỉ được làm 1 lần duy nhất.<br/>Tối đa 5 lượt gửi link giới thiệu thành công.<br/>Không tính vào nhiệm vụ.</p>
+          </div>
+        </div>
+
+        <div class="max-w-md mx-auto bg-[#1c1200] border border-yellow-500/60 rounded-2xl px-5 py-4 shadow-[0_0_20px_rgba(234,179,8,0.15)] space-y-2 text-left" v-if="_staticJob.minReferrals">
+          <p class="flex items-center gap-2 text-yellow-400 text-[11px] font-black uppercase tracking-widest not-italic">
+            <span class="text-base">📢</span> Lưu ý 2
+          </p>
+          <div class="flex items-start gap-2">
+            <span class="text-yellow-500 mt-0.5 shrink-0 not-italic">•</span>
+            <p class="text-yellow-100 text-xs font-bold not-italic normal-case leading-relaxed">Mỗi người chỉ được {{ _staticJob.minReferrals }} lượt giới thiệu thành công.</p>
           </div>
           <div class="flex items-start gap-2">
             <span class="text-yellow-500 mt-0.5 shrink-0 not-italic">•</span>

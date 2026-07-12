@@ -73,10 +73,10 @@ export const jobsData: Record<string, any> = {
 
   'zalo-kokomi': {
     title: "ZALO X KOKOMI",
-    reward: "7.000 xu / 1",
+    reward: "35.000 xu",
     color: "text-cyan-400",
     badge: "CƠ BẢN",
-    subtitle: "Gửi link giới thiệu cho bạn bè, hoàn thành nhiệm vụ nhận thưởng",
+    subtitle: "Gửi link giới thiệu cho 5 người bạn bất kì, hoàn thành nhiệm vụ nhận thưởng",
     referralLinkGlobal: "https://shorten.asia/jxg72pms",
     minReferrals: 5,
     noProofSubmit: true,
@@ -87,12 +87,6 @@ export const jobsData: Record<string, any> = {
       "Khi đủ tối thiểu 5 lượt giới thiệu thành công, hãy nhắn Fanpage để gửi bằng chứng và nhận thưởng."
     ],
     sampleImage: "images/anh-kokomi1.jpg",
-    priceTiers: [
-      { count: 5, reward: "35.000 xu" },
-      { count: 10, reward: "80.000 xu" },
-      { count: 15, reward: "120.000 xu" },
-      { count: 20, reward: "180.000 xu" }
-    ],
     fanpageMessageTemplate: [
       "Họ tên:",
       "Số điện thoại:",
