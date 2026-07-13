@@ -73,7 +73,7 @@ export const jobsData: Record<string, any> = {
 
   'zalo-kokomi': {
     title: "ZALO X KOKOMI",
-    reward: "35.000 xu",
+    reward: "20.000 - 130.000 xu",
     color: "text-cyan-400",
     badge: "CƠ BẢN",
     subtitle: "Gửi link giới thiệu cho 5 người bạn bất kì, hoàn thành nhiệm vụ nhận thưởng",
@@ -84,9 +84,14 @@ export const jobsData: Record<string, any> = {
     simpleGuide: true,
     guideIntro: [
       "Sao chép link giới thiệu bên dưới và gửi cho bạn bè qua Zalo, Messenger, Threads hoặc Instagram đều được.",
-      "Khi đủ tối thiểu 5 lượt giới thiệu thành công, hãy nhắn Fanpage để gửi bằng chứng và nhận thưởng."
+      "Khi làm đủ Mốc 1, Mốc 2 hoặc Mốc 3, hãy nhắn tin Fanpage để gửi bằng chứng và nhận thưởng."
     ],
     sampleImage: "images/anh-kokomi1.jpg",
+    priceTiers: [
+      { count: 3, reward: "21.000 xu" },
+      { count: 5, reward: "35.000 xu" },
+      { count: 10, reward: "80.000 xu" }
+    ],
     fanpageMessageTemplate: [
       "Họ tên:",
       "Số điện thoại:",

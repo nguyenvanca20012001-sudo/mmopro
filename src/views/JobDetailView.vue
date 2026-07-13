@@ -541,7 +541,7 @@ const handleRandomDownload = (links: string[]) => {
       <div v-if="_staticJob.simpleGuide" class="bg-[#111726] rounded-[45px] border border-slate-800/50 p-6 md:p-10 shadow-2xl space-y-6">
 
         <div class="max-w-md mx-auto text-left" v-if="_staticJob.priceTiers && _staticJob.priceTiers.length">
-          <h4 class="text-[#3b82f6] text-sm md:text-base italic font-black mb-3 uppercase tracking-tight text-center">Bảng thưởng giới thiệu</h4>
+          <h4 class="text-[#3b82f6] text-sm md:text-base italic font-black mb-3 uppercase tracking-tight text-center">🎁 Bảng giá thưởng giới thiệu</h4>
           <div class="bg-[#0d121f] border border-slate-700/80 rounded-2xl overflow-hidden shadow-inner">
             <div class="grid grid-cols-2 bg-slate-800/60 px-4 py-3">
               <span class="text-[9px] md:text-[11px] font-black uppercase tracking-wide text-slate-300 not-italic">Số người giới thiệu</span>
@@ -550,7 +550,7 @@ const handleRandomDownload = (links: string[]) => {
             <div v-for="(tier, idx) in _staticJob.priceTiers" :key="idx"
               class="grid grid-cols-2 px-4 py-3 items-center"
               :class="(idx as number) % 2 === 0 ? 'bg-transparent' : 'bg-slate-800/20'">
-              <span class="text-white text-xs md:text-sm font-bold normal-case not-italic">{{ tier.count }} người</span>
+              <span class="text-white text-xs md:text-sm font-bold normal-case not-italic"><span class="text-cyan-400">Mốc {{ (idx as number) + 1 }}:</span> {{ tier.count }} người</span>
               <span class="text-[#00df89] text-sm md:text-base font-black italic text-right">{{ tier.reward }}</span>
             </div>
           </div>
@@ -558,29 +558,19 @@ const handleRandomDownload = (links: string[]) => {
 
         <div class="max-w-md mx-auto bg-[#1c1200] border border-yellow-500/60 rounded-2xl px-5 py-4 shadow-[0_0_20px_rgba(234,179,8,0.15)] space-y-2 text-left" v-if="_staticJob.minReferrals">
           <p class="flex items-center gap-2 text-yellow-400 text-[11px] font-black uppercase tracking-widest not-italic">
-            <span class="text-base">📢</span> Lưu ý 1
+            <span class="text-base">⚠️</span> Chú ý
           </p>
           <div class="flex items-start gap-2">
             <span class="text-yellow-500 mt-0.5 shrink-0 not-italic">•</span>
-            <p class="text-yellow-100 text-xs font-bold not-italic normal-case leading-relaxed">Công việc này chỉ được làm 1 lần duy nhất.<br/>Tối đa 5 lượt gửi link giới thiệu thành công.<br/>Không tính vào nhiệm vụ.</p>
-          </div>
-        </div>
-
-        <div class="max-w-md mx-auto bg-[#1c1200] border border-yellow-500/60 rounded-2xl px-5 py-4 shadow-[0_0_20px_rgba(234,179,8,0.15)] space-y-2 text-left" v-if="_staticJob.minReferrals">
-          <p class="flex items-center gap-2 text-yellow-400 text-[11px] font-black uppercase tracking-widest not-italic">
-            <span class="text-base">📢</span> Lưu ý 2
-          </p>
-          <div class="flex items-start gap-2">
-            <span class="text-yellow-500 mt-0.5 shrink-0 not-italic">•</span>
-            <p class="text-yellow-100 text-xs font-bold not-italic normal-case leading-relaxed">Mỗi người chỉ được {{ _staticJob.minReferrals }} lượt giới thiệu thành công.</p>
+            <p class="text-yellow-100 text-xs font-bold not-italic normal-case leading-relaxed">Mỗi mốc thưởng chỉ được hoàn thành và nhận thưởng 1 lần.</p>
           </div>
           <div class="flex items-start gap-2">
             <span class="text-yellow-500 mt-0.5 shrink-0 not-italic">•</span>
-            <p class="text-yellow-100 text-xs font-bold not-italic normal-case leading-relaxed">Không gửi bằng chứng trên web.</p>
+            <p class="text-yellow-100 text-xs font-bold not-italic normal-case leading-relaxed">Hoàn thành Mốc 1 và đã nhận thưởng thì mới được nhận tiếp Mốc 2.</p>
           </div>
           <div class="flex items-start gap-2">
             <span class="text-yellow-500 mt-0.5 shrink-0 not-italic">•</span>
-            <p class="text-yellow-100 text-xs font-bold not-italic normal-case leading-relaxed">Gửi ảnh bằng chứng qua Fanpage để admin kiểm tra.</p>
+            <p class="text-yellow-100 text-xs font-bold not-italic normal-case leading-relaxed">Hoàn thành Mốc 2 và đã nhận thưởng thì mới được nhận tiếp Mốc 3.</p>
           </div>
         </div>
 

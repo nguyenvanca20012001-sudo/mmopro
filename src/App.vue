@@ -1464,21 +1464,24 @@ const getMobileAgeBadgeClass = (age: number): string => {
               <template v-for="(j, id) in jobsData" :key="id">
                 <button v-if="!VIP_IDS.includes(id as string)"
                   @click="handleBasicJobClick(id as string)"
-                  class="relative flex flex-col p-4 rounded-[22px] border border-blue-200/70
-                         bg-gradient-to-br from-slate-50 to-blue-50/80
+                  class="relative flex flex-col p-4 rounded-[22px] border
                          shadow-[0_2px_12px_rgba(37,99,235,0.09)]
                          transition-all duration-200 active:scale-[0.96] overflow-hidden text-left
                          min-h-[164px]"
-                  :class="(id === 'daily_threads' && (isDataLoading || !threadsOldJobDone)) ? 'cursor-not-allowed' : ''">
+                  :class="[
+                    id === 'zalo-kokomi' ? 'border-orange-300 bg-gradient-to-br from-orange-500 to-red-500' : 'border-blue-200/70 bg-gradient-to-br from-slate-50 to-blue-50/80',
+                    (id === 'daily_threads' && (isDataLoading || !threadsOldJobDone)) ? 'cursor-not-allowed' : ''
+                  ]">
 
                   <!-- Shine overlay -->
-                  <div class="absolute inset-0 bg-gradient-to-br from-white/55 to-transparent pointer-events-none rounded-[21px]"></div>
+                  <div class="absolute inset-0 pointer-events-none rounded-[21px]"
+                    :class="id === 'zalo-kokomi' ? 'bg-gradient-to-br from-white/15 to-transparent' : 'bg-gradient-to-br from-white/55 to-transparent'"></div>
 
                   <!-- Badge top-right -->
                   <div class="absolute top-0 right-0 text-[8px] px-2.5 py-1
                               rounded-bl-[14px] rounded-tr-[20px]
-                              font-black italic uppercase text-white z-10
-                              bg-gradient-to-r from-blue-600 to-sky-500">
+                              font-black italic uppercase text-white z-10"
+                    :class="id === 'zalo-kokomi' ? 'bg-black/25' : 'bg-gradient-to-r from-blue-600 to-sky-500'">
                     {{ j.badge || 'CƠ BẢN' }}
                   </div>
 
@@ -1494,31 +1497,34 @@ const getMobileAgeBadgeClass = (age: number): string => {
 
                   <!-- Icon -->
                   <div class="w-10 h-10 rounded-2xl flex items-center justify-center text-xl mb-2.5
-                              bg-blue-100/90 border border-blue-200/60 relative z-10 shrink-0">
+                              relative z-10 shrink-0"
+                    :class="id === 'zalo-kokomi' ? 'bg-white/25 border border-white/30' : 'bg-blue-100/90 border border-blue-200/60'">
                     {{ jobIconMap[id as string] || '🎯' }}
                   </div>
 
                   <!-- Title -->
-                  <p class="text-slate-700 text-[11px] font-black italic uppercase tracking-tight leading-tight mb-auto flex-1 relative z-10 pr-8">
+                  <p class="text-[11px] font-black italic uppercase tracking-tight leading-tight mb-auto flex-1 relative z-10 pr-8"
+                    :class="id === 'zalo-kokomi' ? 'text-white' : 'text-slate-700'">
                     {{ j.title }}
                   </p>
 
                   <!-- Reward -->
                   <div class="flex items-baseline gap-1 mt-2 mb-2.5 relative z-10">
-                    <span class="font-black italic tracking-tighter text-blue-600"
-                      :class="['daily_threads', 'zalo-kokomi'].includes(id as string) ? 'text-[13px]' : 'text-xl'">
+                    <span class="font-black italic tracking-tighter"
+                      :class="[id === 'zalo-kokomi' ? 'text-white' : 'text-blue-600', ['daily_threads', 'zalo-kokomi'].includes(id as string) ? 'text-[13px]' : 'text-xl']">
                       <template v-if="id === 'daily_threads'">20K-100K</template>
-                      <template v-else-if="id === 'zalo-kokomi'">KHÔNG GIỚI HẠN</template>
+                      <template v-else-if="id === 'zalo-kokomi'">20K-130K</template>
                       <template v-else>+{{ String(j.reward).replace(/\D/g,'') }}</template>
                     </span>
-                    <span v-if="id !== 'zalo-kokomi'" class="text-[9px] font-black text-blue-400 not-italic">XU</span>
+                    <span class="text-[9px] font-black not-italic" :class="id === 'zalo-kokomi' ? 'text-white/90' : 'text-blue-400'">XU</span>
                   </div>
 
                   <!-- CTA button -->
-                  <div class="w-full py-2 rounded-xl text-white text-[10px] font-black italic uppercase text-center relative z-10"
+                  <div class="w-full py-2 rounded-xl text-[10px] font-black italic uppercase text-center relative z-10"
                     :class="(id === 'daily_threads' && (isDataLoading || !threadsOldJobDone))
-                      ? 'bg-slate-500'
-                      : 'bg-gradient-to-r from-blue-600 to-blue-500 shadow-[0_2px_8px_rgba(37,99,235,0.28)]'">
+                      ? 'bg-slate-500 text-white'
+                      : id === 'zalo-kokomi' ? 'bg-white text-orange-600 shadow-[0_2px_8px_rgba(0,0,0,0.2)]'
+                      : 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-[0_2px_8px_rgba(37,99,235,0.28)]'">
                     <template v-if="id === 'daily_threads'">
                       {{ isDataLoading ? 'ĐANG KIỂM TRA...' : (threadsOldJobDone ? 'BẮT ĐẦU ⚡' : 'ĐANG KHÓA 🔒') }}
                     </template>
