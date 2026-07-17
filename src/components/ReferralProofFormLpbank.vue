@@ -433,8 +433,8 @@ async function handleSubmit() {
           <div class="space-y-1">
             <div
               class="w-full aspect-[3/4] rounded-lg overflow-hidden border border-slate-700/50 bg-slate-900 cursor-zoom-in group relative"
-              @click="openZoom(baseUrl + 'images/anh-lpbank2.jpg')">
-              <img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" :src="baseUrl + 'images/anh-lpbank2.jpg'" />
+              @click="openZoom(baseUrl + 'images/anh-lpbank4.jpg')">
+              <img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" :src="baseUrl + 'images/anh-lpbank4.jpg'" />
               <div class="absolute bottom-1 right-1 bg-black/70 backdrop-blur text-white text-[7px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity">🔍 PHÓNG TO</div>
             </div>
             <p class="text-slate-500 text-[9px] not-italic normal-case text-center">Ảnh mẫu 2</p>

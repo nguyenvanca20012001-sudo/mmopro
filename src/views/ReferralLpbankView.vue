@@ -49,7 +49,7 @@ const steps = [
 
 const sampleImages = [
   { src: baseUrl + 'images/anh-lpbank1.jpg', label: 'Ảnh 1' },
-  { src: baseUrl + 'images/anh-lpbank2.jpg', label: 'Ảnh 2' },
+  { src: baseUrl + 'images/anh-lpbank4.jpg', label: 'Ảnh 2' },
 ]
 
 const selectedImage = ref<string | null>(null)
@@ -162,11 +162,11 @@ const closeImage = () => { selectedImage.value = null }
       <div class="bg-red-950/40 border border-red-500/40 rounded-2xl px-4 py-3 space-y-1.5">
         <p class="flex items-start gap-2 text-red-300 text-[12px] md:text-sm font-bold not-italic normal-case leading-snug">
           <span class="shrink-0">⚠️</span>
-          <span>1 điện thoại chỉ đăng ký được 1 tài khoản LPBANK.</span>
+          <span>1 điện thoại chỉ đăng ký được 1 tài khoản LPBANK PLUS.</span>
         </p>
         <p class="flex items-start gap-2 text-red-300 text-[12px] md:text-sm font-bold not-italic normal-case leading-snug">
           <span class="shrink-0">⚠️</span>
-          <span>Không được đăng ký 2 tài khoản LPBANK trên cùng 1 điện thoại.</span>
+          <span>Không được đăng ký 2 tài khoản LPBANK PLUS trên cùng 1 điện thoại.</span>
         </p>
       </div>
 

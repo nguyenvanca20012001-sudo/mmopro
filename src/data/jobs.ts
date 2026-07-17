@@ -527,9 +527,9 @@ export const jobsData: Record<string, any> = {
       },
       {
         id: 3,
-        title: "CHUYỂN VÀO LPBANK 50K VÀ CHUYỂN RA ",
+        title: "CHUYỂN VÀO LPBANK PLUS 50K VÀ CHUYỂN RA ",
         content: "CHỤP LẠI ẢNH CHUYỂN TIỀN RA VÀ GỬI BẰNG CHỨNG .",
-        img: "images/anh-lpbank2.jpg",
+        img: "images/anh-lpbank4.jpg",
       },
       {
         id: 4,

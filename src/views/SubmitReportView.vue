@@ -54,7 +54,7 @@ const jobSamples: Record<string, string[]> = {
   'app-chung-khoan-2': ['images/anh-dnse2.jpg', 'images/anh-dnse3.jpg', 'images/anh-dnse10.jpg'],
   'app-chung-khoan-3': ['images/anh-kis1.jpg', 'images/anh-kis2.jpg', 'images/anh-kis10.jpg'],
   'liobank': ['images/anh-liobank3a.jpg', 'images/anh-liobank3b.jpg', 'images/anh-liobank4.jpg'],
-  'lpbank-plus': ['anh-lpbank3.jpg', 'images/anh-lpbank2.jpg']
+  'lpbank-plus': ['anh-lpbank3.jpg', 'images/anh-lpbank4.jpg']
 }
 
 const selectedJob = ref<ProofJob | undefined>(jobOptions.value[0])
