@@ -568,10 +568,6 @@ const handleRandomDownload = (links: string[]) => {
             <span class="text-yellow-500 mt-0.5 shrink-0 not-italic">•</span>
             <p class="text-yellow-100 text-xs font-bold not-italic normal-case leading-relaxed">Hoàn thành Mốc 1 và đã nhận thưởng thì mới được nhận tiếp Mốc 2.</p>
           </div>
-          <div class="flex items-start gap-2">
-            <span class="text-yellow-500 mt-0.5 shrink-0 not-italic">•</span>
-            <p class="text-yellow-100 text-xs font-bold not-italic normal-case leading-relaxed">Hoàn thành Mốc 2 và đã nhận thưởng thì mới được nhận tiếp Mốc 3.</p>
-          </div>
         </div>
 
         <div class="max-w-md mx-auto text-left" v-if="_staticJob.guideIntro && _staticJob.guideIntro.length">

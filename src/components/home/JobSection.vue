@@ -410,7 +410,7 @@ const goToPostThreadsJob = () => {
                     <p class="font-black tracking-tighter italic leading-none"
                        :class="[j.color, ['daily_threads', 'zalo-kokomi'].includes(id as string) ? 'text-base md:text-xl' : 'text-xl md:text-3xl']">
                       <template v-if="id === 'daily_threads'">20K - 100K</template>
-                      <template v-else-if="id === 'zalo-kokomi'">20K - 130K</template>
+                      <template v-else-if="id === 'zalo-kokomi'">35K - 115K</template>
                       <template v-else>{{ formatReward(j.reward).toLocaleString() }}</template>
                     </p>
                     <div class="flex flex-col items-start translate-y-[-2px]">

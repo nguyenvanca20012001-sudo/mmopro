@@ -1513,7 +1513,7 @@ const getMobileAgeBadgeClass = (age: number): string => {
                     <span class="font-black italic tracking-tighter"
                       :class="[id === 'zalo-kokomi' ? 'text-white' : 'text-blue-600', ['daily_threads', 'zalo-kokomi'].includes(id as string) ? 'text-[13px]' : 'text-xl']">
                       <template v-if="id === 'daily_threads'">20K-100K</template>
-                      <template v-else-if="id === 'zalo-kokomi'">20K-130K</template>
+                      <template v-else-if="id === 'zalo-kokomi'">35K-115K</template>
                       <template v-else>+{{ String(j.reward).replace(/\D/g,'') }}</template>
                     </span>
                     <span class="text-[9px] font-black not-italic" :class="id === 'zalo-kokomi' ? 'text-white/90' : 'text-blue-400'">XU</span>
