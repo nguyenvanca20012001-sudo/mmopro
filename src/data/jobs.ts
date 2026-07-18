@@ -573,9 +573,9 @@ export const jobsData: Record<string, any> = {
       },
       {
         id: 4,
-        title: "ĐĂNG NHẬP VÀO TÀI KHOẢN CHỤP ẢNH BÊN DƯỚI ",
-        content: "GỬI ẢNH MẪU NHƯ BÊN DƯỚI VÀO BẰNG CHỨNG .",
-        img: "images/anh-abbank3.jpg"
+        title: "THỰC HIỆN GIAO DỊCH TỔNG 30K",
+        contentHtml: `<span class="text-slate-300 font-semibold not-italic">Sau khi đăng nhập APP ABBANK, bạn cần phát sinh giao dịch 30k theo hướng dẫn dưới đây:</span><br/><br/><span class="text-slate-200 font-bold not-italic">✅ Chuyển vào tài khoản ABBANK: 30k </span><br/><span class="text-slate-200 font-bold not-italic">✅ Chuyển ra ngoài 2 lần 10k : 10k ( lần 1 ) + chuyển ra ngoài 10k ( lần 2 )</span><br/><span class="text-slate-200 font-bold not-italic">✅ Nạp điện thoại: 10k </span><br/><br/><span class="text-yellow-400 font-black not-italic">Tổng cần làm: 30k </span><br/><br/><span class="text-slate-300 font-semibold not-italic">Làm đủ các bước trên rồi chụp ảnh màn hình theo ảnh mẫu để gửi bằng chứng.</span>`,
+        img: "images/anh-abbank4.jpg"
       },
     ]
   },
