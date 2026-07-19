@@ -7,7 +7,6 @@ import DailyThreadProofModal from '@/components/DailyThreadProofModal.vue'
 import DailyThreadHistoryModal from '@/components/DailyThreadHistoryModal.vue'
 
 const router = useRouter()
-const THREADS_DAILY_ZALO_URL = "https://zalo.me/g/wvjgbbcjwjvocumhma5z"
 
 // Chặn truy cập trực tiếp route hướng dẫn khi chưa hoàn thành job "Đăng bài Threads" cũ
 const dailyThreadsUnlock = inject<{ hasCompletedOldThreadsJob: any; isChecking: any } | null>('dailyThreadsUnlock', null)
@@ -21,10 +20,6 @@ function goToOldThreadsJob() {
 const showProofModal   = ref(false)
 const showHistoryModal = ref(false)
 const historyModalRef  = ref<InstanceType<typeof DailyThreadHistoryModal> | null>(null)
-
-function joinZalo() {
-  if (THREADS_DAILY_ZALO_URL) window.open(THREADS_DAILY_ZALO_URL, '_blank')
-}
 
 function onProofSubmitted() {
   // Reload history count in background (modal stays open showing success screen)
@@ -48,19 +43,14 @@ const rewardTiers = [
 ]
 
 const steps = [
-  'Tham gia nhóm Zalo để nhận nội dung đăng bài hằng ngày.',
-  'Đọc hướng dẫn trong nhóm Zalo, nhận nội dung bài đăng được giao.',
-  'Dùng tài khoản Threads để đăng bài theo nội dung được giao.',
-  'Ghim mã QR trong bài viết và chụp ảnh màn hình số view.',
-  'Bấm "Gửi bằng chứng" và điền đầy đủ thông tin để nhận xu.',
+  'Bấm nút "Xem hướng dẫn" bên dưới để mở trang hướng dẫn chi tiết của công việc Đăng Bài Threads.',
+  'Đọc kỹ và làm theo đúng nội dung, mẫu bài đăng được hướng dẫn trong đó.',
 ]
 
 const rules = [
-  'Tối đa 5 bài hợp lệ mỗi ngày (không tính bài bị từ chối).',
-  'Mỗi bài phải có link Threads hợp lệ và nick Threads thực.',
-  'Số view QR phải khớp với thực tế trong bài viết.',
-  'Có thể dùng nhiều nick Threads khác nhau.',
-  'Bài bị từ chối không tính vào giới hạn ngày — được nộp lại.',
+  'Có thể tạo nhiều nick Threads để đăng bài, khi đủ view ở bảng mức thưởng thì gửi bằng chứng.',
+  '1 nick Threads có thể đăng 2-5 bài/ngày, cách nhau 2h-3h mỗi bài.',
+  'Nếu bài viết sau 1h-2h không có lượt xem thì xoá đi và đăng bài khác.',
 ]
 </script>
 
@@ -180,6 +170,17 @@ const rules = [
         </div>
       </div>
 
+      <!-- ── Mẹo ─────────────────────────────────────────────── -->
+      <div class="bg-[#111726]/80 border border-amber-500/20 rounded-[24px] p-5">
+        <p class="text-[10px] text-amber-400 tracking-widest mb-3">MẸO</p>
+        <ul class="space-y-2">
+          <li v-for="(rule, i) in rules" :key="i" class="flex items-start gap-2.5">
+            <span class="text-amber-500 text-xs shrink-0 mt-0.5">•</span>
+            <p class="text-slate-300 text-sm font-medium not-italic normal-case leading-relaxed">{{ rule }}</p>
+          </li>
+        </ul>
+      </div>
+
       <!-- ── Hướng dẫn ───────────────────────────────────────── -->
       <div class="bg-[#111726]/80 border border-slate-800/60 rounded-[24px] p-5 space-y-3">
         <p class="text-[10px] text-purple-300 tracking-widest mb-3">HƯỚNG DẪN</p>
@@ -189,17 +190,11 @@ const rules = [
           </div>
           <p class="text-slate-300 text-sm font-medium not-italic normal-case leading-relaxed">{{ step }}</p>
         </div>
-      </div>
-
-      <!-- ── Quy định ────────────────────────────────────────── -->
-      <div class="bg-[#111726]/80 border border-amber-500/20 rounded-[24px] p-5">
-        <p class="text-[10px] text-amber-400 tracking-widest mb-3">QUY ĐỊNH</p>
-        <ul class="space-y-2">
-          <li v-for="(rule, i) in rules" :key="i" class="flex items-start gap-2.5">
-            <span class="text-amber-500 text-xs shrink-0 mt-0.5">•</span>
-            <p class="text-slate-300 text-sm font-medium not-italic normal-case leading-relaxed">{{ rule }}</p>
-          </li>
-        </ul>
+        <button
+          @click="goToOldThreadsJob"
+          class="w-full mt-2 py-4 rounded-2xl text-sm tracking-widest transition-all active:scale-95 shadow-xl bg-gradient-to-r from-purple-600 to-fuchsia-500 text-white shadow-[0_0_20px_rgba(168,85,247,0.4)]">
+          👉 XEM HƯỚNG DẪN
+        </button>
       </div>
 
       <!-- ── Highlights ──────────────────────────────────────── -->
@@ -217,17 +212,6 @@ const rules = [
           <p class="text-[9px] text-slate-300 not-italic normal-case leading-tight">Nộp lại nếu bị từ chối</p>
         </div>
       </div>
-
-      <!-- ── CTA Zalo ────────────────────────────────────────── -->
-      <button
-        @click="joinZalo"
-        :disabled="!THREADS_DAILY_ZALO_URL"
-        class="w-full py-5 rounded-2xl text-sm tracking-widest transition-all active:scale-95 shadow-xl"
-        :class="THREADS_DAILY_ZALO_URL
-          ? 'bg-gradient-to-r from-purple-600 to-fuchsia-500 text-white shadow-[0_0_30px_rgba(168,85,247,0.4)]'
-          : 'bg-slate-700/50 text-slate-500 cursor-not-allowed'">
-        {{ THREADS_DAILY_ZALO_URL ? 'THAM GIA NHÓM NHẬN NỘI DUNG 🧵' : 'ADMIN CHƯA CẤU HÌNH LINK NHÓM.' }}
-      </button>
 
       <div class="pb-8"/>
     </div>
