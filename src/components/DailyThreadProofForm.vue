@@ -7,6 +7,7 @@ import {
   query, where, getDocs
 } from 'firebase/firestore'
 import { normalizeThreadUrl, getDateKey, calcReward } from '@/utils/threadUtils'
+import { SUPPORT_FANPAGE_URL } from '@/composables/useSupportConfig'
 
 const emit = defineEmits<{
   (e: 'submitted'): void
@@ -211,7 +212,7 @@ async function handleSubmit() {
         <h2 class="text-base font-black uppercase tracking-wide text-white">Đã gửi bằng chứng thành công!</h2>
         <p class="text-slate-400 text-sm not-italic normal-case font-medium leading-relaxed">
           Đơn Threads hằng ngày của bạn đã được gửi.<br/>
-          Vui lòng chờ <span class="text-white font-black">22h – 23h</span> để được duyệt đơn và cộng xu.
+          Vui lòng nhắn tin Fanpage để được duyệt đơn.
         </p>
       </div>
 
@@ -220,11 +221,12 @@ async function handleSubmit() {
         <span class="text-yellow-400 text-xs font-black uppercase tracking-wider not-italic">Trạng thái: Chờ kiểm tra</span>
       </div>
 
+      <a :href="SUPPORT_FANPAGE_URL" target="_blank"
+         class="w-full inline-flex items-center justify-center gap-2 bg-[#1877F2] hover:bg-blue-500 text-white px-6 py-4 rounded-2xl text-sm font-black uppercase shadow-lg transition-all active:scale-95">
+        💬 Nhắn Tin Fanpage
+      </a>
+
       <div class="bg-slate-800/40 border border-slate-700/40 rounded-2xl p-4 text-left space-y-3">
-        <!-- Thời gian duyệt -->
-        <p class="text-red-400 text-xs not-italic normal-case font-black text-center pb-1 border-b border-slate-700/60">
-          Thời gian duyệt đơn dự kiến: 22h – 23h
-        </p>
         <div class="flex items-center justify-between text-sm gap-3">
           <span class="text-slate-400 not-italic normal-case font-semibold shrink-0">Nick Thread</span>
           <span class="text-purple-300 font-black truncate">{{ submittedInfo.threadNick }}</span>

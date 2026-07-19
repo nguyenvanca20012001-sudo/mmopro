@@ -5,8 +5,14 @@ import { useRouter } from 'vue-router'
 import DailyThreadProofModal from '@/components/DailyThreadProofModal.vue'
 // @ts-ignore
 import DailyThreadHistoryModal from '@/components/DailyThreadHistoryModal.vue'
+// @ts-ignore
+import DailyThreadsGuideModal from '@/components/DailyThreadsGuideModal.vue'
+import { startDailyThreadsGuideListener } from '@/composables/useDailyThreadsGuideConfig'
 
 const router = useRouter()
+
+// Khởi động sớm để config (10 content/ảnh mẫu + QR) đã sẵn sàng khi mở popup hướng dẫn
+startDailyThreadsGuideListener()
 
 // Chặn truy cập trực tiếp route hướng dẫn khi chưa hoàn thành job "Đăng bài Threads" cũ
 const dailyThreadsUnlock = inject<{ hasCompletedOldThreadsJob: any; isChecking: any } | null>('dailyThreadsUnlock', null)
@@ -19,6 +25,7 @@ function goToOldThreadsJob() {
 
 const showProofModal   = ref(false)
 const showHistoryModal = ref(false)
+const showGuideModal   = ref(false)
 const historyModalRef  = ref<InstanceType<typeof DailyThreadHistoryModal> | null>(null)
 
 function onProofSubmitted() {
@@ -191,7 +198,7 @@ const rules = [
           <p class="text-slate-300 text-sm font-medium not-italic normal-case leading-relaxed">{{ step }}</p>
         </div>
         <button
-          @click="goToOldThreadsJob"
+          @click="showGuideModal = true"
           class="w-full mt-2 py-4 rounded-2xl text-sm tracking-widest transition-all active:scale-95 shadow-xl bg-gradient-to-r from-purple-600 to-fuchsia-500 text-white shadow-[0_0_20px_rgba(168,85,247,0.4)]">
           👉 XEM HƯỚNG DẪN
         </button>
@@ -231,6 +238,13 @@ const rules = [
         v-if="showHistoryModal"
         ref="historyModalRef"
         @close="showHistoryModal = false"
+      />
+    </Transition>
+
+    <Transition name="fade">
+      <DailyThreadsGuideModal
+        v-if="showGuideModal"
+        @close="showGuideModal = false"
       />
     </Transition>
 

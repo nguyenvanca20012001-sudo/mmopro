@@ -12,6 +12,7 @@ import type { AppConfig } from '@/composables/useAppConfig'
 import { supportConfig, startSupportConfigListener, updateSupportConfig } from '@/composables/useSupportConfig'
 import type { SupportConfig } from '@/composables/useSupportConfig'
 import { basicJobConfigs, startBasicJobConfigsListener } from '@/composables/useBasicJobConfigs'
+import { dailyThreadsGuideConfig, startDailyThreadsGuideListener, updateDailyThreadsGuideConfig } from '@/composables/useDailyThreadsGuideConfig'
 import { storage } from '@/firebase'
 import { ref as storageRef, deleteObject } from 'firebase/storage'
 import { normalizePhone } from '@/utils/phoneUtils'
@@ -215,6 +216,15 @@ const saveSupportConfig = async () => {
 const basicPostContents = ref<string[]>(Array(10).fill(''))
 const isSavingBasicContents = ref(false)
 
+// ============================================================================
+// DAILY THREADS GUIDE CONFIG — popup "XEM HƯỚNG DẪN" của job Đăng Bài Threads Hằng Ngày
+// Doc: app_config/daily_threads_guide — { contents[10], postImages[10], qrImage }
+// ============================================================================
+const guideContents = ref<string[]>(Array(10).fill(''))
+const guideImages = ref<string[]>(Array(10).fill(''))
+const guideQrImage = ref('')
+const isSavingGuideConfig = ref(false)
+
 watch(activeTab, (tab) => {
   if (tab === 'basic_jobs_config') {
     const cfg = basicJobConfigs.value['post-threads']
@@ -224,6 +234,11 @@ watch(activeTab, (tab) => {
     } else {
       basicPostContents.value = Array(10).fill('')
     }
+
+    const guideCfg = dailyThreadsGuideConfig.value
+    guideContents.value = [...guideCfg.contents, ...Array(10).fill('')].slice(0, 10)
+    guideImages.value = [...guideCfg.postImages, ...Array(10).fill('')].slice(0, 10)
+    guideQrImage.value = guideCfg.qrImage || ''
   }
 }, { immediate: false })
 
@@ -240,6 +255,26 @@ const saveBasicPostContents = async () => {
     Swal.fire('Lỗi!', String(e), 'error')
   } finally {
     isSavingBasicContents.value = false
+  }
+}
+
+const saveDailyThreadsGuideConfig = async () => {
+  if (!guideContents.value.some(c => c?.trim())) {
+    Swal.fire('Chú ý', 'Cần ít nhất 1 nội dung bài đăng không rỗng.', 'warning')
+    return
+  }
+  isSavingGuideConfig.value = true
+  try {
+    await updateDailyThreadsGuideConfig({
+      contents: guideContents.value,
+      postImages: guideImages.value,
+      qrImage: guideQrImage.value.trim(),
+    })
+    await Swal.fire({ icon: 'success', title: 'ĐÃ LƯU!', text: 'Cấu hình hướng dẫn Threads hằng ngày đã cập nhật realtime.', timer: 1500, showConfirmButton: false })
+  } catch (e: any) {
+    Swal.fire('Lỗi!', String(e), 'error')
+  } finally {
+    isSavingGuideConfig.value = false
   }
 }
 
@@ -1934,6 +1969,7 @@ onMounted(() => {
       startAppConfigListener()        // idempotent — khởi động listener config web
       startSupportConfigListener()    // idempotent — khởi động listener hỗ trợ
       startBasicJobConfigsListener()  // idempotent — khởi động listener basic job configs
+      startDailyThreadsGuideListener() // idempotent — khởi động listener config popup hướng dẫn Thread hằng ngày
 
     } else {
       router.push('/login')
@@ -3276,6 +3312,75 @@ const handleAdminLogout = async () => {
             <button @click="saveBasicPostContents" :disabled="isSavingBasicContents"
                     class="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-black py-4 rounded-xl transition-all active:scale-95 tracking-widest text-sm uppercase shadow-[0_0_20px_rgba(16,185,129,0.3)]">
               {{ isSavingBasicContents ? '⏳ ĐANG LƯU...' : '💾 LƯU NỘI DUNG BÀI ĐĂNG' }}
+            </button>
+          </div>
+
+          <!-- Section 2: Cấu hình popup "XEM HƯỚNG DẪN" — job Đăng Bài Threads Hằng Ngày -->
+          <div class="space-y-4 pt-6 border-t border-slate-800">
+            <div class="flex items-center gap-3 mb-1">
+              <div class="w-1.5 h-6 bg-purple-500 rounded-full shadow-[0_0_10px_rgba(168,85,247,0.6)]"></div>
+              <h3 class="text-base md:text-xl text-purple-400 tracking-tight">CẤU HÌNH HƯỚNG DẪN THREADS HẰNG NGÀY</h3>
+            </div>
+            <p class="text-slate-500 text-xs italic normal-case">
+              Nội dung, ảnh mẫu và mã QR hiển thị trong popup "XEM HƯỚNG DẪN" của job Đăng Bài Threads Hằng Ngày — user đang mở web sẽ tự cập nhật realtime.
+            </p>
+
+            <!-- 10 nội dung bài đăng -->
+            <div class="space-y-3">
+              <div class="flex items-center gap-2">
+                <span class="text-purple-400 text-sm">🧵</span>
+                <h4 class="text-white font-black text-sm uppercase tracking-widest">10 nội dung bài đăng</h4>
+              </div>
+              <div class="space-y-3">
+                <div v-for="(_, idx) in guideContents" :key="idx" class="space-y-1">
+                  <label class="text-[9px] text-slate-500 uppercase tracking-widest font-black">Content #{{ idx + 1 }}</label>
+                  <textarea
+                    v-model="guideContents[idx]"
+                    rows="2"
+                    :placeholder="`Nội dung bài đăng mẫu ${idx + 1}... (để trống để bỏ qua)`"
+                    class="w-full bg-[#090e17] border border-slate-700 text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 transition-colors resize-none font-sans not-italic normal-case placeholder-slate-700"
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- 10 ảnh bài đăng -->
+            <div class="space-y-3">
+              <div class="flex items-center gap-2">
+                <span class="text-purple-400 text-sm">🖼️</span>
+                <h4 class="text-white font-black text-sm uppercase tracking-widest">10 ảnh bài đăng</h4>
+              </div>
+              <p class="text-slate-500 text-xs italic normal-case">Nhập link/path ảnh, ví dụ: /images/thread-post-1.jpg</p>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div v-for="(_, idx) in guideImages" :key="idx" class="space-y-1">
+                  <label class="text-[9px] text-slate-500 uppercase tracking-widest font-black">Image #{{ idx + 1 }}</label>
+                  <input
+                    v-model="guideImages[idx]"
+                    type="text"
+                    :placeholder="`/images/thread-post-${idx + 1}.jpg`"
+                    class="w-full bg-[#090e17] border border-slate-700 text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 transition-colors font-sans not-italic normal-case placeholder-slate-700"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <!-- Ảnh mã QR -->
+            <div class="space-y-2">
+              <div class="flex items-center gap-2">
+                <span class="text-purple-400 text-sm">📌</span>
+                <h4 class="text-white font-black text-sm uppercase tracking-widest">Ảnh mã QR</h4>
+              </div>
+              <input
+                v-model="guideQrImage"
+                type="text"
+                placeholder="/images/qr-zalo-nhom17.jpg"
+                class="w-full bg-[#090e17] border border-slate-700 text-white rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 transition-colors font-sans not-italic normal-case placeholder-slate-700"
+              />
+            </div>
+
+            <button @click="saveDailyThreadsGuideConfig" :disabled="isSavingGuideConfig"
+                    class="w-full bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-black py-4 rounded-xl transition-all active:scale-95 tracking-widest text-sm uppercase shadow-[0_0_20px_rgba(168,85,247,0.3)]">
+              {{ isSavingGuideConfig ? '⏳ ĐANG LƯU...' : '💾 LƯU CẤU HÌNH HƯỚNG DẪN' }}
             </button>
           </div>
 

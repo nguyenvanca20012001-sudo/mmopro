@@ -64,15 +64,15 @@ function handleSubmitted() {
             </li>
             <li class="flex items-start gap-2 text-xs text-slate-300 not-italic normal-case font-medium leading-relaxed">
               <span class="text-indigo-400 shrink-0">•</span>
-              Từ <span class="text-white font-black">22h – 23h</span> hằng ngày, bên mình mới duyệt đơn và cộng xu.
-            </li>
-            <li class="flex items-start gap-2 text-xs text-slate-300 not-italic normal-case font-medium leading-relaxed">
-              <span class="text-indigo-400 shrink-0">•</span>
               Có thể tạo nhiều nick Threads để đăng bài.
             </li>
             <li class="flex items-start gap-2 text-xs text-slate-300 not-italic normal-case font-medium leading-relaxed">
               <span class="text-indigo-400 shrink-0">•</span>
               Có thể xoá bài đăng lại, hoặc đăng nhiều lần để đạt đủ số view/lượt xem.
+            </li>
+            <li class="flex items-start gap-2 text-xs text-yellow-400 not-italic normal-case font-black leading-relaxed">
+              <span class="text-yellow-400 shrink-0">•</span>
+              Nhắn tin Fanpage để được duyệt đơn.
             </li>
           </ul>
         </div>
