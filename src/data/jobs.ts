@@ -228,10 +228,10 @@ export const jobsData: Record<string, any> = {
     steps: [
       {
         id: 1,
-        title: "THAM GIA NHÓM ZALO MMO PRO - GROUP 11",
-        content: "CỘNG ĐỒNG MMO PRO GROUP 1- GROUP 10 ĐÃ FULL , THAM GIA GROUP 11 NHÁ  .",
+        title: "THAM GIA NHÓM ZALO MMO PRO - GROUP 12",
+        content: "CỘNG ĐỒNG MMO PRO GROUP 1- GROUP 11 ĐÃ FULL , THAM GIA GROUP 12 NHÁ  .",
         extraLinks: [
-          { text: "THAM GIA NHÓM 11 ➔", url: "https://zalo.me/g/kdqb13czbwv76jq0slng" }
+          { text: "THAM GIA NHÓM 12 ➔", url: "https://zalo.me/g/a0vzt8yvoga1f9xhzdkp" }
         ]
       },
       {
