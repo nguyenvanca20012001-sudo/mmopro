@@ -39,6 +39,13 @@ const requiredJobs = computed(() => {
   return 9
 })
 
+// Chỉ phục vụ HIỂN THỊ (đổi cách gọi tên "9 nhiệm vụ" thành "3 nhiệm vụ VIP") —
+// logic mở khóa thực tế vẫn dựa hoàn toàn vào approvedJobsCount / requiredJobs ở trên, không đổi.
+const DISPLAY_REQUIRED_JOBS = 3
+const displayApprovedJobs = computed(() =>
+  Math.min(Math.floor(approvedJobsCount.value / 3), DISPLAY_REQUIRED_JOBS)
+)
+
 // QR upload state
 const qrBlob = ref<Blob | null>(null)
 const qrPreviewUrl = ref<string | null>(null)
@@ -258,7 +265,7 @@ const handleConfirmWithdraw = async () => {
   if (approvedJobsCount.value < requiredJobs.value) {
     Swal.fire({
       title: 'CHƯA ĐỦ ĐIỀU KIỆN!',
-      text: `Bạn cần hoàn thành ít nhất ${requiredJobs.value} nhiệm vụ để rút mốc này!`,
+      text: `Bạn cần hoàn thành ít nhất ${DISPLAY_REQUIRED_JOBS} nhiệm vụ VIP để rút mốc này!`,
       icon: 'error',
       confirmButtonColor: '#ef4444',
       customClass: { popup: 'rounded-[30px]' }
@@ -536,7 +543,7 @@ const handleConfirmWithdraw = async () => {
               </div>
               <h3 class="text-xl md:text-2xl text-white font-black tracking-tighter mb-2 uppercase italic">CẦN THÊM NHIỆM VỤ</h3>
               <p class="text-slate-400 text-[11px] normal-case font-medium not-italic mb-5 px-2 leading-relaxed">
-                Hoàn thành đủ <span class="text-amber-400 font-bold">{{ requiredJobs }} nhiệm vụ</span> được duyệt để mở khóa rút tiền mốc <span class="text-amber-400 font-bold">{{ formatNumber(amount || 0) }} XU</span>
+                Hoàn thành đủ <span class="text-amber-400 font-bold">{{ DISPLAY_REQUIRED_JOBS }} nhiệm vụ VIP</span> được duyệt để mở khóa rút tiền mốc <span class="text-amber-400 font-bold">{{ formatNumber(amount || 0) }} XU</span>
               </p>
 
               <!-- Progress card -->
@@ -546,21 +553,21 @@ const handleConfirmWithdraw = async () => {
 
                 <!-- Big numbers -->
                 <p class="font-black text-3xl md:text-4xl flex items-baseline justify-center gap-1 mb-3">
-                  <span class="text-amber-400 drop-shadow-[0_0_10px_rgba(234,179,8,0.5)]">{{ approvedJobsCount }}</span>
+                  <span class="text-amber-400 drop-shadow-[0_0_10px_rgba(234,179,8,0.5)]">{{ displayApprovedJobs }}</span>
                   <span class="text-slate-500 text-xl">/</span>
-                  <span class="text-slate-400 text-xl">{{ requiredJobs }}</span>
+                  <span class="text-slate-400 text-xl">{{ DISPLAY_REQUIRED_JOBS }}</span>
                 </p>
 
                 <!-- Progress bar -->
                 <div class="w-full h-3 bg-slate-700/60 rounded-full overflow-hidden mb-2 border border-slate-600/30">
                   <div class="h-full bg-gradient-to-r from-amber-600 to-yellow-400 rounded-full transition-all duration-1000 relative overflow-hidden"
-                       :style="{ width: `${Math.min((approvedJobsCount / requiredJobs) * 100, 100)}%` }">
+                       :style="{ width: `${Math.min((displayApprovedJobs / DISPLAY_REQUIRED_JOBS) * 100, 100)}%` }">
                     <div class="absolute inset-0 bg-white/20 animate-[shimmer_2s_infinite]"></div>
                   </div>
                 </div>
 
                 <p class="text-rose-400 text-[10px] font-black tracking-wide italic">
-                  ⚡ Còn thiếu {{ requiredJobs - approvedJobsCount }} nhiệm vụ nữa
+                  ⚡ Còn thiếu {{ DISPLAY_REQUIRED_JOBS - displayApprovedJobs }} nhiệm vụ VIP nữa
                 </p>
               </div>
 
