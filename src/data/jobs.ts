@@ -70,18 +70,8 @@ export const jobsData: Record<string, any> = {
         id: 2,
         title: "BƯỚC 2: TẢI ẢNH BÀI ĐĂNG",
         content: "Bấm TẢI ẢNH để lưu ảnh kèm theo về máy, dùng ảnh này đăng lên Threads cùng nội dung vừa copy ở Bước 1.",
-        randomDownloadLinks: [
-          "/images/thread-post-1.jpg",
-          "/images/thread-post-2.jpg",
-          "/images/thread-post-3.jpg",
-          "/images/thread-post-4.jpg",
-          "/images/thread-post-5.jpg",
-          "/images/thread-post-6.jpg",
-          "/images/thread-post-7.jpg",
-          "/images/thread-post-8.jpg",
-          "/images/thread-post-9.jpg",
-          "/images/thread-post-10.jpg"
-        ],
+        img: "images/anh-post-5.png",
+        downloadLink: "images/anh-post-5.png",
         buttonText: "📥 TẢI ẢNH BÀI ĐĂNG"
       },
       {

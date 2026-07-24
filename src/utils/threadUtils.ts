@@ -18,10 +18,9 @@ export function getDateKey(date: Date = new Date()): string {
 }
 
 export function calcReward(views: number): number {
-  if (views >= 1000) return 100000
-  if (views >= 600)  return 80000
-  if (views >= 400)  return 60000
-  if (views >= 200)  return 40000
-  if (views >= 50)   return 20000
+  if (views > 5000)  return 100000
+  if (views >= 5000) return 80000
+  if (views >= 2000) return 35000
+  if (views >= 1000) return 20000
   return 0
 }

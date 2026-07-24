@@ -42,22 +42,32 @@ function onOpenHistory() {
 }
 
 const rewardTiers = [
-  { qr: '50 view',    threadView: '500 view', reward: '20.000 xu', highlight: false },
-  { qr: '200 view',   threadView: '500 view', reward: '40.000 xu', highlight: false },
-  { qr: '400 view',   threadView: '500 view', reward: '60.000 xu', highlight: false },
-  { qr: '600 view',   threadView: '500 view', reward: '80.000 xu', highlight: false },
-  { qr: '1.000 view', threadView: '500 view', reward: '100.000 xu', highlight: true  },
+  { views: '1.000 lượt xem',      reward: '20.000 xu',  highlight: false },
+  { views: '2.000 lượt xem',      reward: '35.000 xu',  highlight: false },
+  { views: '5.000 lượt xem',      reward: '80.000 xu',  highlight: false },
+  { views: 'Trên 5.000 lượt xem', reward: '100.000 xu', highlight: true  },
 ]
 
-const steps = [
-  'Bấm nút "Xem hướng dẫn" bên dưới để mở trang hướng dẫn chi tiết của công việc Đăng Bài Threads.',
-  'Đọc kỹ và làm theo đúng nội dung, mẫu bài đăng được hướng dẫn trong đó.',
+const strictNotice = 'Bấm nút "Xem hướng dẫn" và làm bài đăng 100% giống y hệt hướng dẫn — sai bất kỳ 1 chi tiết nhỏ nào cũng sẽ bị từ chối.'
+
+const notices = [
+  'Bài đăng bắt buộc phải đủ: ảnh bài đăng + mã QR ghim dưới bình luận.',
+  '1 nick Threads được đăng tối đa 3 bài, có thể tạo nhiều nick Threads không giới hạn.',
 ]
 
-const rules = [
-  'Có thể tạo nhiều nick Threads để đăng bài, khi đủ view ở bảng mức thưởng thì gửi bằng chứng.',
-  '1 nick Threads có thể đăng 2-5 bài/ngày, cách nhau 2h-3h mỗi bài.',
-  'Nếu bài viết sau 1h-2h không có lượt xem thì xoá đi và đăng bài khác.',
+const viewExamples = [
+  {
+    label: 'Ví dụ 1 — 1 nick đăng 3 bài',
+    parts: ['Bài 1: 300 lượt xem', 'Bài 2: 400 lượt xem', 'Bài 3: 300 lượt xem'],
+    total: '1.000 lượt xem',
+    reward: '20.000 xu',
+  },
+  {
+    label: 'Ví dụ 2 — 2 nick, tổng 6 bài (mỗi bài 200 lượt xem)',
+    parts: ['6 bài × 200 lượt xem'],
+    total: '1.200 lượt xem',
+    reward: '20.000 xu',
+  },
 ]
 </script>
 
@@ -137,8 +147,8 @@ const rules = [
           </div>
         </div>
 
-        <!-- ── 2 action buttons ───────────────────────────────── -->
-        <div class="relative z-10 grid grid-cols-2 gap-3">
+        <!-- ── 3 action buttons ───────────────────────────────── -->
+        <div class="relative z-10 grid grid-cols-2 gap-3 mb-3">
           <button
             @click="showProofModal = true"
             class="flex items-center justify-center gap-2 py-4 rounded-2xl text-sm font-black italic uppercase tracking-wide transition-all active:scale-95 bg-gradient-to-r from-purple-600 to-fuchsia-500 text-white shadow-[0_0_20px_rgba(168,85,247,0.4)]">
@@ -152,56 +162,82 @@ const rules = [
             <span>Lịch sử đơn</span>
           </button>
         </div>
+        <button
+          @click="showGuideModal = true"
+          class="relative z-10 w-full flex items-center justify-center gap-2 py-4 rounded-2xl text-sm font-black italic uppercase tracking-wide transition-all active:scale-95 bg-slate-800/80 border border-purple-500/40 text-purple-200 shadow-lg">
+          <span class="text-base not-italic">👉</span>
+          <span>Xem hướng dẫn</span>
+        </button>
 
+      </div>
+
+      <!-- ── Lưu ý ───────────────────────────────────────────── -->
+      <div class="bg-indigo-950/60 border border-purple-500/20 rounded-2xl px-4 py-3 space-y-3">
+        <div class="bg-red-500/10 border border-red-500/30 rounded-xl px-3.5 py-2.5">
+          <p class="text-red-400 text-[11px] font-black not-italic normal-case leading-relaxed">
+            ⚠️ {{ strictNotice }}
+          </p>
+        </div>
+        <div class="space-y-2">
+          <div v-for="(notice, i) in notices" :key="i" class="flex items-start gap-2">
+            <span class="text-purple-400 text-xs shrink-0 mt-0.5">●</span>
+            <p class="text-slate-300 text-xs font-medium not-italic normal-case leading-relaxed">{{ notice }}</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── Cách tính lượt xem ───────────────────────────────── -->
+      <div class="bg-[#111726]/80 border border-slate-800/60 rounded-[24px] p-5 space-y-4">
+        <div>
+          <p class="text-[10px] text-purple-300 tracking-widest mb-2">CÁCH TÍNH LƯỢT XEM</p>
+          <p class="text-slate-300 text-xs font-medium not-italic normal-case leading-relaxed">
+            Lượt xem được <span class="text-yellow-400 font-black">cộng dồn</span> từ tất cả bài đăng, không giới hạn số nick Threads — tổng lượt xem đủ mốc là nhận thưởng.
+          </p>
+        </div>
+
+        <div class="space-y-3">
+          <div v-for="(ex, i) in viewExamples" :key="i" class="bg-slate-800/40 border border-slate-700/40 rounded-xl p-3.5 space-y-2">
+            <p class="text-[10px] text-slate-400 not-italic normal-case tracking-wide">{{ ex.label }}</p>
+            <div class="flex flex-wrap items-center gap-1.5">
+              <template v-for="(part, j) in ex.parts" :key="j">
+                <span class="bg-slate-900/80 border border-slate-700 rounded-lg px-2.5 py-1 text-white text-[11px] not-italic normal-case font-black">{{ part }}</span>
+                <span v-if="j < ex.parts.length - 1" class="text-slate-500 text-[11px]">+</span>
+              </template>
+            </div>
+            <p class="text-[11px] not-italic normal-case flex items-center flex-wrap gap-1">
+              <span class="text-slate-400">Tổng =</span>
+              <span class="text-purple-300 font-black">{{ ex.total }}</span>
+              <span class="text-slate-400">→</span>
+              <span class="text-emerald-400 font-black">{{ ex.reward }}</span>
+            </p>
+          </div>
+        </div>
+
+        <div class="bg-amber-500/10 border border-amber-500/30 rounded-2xl px-4 py-3">
+          <p class="text-amber-400 text-[11px] font-medium not-italic normal-case leading-relaxed">
+            ⚠️ Chỉ cộng dồn lượt xem tối đa 6 bài đăng, tức 2 nick Threads. Từ nick Threads thứ 3, 4, 5... trở đi sẽ tính lại từ đầu.
+          </p>
+        </div>
       </div>
 
       <!-- ── Bảng mức thưởng ────────────────────────────────── -->
       <div class="bg-[#111726]/80 border border-slate-800/60 rounded-[24px] p-5">
         <p class="text-[10px] text-purple-300 tracking-widest mb-4">BẢNG MỨC THƯỞNG</p>
         <div class="space-y-2">
-          <div class="grid grid-cols-3 gap-2 px-2 mb-1">
-            <p class="text-[9px] text-slate-500 not-italic normal-case tracking-wide">View bài Threads</p>
-            <p class="text-[10.35px] text-yellow-400 not-italic normal-case tracking-wide text-center">Lượt xem mã QR ghim tại bình luận</p>
+          <div class="grid grid-cols-2 gap-2 px-2 mb-1">
+            <p class="text-[9px] text-slate-500 not-italic normal-case tracking-wide">Tổng lượt xem bài viết</p>
             <p class="text-[9px] text-slate-500 not-italic normal-case tracking-wide text-right">Thưởng</p>
           </div>
           <div v-for="tier in rewardTiers" :key="tier.reward"
-            class="grid grid-cols-3 gap-2 items-center bg-slate-800/40 border border-slate-700/40 rounded-xl px-3 py-2.5"
+            class="grid grid-cols-2 gap-2 items-center bg-slate-800/40 border border-slate-700/40 rounded-xl px-3 py-2.5"
             :class="tier.highlight ? 'border-purple-500/40 bg-purple-900/20' : ''">
-            <p class="text-white text-[11px] not-italic normal-case font-black">{{ tier.threadView }}</p>
-            <p class="text-center text-[11px] not-italic normal-case font-black text-purple-300">{{ tier.qr }}</p>
+            <p class="text-white text-[11px] not-italic normal-case font-black">{{ tier.views }}</p>
             <p class="text-right font-black text-[12px] not-italic"
                :class="tier.highlight ? 'text-yellow-400' : 'text-emerald-400'">
               {{ tier.reward }}
             </p>
           </div>
         </div>
-      </div>
-
-      <!-- ── Mẹo ─────────────────────────────────────────────── -->
-      <div class="bg-[#111726]/80 border border-amber-500/20 rounded-[24px] p-5">
-        <p class="text-[10px] text-amber-400 tracking-widest mb-3">MẸO</p>
-        <ul class="space-y-2">
-          <li v-for="(rule, i) in rules" :key="i" class="flex items-start gap-2.5">
-            <span class="text-amber-500 text-xs shrink-0 mt-0.5">•</span>
-            <p class="text-slate-300 text-sm font-medium not-italic normal-case leading-relaxed">{{ rule }}</p>
-          </li>
-        </ul>
-      </div>
-
-      <!-- ── Hướng dẫn ───────────────────────────────────────── -->
-      <div class="bg-[#111726]/80 border border-slate-800/60 rounded-[24px] p-5 space-y-3">
-        <p class="text-[10px] text-purple-300 tracking-widest mb-3">HƯỚNG DẪN</p>
-        <div v-for="(step, i) in steps" :key="i" class="flex items-start gap-3">
-          <div class="w-6 h-6 rounded-full bg-purple-600/30 border border-purple-500/40 flex items-center justify-center text-purple-300 text-[10px] font-black shrink-0 mt-0.5">
-            {{ i + 1 }}
-          </div>
-          <p class="text-slate-300 text-sm font-medium not-italic normal-case leading-relaxed">{{ step }}</p>
-        </div>
-        <button
-          @click="showGuideModal = true"
-          class="w-full mt-2 py-4 rounded-2xl text-sm tracking-widest transition-all active:scale-95 shadow-xl bg-gradient-to-r from-purple-600 to-fuchsia-500 text-white shadow-[0_0_20px_rgba(168,85,247,0.4)]">
-          👉 XEM HƯỚNG DẪN
-        </button>
       </div>
 
       <!-- ── Highlights ──────────────────────────────────────── -->

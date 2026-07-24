@@ -182,11 +182,11 @@ async function handleSubmit() {
     return
   }
   if (!postUrl.value.trim()) {
-    formError.value = 'Vui lòng nhập link bài viết.'
+    formError.value = 'Vui lòng nhập link trang cá nhân Threads.'
     return
   }
   if (qrViewCount.value === '' || (qrViewCount.value as number) < 0) {
-    formError.value = 'Vui lòng nhập số view QR hợp lệ.'
+    formError.value = 'Vui lòng nhập tổng số lượt xem hợp lệ.'
     return
   }
 
@@ -232,7 +232,7 @@ async function handleSubmit() {
           <span class="text-purple-300 font-black truncate">{{ submittedInfo.threadNick }}</span>
         </div>
         <div class="flex items-center justify-between text-sm gap-3">
-          <span class="text-slate-400 not-italic normal-case font-semibold shrink-0">View QR</span>
+          <span class="text-slate-400 not-italic normal-case font-semibold shrink-0">Tổng lượt xem</span>
           <span class="text-white font-black">{{ submittedInfo.qrViewCount.toLocaleString('vi-VN') }}</span>
         </div>
         <div class="flex items-center justify-between text-sm gap-3">
@@ -294,27 +294,27 @@ async function handleSubmit() {
         />
       </div>
 
-      <!-- Link bài viết -->
+      <!-- Link trang cá nhân -->
       <div class="space-y-1.5">
-        <label class="text-[10px] text-slate-400 tracking-widest not-italic normal-case font-semibold uppercase">Link bài viết Threads *</label>
+        <label class="text-[10px] text-slate-400 tracking-widest not-italic normal-case font-semibold uppercase">Link trang cá nhân Threads *</label>
         <input
           v-model="postUrl"
           @input="clearError"
           type="url"
-          placeholder="https://www.threads.net/..."
+          placeholder="https://www.threads.net/@tennick"
           class="w-full bg-slate-800/60 border border-slate-700/60 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/60 transition-colors not-italic normal-case font-medium"
         />
       </div>
 
-      <!-- Số view QR -->
+      <!-- Tổng số lượt xem -->
       <div class="space-y-1.5">
-        <label class="text-[10px] text-slate-400 tracking-widest not-italic normal-case font-semibold uppercase">Số view mã QR được ghim *</label>
+        <label class="text-[10px] text-slate-400 tracking-widest not-italic normal-case font-semibold uppercase">Tổng số lượt xem của các bài viết *</label>
         <input
           v-model.number="qrViewCount"
           @input="clearError"
           type="number"
           min="0"
-          placeholder="VD: 350"
+          placeholder="VD: 1.500"
           class="w-full bg-slate-800/60 border border-slate-700/60 rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/60 transition-colors not-italic normal-case font-medium"
         />
         <p v-if="qrViewCount !== '' && Number(qrViewCount) >= 0"
@@ -323,7 +323,7 @@ async function handleSubmit() {
           <span v-if="calcReward(Number(qrViewCount)) > 0">
             → Thưởng đề nghị: <strong>{{ calcReward(Number(qrViewCount)).toLocaleString('vi-VN') }} xu</strong>
           </span>
-          <span v-else>Cần tối thiểu 50 view QR để nhận thưởng.</span>
+          <span v-else>Cần tối thiểu 1.000 view để nhận thưởng.</span>
         </p>
       </div>
 

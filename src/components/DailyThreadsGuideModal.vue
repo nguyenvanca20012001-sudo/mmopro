@@ -14,14 +14,12 @@ startDailyThreadsGuideListener() // idempotent — nếu listener đã chạy t�
 const emit = defineEmits<{ (e: 'close'): void }>()
 
 const contentsPool = computed(() => dailyThreadsGuideConfig.value.contents)
-const imagesPool = computed(() => dailyThreadsGuideConfig.value.postImages)
 const qrImage = computed(() => dailyThreadsGuideConfig.value.qrImage)
 
 const hasContent = computed(() => contentsPool.value.some(c => String(c || '').trim()))
-const hasImages = computed(() => imagesPool.value.some(c => String(c || '').trim()))
 
 const demoContent = ref(pickRandomNonEmpty(contentsPool.value))
-const demoImage = ref(pickRandomNonEmpty(imagesPool.value))
+const postImage = '/images/anh-post-5.png'
 
 function toast(text: string, icon: 'success' | 'warning' = 'success') {
   Swal.fire({ text, icon, timer: 1800, showConfirmButton: false, toast: true, position: 'top-end' })
@@ -54,10 +52,7 @@ function downloadOrOpenImage(url: string, fileName: string) {
 }
 
 function handleDownloadImage() {
-  const img = pickRandomNonEmpty(imagesPool.value)
-  if (!img) return
-  demoImage.value = img
-  downloadOrOpenImage(img, `threads-bai-dang-${Date.now()}.jpg`)
+  downloadOrOpenImage(postImage, `threads-bai-dang-${Date.now()}.png`)
   toast('Đã tải ảnh bài đăng')
 }
 
@@ -146,18 +141,14 @@ function handleDownloadQr() {
             <p class="text-white text-xs tracking-wide">Bước 2: Lưu Ảnh Bài Đăng</p>
           </div>
           <p class="text-slate-400 text-[11px] font-medium not-italic normal-case leading-relaxed">
-            Bấm nút bên dưới để tải ngẫu nhiên 1 ảnh dùng kèm bài đăng.
+            Bấm nút bên dưới để tải ảnh dùng kèm bài đăng.
           </p>
 
-          <div v-if="hasImages" class="rounded-2xl overflow-hidden border border-slate-700/50 shadow-lg bg-slate-900 max-h-[260px] flex items-center justify-center">
-            <img class="w-full h-full max-h-[260px] object-contain" :src="demoImage" />
-          </div>
-          <div v-else class="bg-[#0d121f] p-4 rounded-2xl border border-slate-700/80 text-center">
-            <p class="text-slate-500 text-[11px] font-medium not-italic normal-case">Chưa có ảnh mẫu.</p>
+          <div class="rounded-2xl overflow-hidden border border-slate-700/50 shadow-lg bg-slate-900 max-h-[260px] flex items-center justify-center">
+            <img class="w-full h-full max-h-[260px] object-contain" :src="postImage" />
           </div>
 
           <button
-            :disabled="!hasImages"
             @click="handleDownloadImage"
             class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:shadow-lg hover:shadow-blue-500/30 disabled:opacity-40 disabled:cursor-not-allowed text-white px-4 py-3.5 rounded-xl text-[11px] font-black uppercase transition-all active:scale-95 flex items-center justify-center gap-2">
             ⬇️ Tải Ảnh Bài Đăng
