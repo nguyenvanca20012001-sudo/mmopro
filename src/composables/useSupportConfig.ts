@@ -2,7 +2,7 @@ import { ref } from 'vue'
 import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '@/firebase'
 
-export const SUPPORT_FANPAGE_URL = 'https://www.facebook.com/mmopro168vn/'
+export const SUPPORT_FANPAGE_URL = 'https://www.facebook.com/mmoprovn'
 
 const SUPPORT_COL = 'support_config'
 const SUPPORT_DOC = 'overall'
