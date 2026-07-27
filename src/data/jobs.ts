@@ -1,35 +1,6 @@
 // src/data/jobs.ts
 export const jobsData: Record<string, any> = {
 
-  'zalo-kokomi': {
-    title: "ZALO X KOKOMI",
-    reward: "35.000 - 115.000 xu",
-    color: "text-cyan-400",
-    badge: "CƠ BẢN",
-    subtitle: "Gửi link giới thiệu cho 5 người bạn bất kì, hoàn thành nhiệm vụ nhận thưởng",
-    referralLinkGlobal: "https://shorten.asia/jxg72pms",
-    minReferrals: 5,
-    noProofSubmit: true,
-    showFanpageCta: true,
-    simpleGuide: true,
-    guideIntro: [
-      "Sao chép link giới thiệu bên dưới và gửi cho bạn bè qua Zalo, Messenger, Threads hoặc Instagram đều được.",
-      "Khi làm đủ Mốc 1 hoặc Mốc 2, hãy nhắn tin Fanpage để gửi bằng chứng và nhận thưởng."
-    ],
-    sampleImage: "images/anh-kokomi1.jpg",
-    priceTiers: [
-      { count: 5, reward: "35.000 xu" },
-      { count: 10, reward: "80.000 xu" }
-    ],
-    fanpageMessageTemplate: [
-      "Họ tên:",
-      "Số điện thoại:",
-      "Số lượt giới thiệu thành công:",
-      "Ảnh bằng chứng:"
-    ],
-    steps: []
-  },
-
   // ==============================================
   // NHÓM JOB SEEDING & MARKETING TƯƠNG TÁC
   // ==============================================
@@ -222,17 +193,6 @@ export const jobsData: Record<string, any> = {
         content: "CỘNG ĐỒNG MMO PRO GROUP 1- GROUP 11 ĐÃ FULL , THAM GIA GROUP 12 NHÁ  .",
         extraLinks: [
           { text: "THAM GIA NHÓM 12 ➔", url: "https://zalo.me/g/a0vzt8yvoga1f9xhzdkp" }
-        ]
-      },
-      {
-        id: 2,
-        title: "THAM GIA SỰ KIỆN ZALO X KOKOMI",
-        content: "Bạn chọn nút THAM GIA SỰ KIỆN bên dưới và gửi ảnh bằng chứng bên dưới.",
-        extraLinks: [
-          { text: "THAM GIA SỰ KIỆN ➔", url: "https://shorten.asia/jxg72pms" }
-        ],
-        images: [
-          "images/anh-kokomi.jpg"
         ]
       }
     ]
