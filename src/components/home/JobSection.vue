@@ -140,7 +140,7 @@ const getShortDesc = (id: string) => {
     'app-chung-khoan-4': 'Đăng ký tài khoản chứng khoán',
     'msb-bank': 'Nhận quà tặng khi mở thẻ MSB',
     'liobank':  'Mở tài khoản LioBank thẻ 2 in 1',
-    'referral-hub': 'Giới thiệu càng nhiều, thưởng càng cao'
+    'referral-hub': 'Mời bạn bè đăng ký APP ABBANK nhận 85.000 xu/lần'
   };
   return desc[id] || 'Làm nhiệm vụ ngay';
 }

@@ -1327,7 +1327,7 @@ const getMobileAgeBadgeClass = (age: number): string => {
 
         <div class="space-y-4 pb-10 lg:pb-0 relative z-10">
           <div v-for="opt in [
-                 { id: 'referral-lpbank', name: 'APP LPBANK PLUS', reward: '100.000 - 150.000', badge: 'HOT 🔥', desc: 'Dễ làm — thưởng tăng dần', featured: true }
+                 { id: 'referral-abbank', name: 'APP ABBANK', reward: '85.000', badge: 'HOT 🔥', desc: 'Dễ làm — thưởng cố định mỗi lượt', featured: true }
                ]"
                :key="opt.id"
                @click="() => { showReferralModal = false; router.push(`/job/${opt.id}`) }"
@@ -1585,7 +1585,7 @@ const getMobileAgeBadgeClass = (age: number): string => {
 
                 <!-- Reward -->
                 <div class="flex items-baseline gap-1 mb-3 relative z-10">
-                  <template v-if="job.rewardText || job.id === 'referral-hub'">
+                  <template v-if="job.rewardText">
                     <span class="text-lg font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-amber-500 to-yellow-600">
                       {{ getVipJobRewardLabel(job) }}
                     </span>

@@ -38,7 +38,7 @@ const submittedInfo = ref({ friendName: '', friendPhone: '', sentAt: '' })
 const sampleImages = [
   { src: baseUrl + 'images/anh-abbank1.jpg', label: 'Ảnh mẫu 1' },
   { src: baseUrl + 'images/anh-abbank2.jpg', label: 'Ảnh mẫu 2' },
-  { src: baseUrl + 'images/anh-abbank3.jpg', label: 'Ảnh mẫu 3' },
+  { src: baseUrl + 'images/anh-abbank4.jpg', label: 'Ảnh mẫu 3' },
 ]
 
 const zoomImage = ref<string | null>(null)
@@ -244,6 +244,9 @@ async function handleSubmit() {
       uploadTotal.value = total
     })
 
+    const trimmedFriendName = friendName.value.trim()
+    const trimmedFriendPhone = friendPhone.value.trim()
+
     await setDoc(reportRef, {
       uid,
       username: username.value,
@@ -251,23 +254,27 @@ async function handleSubmit() {
       jobName: props.bankType === 'abbank'
         ? 'Giới thiệu bạn bè đăng ký APP ABBANK'
         : 'Giới thiệu bạn bè đăng ký APP LPBANK',
-      reward: props.bankType === 'abbank' ? '85.000 xu' : '100.000 xu',
-      status: 'pending',
-      friendName: friendName.value.trim(),
-      friendPhone: friendPhone.value.trim(),
-      friendPhoneNormalized: normalizePhone(friendPhone.value.trim()),
-      bankType: props.bankType,
-      category: 'vip',
       type: 'friend_referral',
-      site: userSite.value,
+      bankType: props.bankType,
+      referralProgram: props.bankType,
+      friendName: trimmedFriendName,
+      friendPhone: trimmedFriendPhone,
+      friendPhoneNormalized: normalizePhone(trimmedFriendPhone),
+      referralOrderCode: `${trimmedFriendName} - ${trimmedFriendPhone}`,
       proofImages,
       imageCount: proofImages.length,
+      status: 'pending',
+      reward: props.bankType === 'abbank' ? 85000 : 100000,
+      actualReward: 0,
+      category: 'vip',
+      site: userSite.value,
       createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
     })
 
     submittedInfo.value = {
-      friendName: friendName.value.trim(),
-      friendPhone: friendPhone.value.trim(),
+      friendName: trimmedFriendName,
+      friendPhone: trimmedFriendPhone,
       sentAt: new Date().toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }),
     }
 

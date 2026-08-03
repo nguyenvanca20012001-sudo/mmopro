@@ -1607,6 +1607,11 @@ const approveOneReportTx = async (reportId: string, targetUid?: string) => {
     }
 
     const reportUpdate: any = { status: 'approved', approvedAt: serverTimestamp() }
+    // referral_abbank lưu actualReward: 0 lúc tạo đơn (thưởng cố định, không tăng dần như lpbank) —
+    // cần ghi lại giá trị thật lúc duyệt để ReferralHistoryModal không hiển thị nhầm "0 XU".
+    if (report.jobId === 'referral_abbank') {
+      reportUpdate.actualReward = rewardValue
+    }
     if (effectiveTargetUid !== report.uid) {
       Object.assign(reportUpdate, markRepairedByPhone(report, effectiveTargetUid))
     }
