@@ -54,7 +54,7 @@ const jobSamples: Record<string, string[]> = {
   'app-chung-khoan-2': ['images/anh-dnse2.jpg', 'images/anh-dnse3.jpg', 'images/anh-dnse10.jpg'],
   'app-chung-khoan-3': ['images/anh-kis1.jpg', 'images/anh-kis2.jpg', 'images/anh-kis10.jpg'],
   'liobank': ['images/anh-liobank3a.jpg', 'images/anh-liobank3b.jpg', 'images/anh-liobank4.jpg'],
-  'lpbank-plus': ['anh-lpbank3.jpg', 'images/anh-lpbank4.jpg']
+  'lpbank-plus': ['images/anh-lpbank-new2.jpg', 'images/anh-lpbank-new3.jpg', 'images/anh-lpbank-new4.jpg']
 }
 
 const selectedJob = ref<ProofJob | undefined>(jobOptions.value[0])
@@ -133,12 +133,12 @@ watch(jobOptions, (newOptions) => {
 })
 
 const isFanpageTask = computed(() =>
-  ['vpbank', 'msb-bank', 'app-chung-khoan', 'app-chung-khoan-2', 'app-chung-khoan-3', 'app-chung-khoan-4', 'liobank', 'mbbank'].includes(selectedJob.value.id)
+  ['vpbank', 'msb-bank', 'app-chung-khoan', 'app-chung-khoan-2', 'app-chung-khoan-3', 'app-chung-khoan-4', 'liobank', 'mbbank', 'momo'].includes(selectedJob.value.id)
 )
 
 const fourImageJobs: string[] = []
-const threeImageJobs = ['vpbank', 'msb-bank', 'app-chung-khoan', 'app-chung-khoan-2', 'app-chung-khoan-3', 'app-chung-khoan-4', 'liobank', 'mbbank']
-const twoImageJobs = ['lpbank-plus']
+const threeImageJobs = ['vpbank', 'msb-bank', 'app-chung-khoan', 'app-chung-khoan-2', 'app-chung-khoan-3', 'app-chung-khoan-4', 'liobank', 'mbbank', 'lpbank-plus']
+const twoImageJobs: string[] = []
 
 const imageRequirementText = computed(() => {
   const jobId = selectedJob.value.id

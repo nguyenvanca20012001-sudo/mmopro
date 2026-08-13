@@ -462,23 +462,23 @@ export const jobsData: Record<string, any> = {
         id: 1,
         title: "TẢI ĐÚNG APP LPBANK PLUS - CHÚ Ý CHỮ PLUS ",
         content: "TÊN APP : LPBANK PLUS TẢI ĐÚNG APP HOẶC CHỌN TẢI ỨNG DỤNG.",
-        downloadLink: "https://content.lpbank.com.vn/share/down_app/index.html",
-        buttonText: "🚀 TẢI ỨNG DỤNG",
         img: "images/anh-lpbank-buoc1.jpg",
       },
       {
         id: 2,
-        title: "NHẬP MÃ GIỚI THIỆU : 0366045803 ",
-        content: "BẮT BUỘC NHẬP MÃ GIỚI THIỆU 0366045803 VÀ CHỤP LẠI ẢNH.",
-        referralCode: "0366045803",
-        img: "images/anh-lpbank1.jpg",
-        note: "NHẬP MÃ GIỚI THIỆU : 0366045803  (BẮT BUỘC)",
+        title: "NHẬP MÃ GIỚI THIỆU",
+        contentHtml: `<span class="text-slate-300 font-semibold not-italic">ĐĂNG KÝ VÀ NHẬP MÃ GIỚI THIỆU</span><br/><span class="text-slate-400 font-medium not-italic">Tham gia nhóm Zalo để lấy mã giới thiệu.</span>`,
+        extraLinks: [
+          { text: "💬 THAM GIA NHÓM ZALO", url: "https://zalo.me/g/shxqdjooiubce1rnvhq8" }
+        ],
+        img: "images/anh-lpbank-new1.jpg",
+        note: "NHẬP MÃ GIỚI THIỆU (BẮT BUỘC)",
       },
       {
         id: 3,
-        title: "CHUYỂN VÀO LPBANK PLUS 50K VÀ CHUYỂN RA ",
+        title: "CHUYỂN VÀO LPBANK PLUS 100K VÀ CHUYỂN RA LẠI",
         content: "CHỤP LẠI ẢNH CHUYỂN TIỀN RA VÀ GỬI BẰNG CHỨNG .",
-        img: "images/anh-lpbank4.jpg",
+        img: "images/anh-lpbank-new4.jpg",
       },
       {
         id: 4,
